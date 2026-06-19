@@ -109,6 +109,28 @@ src/
 └── types/                  # TypeScript interfaces
 ```
 
+## TODOs
+
+### Unfinished Features
+
+- [ ] **Transaction analysis for summary invoices** — Summary invoices (like Azira's) have no per-SKU operations data, so the Transaction Cost Analysis section doesn't appear. Need to either estimate operations from service totals or surface a note prompting the AE to request the detailed bill.
+- [ ] **PDF report — end-to-end testing** — The Playwright-based PDF generation route and 4-page report layout exist but haven't been verified with real data. Need to generate a PDF and confirm all pages render correctly.
+- [ ] **Egress questionnaire → model validation** — The egress decision tree UI is built, but the full flow (compute stays in hyperscaler → new costs appear, partner CDN → egress zeroes out) hasn't been validated against real egress numbers from a bill.
+- [ ] **Projection chart accuracy** — 3-year projection with growth compounding exists but hasn't been cross-checked against a manual spreadsheet calculation with real numbers.
+- [ ] **Inline editing validation** — EditableCell component exists in ParseReview, but editing a parsed value and confirming the downstream model (tier inventory, savings, projections) recalculates correctly hasn't been tested.
+
+### Testing Against Real Bills
+
+> **Note to the team:** We all should be pushing our AEs to gather bills from customers so we can use the data to make this tool better. Every new bill format we test against makes the parsers more robust and the savings models more accurate. Drop bills in your local `fixtures/` directory (gitignored — customer data stays local).
+
+- [ ] **AWS detailed billing PDF** — Verify per-SKU line items, storage class mapping (Standard, Standard-IA, Glacier, etc.), operations subcategories in Transaction Analysis, egress categorization, and grand total reconciliation.
+- [ ] **GCP cost table CSV** — Verify Class A / Class B operations parse with storage class attribution, GiB → GB normalization, Nearline/Coldline/Archive tier inventory, and savings programs discount detection.
+- [ ] **AWS S3 cost export CSV** — Test with a real export. Verify pivoted SKU columns (TimedStorage, Requests-Tier1, etc.) parse correctly and monthly breakdowns work.
+- [ ] **AWS summary invoice edge cases** — Bills with fewer linked accounts, no discounts, $0 services, or different formatting/layout variations.
+- [ ] **Excel (.xlsx)** — Test with a real Excel export to verify sheet detection and CSV conversion.
+- [ ] **Multi-region bills** — Verify region-specific pricing (e.g., Singapore vs US East) produces separate tier inventory rows with correct effective rates.
+- [ ] **Discount accuracy** — Verify named discounts (EDP, Savings Plans, Private Rate Card) are correctly extracted and pricing detection flags them accurately.
+
 ## Adding Bill Fixtures for Testing
 
 Place test bills in a `fixtures/` directory (gitignored — customer data stays local):
