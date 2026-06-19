@@ -19,6 +19,7 @@ import { PricingDetection } from '@/components/dashboard/PricingDetection';
 import { DealSizing } from '@/components/dashboard/DealSizing';
 import { TransactionAnalysis } from '@/components/dashboard/TransactionAnalysis';
 import { FileUpload } from '@/components/upload/FileUpload';
+import { InlineEditText } from '@/components/shared/InlineEditText';
 
 interface AnalysisData {
   meta: Analysis;
@@ -43,6 +44,9 @@ export default function AnalysisDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
+  const [showReplaceUpload, setShowReplaceUpload] = useState(false);
 
   const [tiers, setTiers] = useState<TierInventoryRow[]>([]);
   const [egressConfig, setEgressConfig] = useState<EgressConfig>({
@@ -119,6 +123,21 @@ export default function AnalysisDashboard() {
     setEgressConfig(config);
   }, []);
 
+  const patchMeta = useCallback(async (fields: Partial<Analysis>) => {
+    setData((prev) => prev ? { ...prev, meta: { ...prev.meta, ...fields } } : prev);
+    await fetch(`/api/analyses/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ meta: fields }),
+    });
+  }, [id]);
+
+  const handleCopyLink = useCallback(async () => {
+    await navigator.clipboard.writeText(window.location.href);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  }, []);
+
   // Debounced save
   useEffect(() => {
     if (!data?.parsed) return;
@@ -192,22 +211,21 @@ export default function AnalysisDashboard() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-start justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{data.meta.prospectName}</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            <InlineEditText
+              value={data.meta.prospectName}
+              onSave={(name) => patchMeta({ prospectName: name } as Partial<Analysis>)}
+              placeholder="Prospect name"
+              maxLength={100}
+            />
+          </h1>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Source:</span>
             <select
               value={data.meta.provider}
-              onChange={async (e) => {
-                const newProvider = e.target.value as Provider;
-                setData((prev) => prev ? { ...prev, meta: { ...prev.meta, provider: newProvider } } : prev);
-                await fetch(`/api/analyses/${id}`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ meta: { provider: newProvider } }),
-                });
-              }}
+              onChange={(e) => patchMeta({ provider: e.target.value as Provider } as Partial<Analysis>)}
               className="text-sm font-semibold bg-white border border-gray-300 rounded-md px-2 py-1 pr-7 cursor-pointer focus:ring-2 focus:ring-bb-red focus:border-transparent"
             >
               <option value="aws">Amazon Web Services (AWS)</option>
@@ -237,9 +255,32 @@ export default function AnalysisDashboard() {
               </span>
             )}
           </div>
+          {/* Notes */}
+          <div className="mt-2">
+            <InlineEditText
+              value={data.meta.notes || ''}
+              onSave={(notes) => patchMeta({ notes } as Partial<Analysis>)}
+              placeholder="+ Add notes"
+              className="text-sm text-gray-500"
+              multiline
+              maxLength={500}
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           {saving && <span className="text-xs text-gray-400">Saving...</span>}
+          <button
+            onClick={handleCopyLink}
+            className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50"
+          >
+            {linkCopied ? 'Copied!' : 'Copy Link'}
+          </button>
+          <button
+            onClick={() => setShowReplaceConfirm(true)}
+            className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50"
+          >
+            Replace Bill
+          </button>
           <a
             href={`/analyses/${id}/report`}
             target="_blank"
@@ -255,6 +296,57 @@ export default function AnalysisDashboard() {
           </a>
         </div>
       </div>
+
+      {/* Replace bill confirmation modal */}
+      {showReplaceConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Replace bill?</h3>
+            <p className="text-sm text-gray-600 mb-1">
+              This will overwrite the current parsed data and reset the model configuration (tier toggles, egress settings, and B2 pricing) to defaults.
+            </p>
+            <p className="text-sm text-amber-600 mb-5">All manual adjustments will be lost.</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowReplaceConfirm(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { setShowReplaceConfirm(false); setShowReplaceUpload(true); }}
+                className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700"
+              >
+                Replace Bill
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Replace bill upload modal */}
+      {showReplaceUpload && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Upload New Bill</h3>
+              <button
+                onClick={() => setShowReplaceUpload(false)}
+                className="p-1 text-gray-400 hover:text-gray-600 rounded"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <FileUpload
+              analysisId={id}
+              onUploadComplete={() => window.location.reload()}
+              onError={setError}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Main content */}

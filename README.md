@@ -131,6 +131,14 @@ src/
 - [ ] **Multi-region bills** — Verify region-specific pricing (e.g., Singapore vs US East) produces separate tier inventory rows with correct effective rates.
 - [ ] **Discount accuracy** — Verify named discounts (EDP, Savings Plans, Private Rate Card) are correctly extracted and pricing detection flags them accurately.
 
+### Future: Database
+
+The app currently uses B2 object storage as its sole persistence layer — no database. Adding a database (e.g., Postgres or SQLite) would unlock:
+
+- [ ] **Team analytics dashboard** — Aggregate savings across all AEs and prospects to surface trends like "average savings % by provider" or "top 10 opportunities by ARR." Not feasible today because each analysis is an isolated JSON file with no cross-query capability.
+- [ ] **Audit trail and version history** — Track every change to an analysis (who toggled which tier, when pricing was adjusted, previous model configs) so AEs and managers can review the decision history. Object storage only keeps the latest state.
+- [ ] **Collaboration and sharing** — Let multiple AEs or SEs work on the same opportunity with role-based access, comments, and notifications. Current user-scoped B2 prefixes make cross-user access impractical.
+
 ## Adding Bills for Testing
 
 Place test bills in a `bills/` directory (gitignored — customer data stays local):

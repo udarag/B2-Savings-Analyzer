@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import type { Analysis, ParsedBill, ModelConfig, TierInventoryRow } from '@/types/analysis';
 import type { CostModelResult, ProjectionPoint } from '@/types/model';
 import { buildTierInventory } from '@/lib/engine/tier-inventory';
@@ -9,14 +9,57 @@ import { computeCostModel } from '@/lib/engine/cost-model';
 import { computeProjections } from '@/lib/engine/projections';
 import { formatCurrency, formatNumber, formatPercent } from '@/components/shared/FormatCurrency';
 
+interface AEInfo {
+  name: string;
+  email: string;
+  title?: string;
+}
+
+function emailToDisplayName(email: string): string {
+  const local = email.split('@')[0];
+  return local
+    .split(/[._-]/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 export default function ReportPage() {
   const params = useParams();
   const id = params.id as string;
+  const searchParams = useSearchParams();
 
   const [meta, setMeta] = useState<Analysis | null>(null);
   const [parsed, setParsed] = useState<ParsedBill | null>(null);
   const [modelConfig, setModelConfig] = useState<ModelConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  const [aeInfo, setAeInfo] = useState<AEInfo | null>(null);
+
+  useEffect(() => {
+    const aeEmail = searchParams.get('ae');
+    const aeName = searchParams.get('aeName');
+    const aeTitle = searchParams.get('aeTitle');
+    if (aeEmail) {
+      setAeInfo({
+        name: aeName || emailToDisplayName(aeEmail),
+        email: aeEmail,
+        title: aeTitle || undefined,
+      });
+    } else {
+      Promise.all([
+        fetch('/api/auth/me').then((r) => r.json()),
+        fetch('/api/auth/profile').then((r) => r.json()),
+      ]).then(([me, prof]) => {
+        const email = me.user?.email;
+        if (email) {
+          setAeInfo({
+            name: prof.profile?.displayName || emailToDisplayName(email),
+            email,
+            title: prof.profile?.title || undefined,
+          });
+        }
+      }).catch(() => {});
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     fetch(`/api/analyses/${id}`)
@@ -311,7 +354,11 @@ export default function ReportPage() {
         </div>
 
         <div className="mt-8 text-center text-sm text-gray-400">
-          <p>Prepared by Backblaze | {new Date().toLocaleDateString()}</p>
+          <p>
+            Prepared by {aeInfo
+              ? `${aeInfo.name}${aeInfo.title ? `, ${aeInfo.title}` : ''} (${aeInfo.email}) — `
+              : ''}Backblaze | {new Date().toLocaleDateString()}
+          </p>
         </div>
       </div>
     </div>
