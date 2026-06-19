@@ -1,0 +1,90 @@
+{
+  "lastVerified": "2026-06-18",
+  "provider": "azure",
+  "storage": {
+    "eastus": {
+      "Hot-LRS": [
+        { "maxTb": 50, "perGb": 0.018 },
+        { "maxTb": 500, "perGb": 0.0173 },
+        { "maxTb": null, "perGb": 0.0166 }
+      ],
+      "Hot-ZRS": [
+        { "maxTb": 50, "perGb": 0.0225 },
+        { "maxTb": 500, "perGb": 0.0216 },
+        { "maxTb": null, "perGb": 0.0208 }
+      ],
+      "Hot-GRS": [
+        { "maxTb": 50, "perGb": 0.036 },
+        { "maxTb": 500, "perGb": 0.0346 },
+        { "maxTb": null, "perGb": 0.0332 }
+      ],
+      "Hot-RA-GRS": [
+        { "maxTb": 50, "perGb": 0.046 },
+        { "maxTb": 500, "perGb": 0.0442 },
+        { "maxTb": null, "perGb": 0.0424 }
+      ],
+      "Cool-LRS": 0.01,
+      "Cool-ZRS": 0.0125,
+      "Cool-GRS": 0.02,
+      "Cool-RA-GRS": 0.025,
+      "Cold-LRS": 0.0036,
+      "Cold-ZRS": 0.0045,
+      "Cold-GRS": 0.0072,
+      "Cold-RA-GRS": 0.009,
+      "Archive-LRS": 0.00099,
+      "Archive-GRS": 0.002,
+      "Archive-RA-GRS": 0.00198
+    },
+    "westus2": {
+      "Hot-LRS": [
+        { "maxTb": 50, "perGb": 0.018 },
+        { "maxTb": 500, "perGb": 0.0173 },
+        { "maxTb": null, "perGb": 0.0166 }
+      ],
+      "Cool-LRS": 0.01,
+      "Cold-LRS": 0.0036,
+      "Archive-LRS": 0.00099
+    },
+    "westeurope": {
+      "Hot-LRS": [
+        { "maxTb": 50, "perGb": 0.0196 },
+        { "maxTb": 500, "perGb": 0.0188 },
+        { "maxTb": null, "perGb": 0.018 }
+      ],
+      "Cool-LRS": 0.011,
+      "Cold-LRS": 0.004,
+      "Archive-LRS": 0.001
+    }
+  },
+  "operations": {
+    "Hot": { "writePer10k": 0.065, "readPer10k": 0.005 },
+    "Cool": { "writePer10k": 0.13, "readPer10k": 0.013 },
+    "Cold": { "writePer10k": 0.18, "readPer10k": 0.13 },
+    "Archive": { "writePer10k": 0.13, "readPer10k": 6.50 }
+  },
+  "retrieval": {
+    "Cool": 0.01,
+    "Cold": 0.03,
+    "Archive": 0.02
+  },
+  "dataTransferOut": [
+    { "maxGb": 5, "perGb": 0, "note": "Free tier" },
+    { "maxGb": 100, "perGb": 0.087 },
+    { "maxTb": 10, "perGb": 0.083 },
+    { "maxTb": 50, "perGb": 0.07 },
+    { "maxTb": 150, "perGb": 0.05 },
+    { "maxTb": 500, "perGb": 0.04 }
+  ],
+  "minStorageDays": {
+    "Cool": 30,
+    "Cold": 90,
+    "Archive": 180
+  },
+  "redundancyTypes": ["LRS", "ZRS", "GRS", "RA-GRS", "GZRS", "RA-GZRS"],
+  "accessTiers": ["Hot", "Cool", "Cold", "Archive"],
+  "earlyDeletionCharge": true,
+  "notes": {
+    "coldTier": "Azure Cold tier is unique — positioned between Cool and Archive. No equivalent in AWS/GCP.",
+    "redundancy": "Pricing varies significantly by redundancy type. LRS is cheapest, RA-GRS most expensive."
+  }
+}

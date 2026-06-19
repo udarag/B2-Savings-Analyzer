@@ -1,0 +1,51 @@
+{
+  "lastVerified": "2026-06-17",
+  "provider": "gcp",
+  "storage": {
+    "multi-region": {
+      "Standard": 0.026,
+      "Nearline": 0.010,
+      "Coldline": 0.004,
+      "Archive": 0.0012
+    },
+    "regional": {
+      "Standard": 0.020,
+      "Nearline": 0.010,
+      "Coldline": 0.004,
+      "Archive": 0.0012
+    },
+    "asia-multi-region": {
+      "Standard": 0.026,
+      "Nearline": 0.010,
+      "Coldline": 0.007,
+      "Archive": 0.0024
+    }
+  },
+  "operations": {
+    "Standard": { "classAPer10k": 0.05, "classBPer10k": 0.004 },
+    "Nearline": { "classAPer10k": 0.10, "classBPer10k": 0.01 },
+    "Coldline": { "classAPer10k": 0.10, "classBPer10k": 0.05 },
+    "Archive": { "classAPer10k": 0.50, "classBPer10k": 0.50 }
+  },
+  "retrieval": {
+    "Nearline": 0.01,
+    "Coldline": 0.02,
+    "Archive": 0.05
+  },
+  "dataTransferOut": [
+    { "maxTb": 1, "perGb": 0.12 },
+    { "maxTb": 10, "perGb": 0.11 },
+    { "maxTb": null, "perGb": 0.08 }
+  ],
+  "interRegion": {
+    "sameContinentPerGb": 0.01,
+    "crossContinentPerGb": 0.08,
+    "multiRegionReplicationPerGb": 0.02
+  },
+  "minStorageDays": {
+    "Nearline": 30,
+    "Coldline": 90,
+    "Archive": 365
+  },
+  "autoClassMonitoring": 0.0025
+}

@@ -1,0 +1,127 @@
+export type Provider = 'aws' | 'gcp' | 'azure' | 'r2';
+
+export type BillType = 'summary-invoice' | 'detailed-statement' | 'sku-export';
+
+export type Category =
+  | 'storage'
+  | 'egress'
+  | 'operations'
+  | 'retrieval'
+  | 'storage-adjacent'
+  | 'out-of-scope';
+
+export interface Analysis {
+  id: string;
+  prospectName: string;
+  notes?: string;
+  provider: Provider;
+  billType: BillType;
+  billingPeriod?: string;
+  accountId?: string;
+  detectionSignals?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ParsedLineItem {
+  id: string;
+  provider: Provider;
+  service: string;
+  region: string;
+  sku: string;
+  description: string;
+  category: Category;
+  subcategory?: string;
+  storageClass?: string;
+  unitRate?: number;
+  usageQuantity?: number;
+  usageUnit?: string;
+  costUsd: number;
+  isEstimate: boolean;
+  isEdited: boolean;
+}
+
+export interface AccountBreakdown {
+  accountId: string;
+  accountName: string;
+  amountUsd: number;
+}
+
+export interface AccountServiceBreakdown {
+  accountId: string;
+  accountName: string;
+  serviceName: string;
+  serviceKey: string;
+  costUsd: number;
+}
+
+export interface ParsedBill {
+  lineItems: ParsedLineItem[];
+  accounts?: AccountBreakdown[];
+  accountServiceBreakdowns?: AccountServiceBreakdown[];
+  grandTotal: number;
+  parseConfidence: number;
+  warnings: string[];
+  discounts?: NamedDiscount[];
+}
+
+export interface NamedDiscount {
+  name: string;
+  service?: string;
+  amountUsd: number;
+  estimatedPercent?: number;
+}
+
+export interface TierInventoryRow {
+  id: string;
+  storageClass: string;
+  provider: Provider;
+  region: string;
+  gbStored: number;
+  monthlyStorageCost: number;
+  effectivePerTb: number;
+  retrievalFees: number;
+  earlyDeletionFees: number;
+  monitoringFees: number;
+  operationsFees: number;
+  totalTrueCost: number;
+  modeledB2Cost: number;
+  delta: number;
+  migrateToB2: boolean;
+}
+
+export interface EgressConfig {
+  computeStaysInHyperscaler: boolean;
+  computeMovingToPartner: boolean;
+  gbPerMonthHyperscalerToB2: number;
+  gbPerMonthServedToUsers: number;
+  usesPartnerCdn: boolean;
+  dataGrowthRatePercent: number;
+  dataGrowthPeriod: 'monthly' | 'yearly';
+  udmEnabled: boolean;
+}
+
+export interface ModelConfig {
+  tierToggles: Record<string, boolean>;
+  egressConfig: EgressConfig;
+  b2PricePerTb: number;
+  projectionTermMonths: number;
+}
+
+export const DEFAULT_EGRESS_CONFIG: EgressConfig = {
+  computeStaysInHyperscaler: false,
+  computeMovingToPartner: false,
+  gbPerMonthHyperscalerToB2: 0,
+  gbPerMonthServedToUsers: 0,
+  usesPartnerCdn: false,
+  dataGrowthRatePercent: 0,
+  dataGrowthPeriod: 'yearly',
+  udmEnabled: false,
+};
+
+export const DEFAULT_MODEL_CONFIG: ModelConfig = {
+  tierToggles: {},
+  egressConfig: DEFAULT_EGRESS_CONFIG,
+  b2PricePerTb: 6.95,
+  projectionTermMonths: 36,
+};
