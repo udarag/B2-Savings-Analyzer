@@ -1,0 +1,362 @@
+import { execSync } from 'child_process';
+import { v4 as uuid } from 'uuid';
+import { writeFileSync, unlinkSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import type { ParsedLineItem, AccountBreakdown, Category, NamedDiscount } from '@/types/analysis';
+import type { ParseResult } from './types';
+import { parseFormattedNumber, parseUsdAmount } from './normalize';
+import { AWS_REGION_CODES, AWS_SKU_STORAGE_CLASS } from '../categories/types';
+
+function extractText(pdfBuffer: Buffer): string {
+  const tmpPath = join(tmpdir(), `bill-${Date.now()}.pdf`);
+  try {
+    writeFileSync(tmpPath, pdfBuffer);
+    return execSync(`pdftotext -layout "${tmpPath}" -`, {
+      maxBuffer: 50 * 1024 * 1024,
+    }).toString('utf-8');
+  } finally {
+    try { unlinkSync(tmpPath); } catch { /* ignore */ }
+  }
+}
+
+function resolveRegionCode(code: string): string {
+  return AWS_REGION_CODES[code] || code;
+}
+
+function extractRegionCode(sku: string): string {
+  const match = sku.match(/^([A-Z]{2,4}\d?)-/);
+  return match ? match[1] : 'GLOBAL';
+}
+
+function classifyAwsLine(
+  service: string,
+  skuCode: string,
+  rateDescription: string
+): { category: Category; subcategory?: string; storageClass?: string } {
+  const lower = rateDescription.toLowerCase();
+
+  // S3 Storage
+  if (service.includes('Simple Storage Service') || service.includes('S3 Glacier')) {
+    const skuSuffix = skuCode.replace(/^[A-Z]{2,4}\d?-/, '');
+
+    // Storage classes
+    if (skuSuffix in AWS_SKU_STORAGE_CLASS) {
+      return { category: 'storage', storageClass: AWS_SKU_STORAGE_CLASS[skuSuffix] };
+    }
+
+    // Requests
+    if (skuSuffix.includes('Requests-Tier1') || skuSuffix.includes('Requests-INT-Tier1')) {
+      return { category: 'operations', subcategory: 'PUT/COPY/POST/LIST' };
+    }
+    if (skuSuffix.includes('Requests-Tier2') || skuSuffix.includes('Requests-INT-Tier2')) {
+      return { category: 'operations', subcategory: 'GET/SELECT' };
+    }
+    if (skuSuffix.includes('Requests-SIA')) {
+      return { category: 'operations', subcategory: 'Standard-IA Requests', storageClass: 'Standard-IA' };
+    }
+    if (skuSuffix.includes('Requests-ZIA')) {
+      return { category: 'operations', subcategory: 'One Zone-IA Requests', storageClass: 'One Zone-IA' };
+    }
+    if (skuSuffix.includes('Requests-GDA')) {
+      return { category: 'operations', subcategory: 'Glacier Deep Archive Requests', storageClass: 'Glacier Deep Archive' };
+    }
+    if (skuSuffix.includes('Requests-GIR')) {
+      return { category: 'operations', subcategory: 'Glacier IR Requests', storageClass: 'Glacier Instant Retrieval' };
+    }
+
+    // Retrieval
+    if (skuSuffix.includes('Retrieval-SIA')) {
+      return { category: 'retrieval', storageClass: 'Standard-IA' };
+    }
+    if (skuSuffix.includes('Retrieval-ZIA')) {
+      return { category: 'retrieval', storageClass: 'One Zone-IA' };
+    }
+    if (skuSuffix.includes('Retrieval-GIR') || lower.includes('glacier instant')) {
+      return { category: 'retrieval', storageClass: 'Glacier Instant Retrieval' };
+    }
+
+    // Early delete
+    if (skuSuffix.includes('EarlyDelete')) {
+      const cls = skuSuffix.includes('ZIA') ? 'One Zone-IA' :
+                  skuSuffix.includes('SIA') ? 'Standard-IA' :
+                  skuSuffix.includes('GDA') ? 'Glacier Deep Archive' :
+                  skuSuffix.includes('GIR') ? 'Glacier Instant Retrieval' : undefined;
+      return { category: 'retrieval', subcategory: 'Early Deletion', storageClass: cls };
+    }
+
+    // Monitoring
+    if (skuSuffix.includes('Monitoring') || skuSuffix.includes('Inventory') ||
+        skuSuffix.includes('StorageAnalytics') || skuSuffix.includes('StorageLens')) {
+      return { category: 'operations', subcategory: 'Monitoring/Analytics' };
+    }
+
+    // Tags
+    if (skuSuffix.includes('TagStorage')) {
+      return { category: 'operations', subcategory: 'Tag Storage' };
+    }
+
+    // S3 Tables / Vectors
+    if (skuSuffix.includes('Tables-') || skuSuffix.includes('Vectors-')) {
+      return { category: 'storage', subcategory: 'S3 Tables/Vectors' };
+    }
+
+    // Select
+    if (skuSuffix.includes('Select-')) {
+      return { category: 'operations', subcategory: 'S3 Select' };
+    }
+
+    // CopyObject and other misc Glacier operations
+    if (skuSuffix === 'CopyObject' || skuSuffix.includes('Restore') || skuSuffix.includes('Transition')) {
+      return { category: 'operations', subcategory: 'Lifecycle/Copy' };
+    }
+
+    // Only classify as storage if it has a recognized TimedStorage pattern
+    if (skuSuffix.startsWith('TimedStorage')) {
+      return { category: 'storage' };
+    }
+
+    // Default unrecognized S3 SKUs to operations, not storage
+    return { category: 'operations', subcategory: 'Other S3' };
+  }
+
+  // Data Transfer
+  if (service.includes('Data Transfer')) {
+    if (lower.includes('data transfer out') && lower.includes('free tier')) {
+      return { category: 'egress', subcategory: 'Internet Egress' };
+    }
+    if (lower.includes('data transfer out') && !lower.includes('cloudfront')) {
+      return { category: 'egress', subcategory: 'Internet Egress' };
+    }
+    if (lower.includes('cloudfront')) {
+      return { category: 'storage-adjacent', subcategory: 'CloudFront Transfer' };
+    }
+    if (skuCode.match(/[A-Z]{3,4}\d?-[A-Z]{3,4}\d?-AWS-(Out|In)-Bytes/)) {
+      return { category: 'egress', subcategory: 'Inter-region Transfer' };
+    }
+    if (lower.includes('regional data transfer') || lower.includes('between ec2 az')) {
+      return { category: 'out-of-scope', subcategory: 'Intra-region Transfer' };
+    }
+    if (lower.includes('data transfer in') || lower.includes('transfer - in')) {
+      return { category: 'out-of-scope', subcategory: 'Data Transfer In' };
+    }
+    if (lower.includes('natgateway') || lower.includes('nat gateway')) {
+      return { category: 'out-of-scope', subcategory: 'NAT Gateway' };
+    }
+
+    return { category: 'egress', subcategory: 'Other Transfer' };
+  }
+
+  // EBS, EFS, ECR — storage-adjacent
+  if (service.includes('Elastic Block') || service.includes('EBS') ||
+      service.includes('Elastic File') || service.includes('EFS') ||
+      service.includes('Container Registry') || service.includes('ECR')) {
+    return { category: 'storage-adjacent', subcategory: 'Block/File Storage' };
+  }
+
+  // CloudFront
+  if (service.includes('CloudFront')) {
+    return { category: 'storage-adjacent', subcategory: 'CloudFront' };
+  }
+
+  // AWS Transfer Family
+  if (service.includes('Transfer Family')) {
+    return { category: 'storage-adjacent', subcategory: 'Transfer Family' };
+  }
+
+  return { category: 'out-of-scope' };
+}
+
+export function parseAwsDetailPdf(pdfBuffer: Buffer): ParseResult {
+  const text = extractText(pdfBuffer);
+  const lines = text.split('\n');
+
+  const lineItems: ParsedLineItem[] = [];
+  const accounts: AccountBreakdown[] = [];
+  const discounts: NamedDiscount[] = [];
+  const warnings: string[] = [];
+
+  let currentService = '';
+  let currentRegionName = '';
+  let currentSkuCode = '';
+  let currentSkuService = '';
+  let currentSkuSubtotal = 0;
+  let billingPeriod = '';
+  let accountId = '';
+  let inAccountsSection = false;
+  let grandTotal = 0;
+
+  // Extract billing period
+  const periodMatch = text.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d+\s*-\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d+,?\s+\d{4}/i);
+  if (periodMatch) billingPeriod = periodMatch[0];
+
+  // Extract account ID (payer account)
+  const acctMatch = text.match(/Account\s*ID[\s\n]+(\d{12})/);
+  if (acctMatch) accountId = acctMatch[1];
+  // Fallback: look for payerAccountId reference
+  if (!accountId) {
+    const payerMatch = text.match(/Payable by Account ID:\s*\{?(\d{12})/);
+    if (payerMatch) accountId = payerMatch[1];
+  }
+
+  // Extract grand total
+  const totalMatch = text.match(/Grand\s+total:\s*USD\s+([\d,.]+)/i);
+  if (totalMatch) grandTotal = parseFormattedNumber(totalMatch[1]);
+
+  // Detect named discounts
+  const edpPattern = /Enterprise\s+Discount\s+Program.*?USD\s+([\d,.]+)/gi;
+  const prcPattern = /Private\s+Rate\s+Card.*?USD\s+([\d,.]+)/gi;
+  let discountMatch;
+  while ((discountMatch = edpPattern.exec(text)) !== null) {
+    discounts.push({
+      name: 'Enterprise Discount Program',
+      amountUsd: parseFormattedNumber(discountMatch[1]),
+    });
+  }
+  while ((discountMatch = prcPattern.exec(text)) !== null) {
+    discounts.push({
+      name: 'Private Rate Card',
+      amountUsd: parseFormattedNumber(discountMatch[1]),
+    });
+  }
+
+  // SKU line pattern: service name + SKU code + USD amount
+  const skuLinePattern = /^\s*(Amazon Simple Storage Service|AWS Data Transfer|Amazon S3 Glacier[^U]*?|Amazon Elastic[^U]*?|Amazon EC2 Container Registry[^U]*?|Amazon CloudFront[^U]*?|AWS Transfer Family[^U]*?)\s+(\S+-[\w-]+)\s+(?:USD\s+)?([\d,.]+)\s*$/;
+
+  // Rate line pattern: $rate per description ... quantity unit ... USD cost
+  const rateLinePattern = /^\s+\$?([\d.]+)\s+per\s+(.*?)\s{2,}([\d,.]+)\s+([\w-]+)\s+USD\s+([\d,.]+)/;
+  const rateLine2Pattern = /^\s+USD\s*(\d+\.?\d*)\s+per\s+GB\s+(.*?)\s{2,}([\d,.]+)\s+([\w-]+)\s+USD\s+([\d,.]+)/;
+  const zeroRatePattern = /^\s+USD0\.0+\s+per\s+GB\s+(.*?)\s{2,}([\d,.]+)\s+([\w-]+)\s+USD\s+([\d,.]+)/;
+
+  // Region header pattern
+  const regionPattern = /^(US (?:East|West)|Asia Pacific|EU|South America|Canada|Middle East|Africa)\s+\(([^)]+)\)\s+(?:USD\s+)?([\d,.]+)/;
+
+  // Service section markers — broad set to detect when we leave a relevant section
+  const serviceSectionPattern = /^(Simple Storage Service|Data Transfer|Elastic Compute Cloud|Elastic Block Store|Elastic File System|CloudFront|ElastiCache|Relational Database|DynamoDB|Redshift|Lambda|CloudWatch|Security Hub|Glue|Athena|EMR|SQS|SNS|Config|WAF|Guard|Shield|Key Management|Secrets Manager|CodeBuild|CodePipeline|Step Functions|Managed Streaming|Kinesis|Backup|Organizations|Systems Manager|Directory Service|Inspector|Macie|Certificate|Route 53|API Gateway)/;
+  const relevantServices = new Set(['Simple Storage Service', 'Data Transfer', 'Elastic Block Store', 'Elastic File System', 'CloudFront', 'Elastic Compute Cloud']);
+  let inRelevantService = false;
+
+  // Accounts section
+  const accountsHeaderPattern = /Charges by account\s+\((\d+)\)/;
+  const accountLinePattern = /^\s*(\d{12})\s+(.+?)\s+USD\s+([\d,.]+)/;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Detect accounts section
+    if (accountsHeaderPattern.test(line)) {
+      inAccountsSection = true;
+      continue;
+    }
+
+    if (inAccountsSection) {
+      const acctLine = line.match(accountLinePattern);
+      if (acctLine) {
+        accounts.push({
+          accountId: acctLine[1],
+          accountName: acctLine[2].trim(),
+          amountUsd: parseFormattedNumber(acctLine[3]),
+        });
+      } else if (line.trim() && !line.includes('Account ID') && !line.includes('Account Name') && !line.includes('Amount in USD') && accounts.length > 0) {
+        inAccountsSection = false;
+      }
+      continue;
+    }
+
+    // Detect service section
+    const svcMatch = line.match(serviceSectionPattern);
+    if (svcMatch) {
+      currentService = svcMatch[1];
+      inRelevantService = relevantServices.has(currentService);
+      if (!inRelevantService) {
+        currentSkuCode = '';
+      }
+    }
+
+    // Detect region header
+    const regMatch = line.match(regionPattern);
+    if (regMatch) {
+      currentRegionName = `${regMatch[1]} (${regMatch[2]})`;
+    }
+
+    // Detect SKU line
+    const skuMatch = line.match(skuLinePattern);
+    if (skuMatch) {
+      currentSkuService = skuMatch[1].trim();
+      currentSkuCode = skuMatch[2];
+      currentSkuSubtotal = parseUsdAmount(skuMatch[3]);
+      continue;
+    }
+
+    // Parse rate lines (detail under a SKU)
+    let rateMatch = line.match(rateLinePattern) || line.match(rateLine2Pattern);
+    if (!rateMatch) {
+      const zeroMatch = line.match(zeroRatePattern);
+      if (zeroMatch) {
+        rateMatch = ['', '0', zeroMatch[1], zeroMatch[2], zeroMatch[3], zeroMatch[4]];
+      }
+    }
+
+    if (rateMatch && currentSkuCode && (inRelevantService || currentSkuService.includes('S3 Glacier'))) {
+      const unitRate = parseFloat(rateMatch[1]);
+      const rateDescription = rateMatch[2].trim();
+      const usageQty = parseFormattedNumber(rateMatch[3]);
+      const usageUnit = rateMatch[4];
+      const costUsd = parseUsdAmount(rateMatch[5]);
+
+      const regionCode = extractRegionCode(currentSkuCode);
+      const region = resolveRegionCode(regionCode);
+
+      const { category, subcategory, storageClass } = classifyAwsLine(
+        currentSkuService,
+        currentSkuCode,
+        rateDescription
+      );
+
+      lineItems.push({
+        id: uuid(),
+        provider: 'aws',
+        service: currentSkuService,
+        region,
+        sku: currentSkuCode,
+        description: rateDescription,
+        category,
+        subcategory,
+        storageClass,
+        unitRate: unitRate || undefined,
+        usageQuantity: usageQty || undefined,
+        usageUnit: usageUnit || undefined,
+        costUsd,
+        isEstimate: false,
+        isEdited: false,
+      });
+    }
+  }
+
+  // Validate parsed total against grand total
+  const parsedTotal = lineItems.reduce((sum, item) => sum + item.costUsd, 0);
+  if (grandTotal > 0) {
+    const diff = Math.abs(parsedTotal - grandTotal);
+    if (diff > grandTotal * 0.05) {
+      warnings.push(
+        `Parsed storage/transfer total ($${parsedTotal.toFixed(2)}) captures ${((parsedTotal / grandTotal) * 100).toFixed(1)}% of bill grand total ($${grandTotal.toFixed(2)}). Non-storage services are categorized as out-of-scope.`
+      );
+    }
+  }
+
+  return {
+    provider: 'aws',
+    billType: 'detailed-statement',
+    billingPeriod,
+    accountId,
+    detectionSignals: [],
+    parsedBill: {
+      lineItems,
+      accounts: accounts.length > 0 ? accounts : undefined,
+      grandTotal: grandTotal || Math.round(parsedTotal * 100) / 100,
+      parseConfidence: warnings.length === 0 ? 0.85 : 0.7,
+      warnings,
+      discounts: discounts.length > 0 ? discounts : undefined,
+    },
+  };
+}

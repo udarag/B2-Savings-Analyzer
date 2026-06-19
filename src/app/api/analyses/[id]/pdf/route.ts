@@ -1,0 +1,100 @@
+import { NextResponse } from 'next/server';
+import { v4 as uuid } from 'uuid';
+import {
+  getAnalysisMeta,
+  getParsedBill,
+  getModelConfig,
+  saveReportSnapshot,
+} from '@/lib/storage/storage';
+import { requireUser } from '@/lib/auth/session';
+import { buildTierInventory } from '@/lib/engine/tier-inventory';
+import { computeCostModel } from '@/lib/engine/cost-model';
+import type { ReportSnapshot } from '@/types/model';
+
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const userEmail = await requireUser();
+  const { id } = await params;
+
+  const [meta, parsed, modelConfig] = await Promise.all([
+    getAnalysisMeta(userEmail, id),
+    getParsedBill(userEmail, id),
+    getModelConfig(userEmail, id),
+  ]);
+
+  if (!meta) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
+  // Save a snapshot of the current analysis state
+  if (parsed && modelConfig) {
+    try {
+      const tiers = buildTierInventory(parsed.lineItems, modelConfig.b2PricePerTb);
+      for (const tier of tiers) {
+        if (tier.id in modelConfig.tierToggles) {
+          tier.migrateToB2 = modelConfig.tierToggles[tier.id];
+        }
+      }
+      const costModel = computeCostModel(
+        parsed.lineItems, tiers, modelConfig.egressConfig, modelConfig.b2PricePerTb,
+      );
+      const migratedTiers = tiers.filter((t) => t.migrateToB2);
+
+      const snapshot: ReportSnapshot = {
+        id: uuid(),
+        analysisId: id,
+        createdAt: new Date().toISOString(),
+        trigger: 'pdf-download',
+        monthlySavings: costModel.monthlySavings,
+        annualSavings: costModel.annualSavings,
+        savingsPercent: costModel.savingsPercent,
+        totalStorageGb: migratedTiers.reduce((s, t) => s + t.gbStored, 0),
+        migratedTierCount: migratedTiers.length,
+        b2PricePerTb: modelConfig.b2PricePerTb,
+        termMonths: modelConfig.projectionTermMonths,
+        udmEnabled: modelConfig.egressConfig.udmEnabled,
+      };
+      await saveReportSnapshot(userEmail, id, snapshot);
+    } catch {
+      // Non-critical — don't fail PDF generation if snapshot fails
+    }
+  }
+
+  try {
+    const { chromium } = await import('playwright');
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    await page.goto(`${baseUrl}/analyses/${id}/report`, {
+      waitUntil: 'networkidle',
+    });
+
+    await page.waitForTimeout(1000);
+
+    const pdf = await page.pdf({
+      format: 'Letter',
+      printBackground: true,
+      margin: { top: '0.5in', bottom: '0.5in', left: '0.5in', right: '0.5in' },
+    });
+
+    await browser.close();
+
+    const filename = `${meta.prospectName.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '-')}-B2-Analysis.pdf`;
+
+    return new NextResponse(new Uint8Array(pdf), {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      },
+    });
+  } catch (e) {
+    console.error('PDF generation failed:', e);
+    return NextResponse.json(
+      { error: 'PDF generation failed. Make sure Playwright browsers are installed.' },
+      { status: 500 },
+    );
+  }
+}
