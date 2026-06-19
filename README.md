@@ -121,7 +121,7 @@ src/
 
 ### Testing Against Real Bills
 
-> **Note to the team:** We all should be pushing our AEs to gather bills from customers so we can use the data to make this tool better. Every new bill format we test against makes the parsers more robust and the savings models more accurate. Drop bills in your local `fixtures/` directory (gitignored — customer data stays local).
+> **Note to the team:** We all should be pushing our AEs to gather bills from customers so we can use the data to make this tool better. Every new bill format we test against makes the parsers more robust and the savings models more accurate. Drop bills in your local `bills/` directory (gitignored — customer data stays local).
 
 - [ ] **AWS detailed billing PDF** — Verify per-SKU line items, storage class mapping (Standard, Standard-IA, Glacier, etc.), operations subcategories in Transaction Analysis, egress categorization, and grand total reconciliation.
 - [ ] **GCP cost table CSV** — Verify Class A / Class B operations parse with storage class attribution, GiB → GB normalization, Nearline/Coldline/Archive tier inventory, and savings programs discount detection.
@@ -131,13 +131,13 @@ src/
 - [ ] **Multi-region bills** — Verify region-specific pricing (e.g., Singapore vs US East) produces separate tier inventory rows with correct effective rates.
 - [ ] **Discount accuracy** — Verify named discounts (EDP, Savings Plans, Private Rate Card) are correctly extracted and pricing detection flags them accurately.
 
-## Adding Bill Fixtures for Testing
+## Adding Bills for Testing
 
-Place test bills in a `fixtures/` directory (gitignored — customer data stays local):
+Place test bills in a `bills/` directory (gitignored — customer data stays local):
 
 ```sh
-mkdir fixtures
-cp ~/path/to/test-bill.pdf fixtures/
+mkdir bills
+cp ~/path/to/test-bill.pdf bills/
 ```
 
 ---
