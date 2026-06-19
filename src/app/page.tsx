@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import type { AnalysisSummary } from './api/analyses/route';
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -36,6 +36,35 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [duplicating, setDuplicating] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'savings' | 'alpha'>('recent');
+
+  type SortKey = typeof sortBy;
+
+  const filteredAnalyses = useMemo(() => {
+    let result = analyses;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((a) => a.prospectName.toLowerCase().includes(q));
+    }
+    const sorted = [...result];
+    switch (sortBy) {
+      case 'recent':
+        sorted.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        break;
+      case 'oldest':
+        sorted.sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime());
+        break;
+      case 'savings':
+        sorted.sort((a, b) => (b.latestSnapshot?.annualSavings ?? -Infinity) - (a.latestSnapshot?.annualSavings ?? -Infinity));
+        break;
+      case 'alpha':
+        sorted.sort((a, b) => a.prospectName.localeCompare(b.prospectName));
+        break;
+    }
+    return sorted;
+  }, [analyses, searchQuery, sortBy]);
 
   const loadAnalyses = useCallback(() => {
     fetch('/api/analyses')
@@ -60,6 +89,18 @@ export default function HomePage() {
     }
   };
 
+  const handleDuplicate = async (id: string) => {
+    setDuplicating(id);
+    try {
+      await fetch(`/api/analyses/${id}/duplicate`, { method: 'POST' });
+      loadAnalyses();
+    } catch {
+      // Silently handle — user can retry
+    } finally {
+      setDuplicating(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto px-6 py-12">
@@ -77,6 +118,33 @@ export default function HomePage() {
         </div>
       </div>
 
+      {analyses.length > 0 && (
+        <div className="flex items-center gap-3 mb-4">
+          <div className="relative flex-1 max-w-sm">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search prospects..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-bb-red focus:border-transparent"
+            />
+          </div>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortKey)}
+            className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-bb-red focus:border-transparent"
+          >
+            <option value="recent">Most Recent</option>
+            <option value="oldest">Oldest</option>
+            <option value="savings">Highest Savings</option>
+            <option value="alpha">Alphabetical</option>
+          </select>
+        </div>
+      )}
+
       {analyses.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-lg shadow">
           <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -93,7 +161,12 @@ export default function HomePage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {analyses.map((a) => {
+          {filteredAnalyses.length === 0 && searchQuery && (
+            <div className="text-center py-8 text-gray-500">
+              No opportunities matching &ldquo;{searchQuery}&rdquo;
+            </div>
+          )}
+          {filteredAnalyses.map((a) => {
             const status = a.latestSnapshot ? 'reported' : a.hasBill ? 'active' : 'draft';
             return (
               <div key={a.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
@@ -151,8 +224,21 @@ export default function HomePage() {
                     </div>
                   </a>
 
-                  {/* Delete button */}
-                  <div className="flex items-center px-3 border-l border-gray-100">
+                  {/* Actions */}
+                  <div className="flex flex-col items-center justify-center gap-1 px-3 border-l border-gray-100">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleDuplicate(a.id);
+                      }}
+                      disabled={duplicating === a.id}
+                      className="p-2 text-gray-300 hover:text-bb-red rounded-lg hover:bg-bb-red-light transition-colors disabled:opacity-50"
+                      title="Duplicate opportunity"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+                      </svg>
+                    </button>
                     <button
                       onClick={(e) => {
                         e.preventDefault();

@@ -5,6 +5,7 @@ import {
   getParsedBill,
   getModelConfig,
   saveReportSnapshot,
+  getUserProfile,
 } from '@/lib/storage/storage';
 import { requireUser } from '@/lib/auth/session';
 import { buildTierInventory } from '@/lib/engine/tier-inventory';
@@ -68,7 +69,11 @@ export async function GET(
     const page = await browser.newPage();
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    await page.goto(`${baseUrl}/analyses/${id}/report`, {
+    const profile = await getUserProfile(userEmail);
+    const reportParams = new URLSearchParams({ ae: userEmail });
+    if (profile?.displayName) reportParams.set('aeName', profile.displayName);
+    if (profile?.title) reportParams.set('aeTitle', profile.title);
+    await page.goto(`${baseUrl}/analyses/${id}/report?${reportParams}`, {
       waitUntil: 'networkidle',
     });
 

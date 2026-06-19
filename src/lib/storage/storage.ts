@@ -168,6 +168,20 @@ export async function getLatestSnapshot(userEmail: string, id: string): Promise<
 
 // --- Pricing ---
 
+export interface UserProfile {
+  displayName: string;
+  title?: string;
+}
+
+export async function getUserProfile(userEmail: string): Promise<UserProfile | null> {
+  const data = await getObject(`users/${userEmail}/profile.json`);
+  return data ? JSON.parse(data) : null;
+}
+
+export async function saveUserProfile(userEmail: string, profile: UserProfile): Promise<void> {
+  await putObject(`users/${userEmail}/profile.json`, JSON.stringify(profile, null, 2));
+}
+
 export async function getPricing(provider: string): Promise<unknown> {
   const data = await getObject(`pricing/${provider}.json`);
   return data ? JSON.parse(data) : null;
