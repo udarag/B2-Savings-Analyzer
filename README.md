@@ -4,6 +4,8 @@ Internal tool for Backblaze Solutions Engineering. Upload a customer's cloud sto
 
 Produces an interactive dashboard for AE analysis and a customer-facing PDF report.
 
+![Dashboard Preview](public/dashboard-preview.png)
+
 ## What It Does
 
 1. **Upload** — drag in an AWS or GCP bill (PDF, CSV, or Excel)
