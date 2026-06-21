@@ -132,9 +132,9 @@ export function DealSizing({
             <span className="text-gray-600">Annual B2 Revenue</span>
             <span className="font-semibold">{formatCurrency(annualRevenue)}</span>
           </div>
-          <div className="flex justify-between text-sm border-t pt-2">
-            <span className="text-gray-600">{termMonths}-Month Contract Value</span>
-            <span className="font-bold text-lg text-bb-navy">{formatCurrency(termValue)}</span>
+          <div className="border-t pt-2">
+            <p className="text-xs text-gray-500 mb-0.5">{termMonths}-Month Contract Value</p>
+            <p className="text-xl font-bold text-bb-navy">{formatCurrency(termValue)}</p>
           </div>
         </div>
 

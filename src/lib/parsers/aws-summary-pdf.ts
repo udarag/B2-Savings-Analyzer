@@ -343,16 +343,35 @@ export function parseAwsSummaryPdf(pdfBuffer: Buffer): ParseResult {
     if (altTotal) grandTotal = parseFormattedNumber(altTotal[1]);
   }
 
-  // Aggregate discounts across all services
+  // Aggregate discounts across all services, tracking storage-specific amounts
   const discountTotals: Record<string, number> = {};
+  const storageDiscountTotals: Record<string, number> = {};
+  let storageGrossCharges = 0;
   for (const entry of serviceEntries) {
+    const { category } = classifyService(entry.name);
+    const isStorage = category === 'storage';
+    if (isStorage && entry.charges > 0) {
+      storageGrossCharges += entry.charges;
+    }
     for (const d of entry.discounts) {
       discountTotals[d.name] = (discountTotals[d.name] || 0) + d.amount;
+      if (isStorage) {
+        storageDiscountTotals[d.name] = (storageDiscountTotals[d.name] || 0) + d.amount;
+      }
     }
   }
   for (const [name, amount] of Object.entries(discountTotals)) {
     if (amount > 0) {
-      discounts.push({ name, amountUsd: amount });
+      const storageAmount = storageDiscountTotals[name] || 0;
+      discounts.push({
+        name,
+        amountUsd: amount,
+        storageAmountUsd: storageAmount || undefined,
+        storageGrossCharges: storageAmount > 0 ? storageGrossCharges : undefined,
+        estimatedPercent: storageGrossCharges > 0 && storageAmount > 0
+          ? Math.round((storageAmount / storageGrossCharges) * 1000) / 10
+          : undefined,
+      });
     }
   }
 
