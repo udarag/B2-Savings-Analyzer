@@ -103,8 +103,12 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto px-6 py-12">
-        <p className="text-gray-500">Loading opportunities...</p>
+      <div className="max-w-5xl mx-auto px-6 py-12 flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="relative w-12 h-12 mb-4">
+          <div className="absolute inset-0 rounded-full border-4 border-gray-200" />
+          <div className="absolute inset-0 rounded-full border-4 border-bb-red border-t-transparent animate-spin" />
+        </div>
+        <p className="text-gray-500 text-sm">Loading your opportunities...</p>
       </div>
     );
   }

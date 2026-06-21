@@ -69,6 +69,9 @@ export function computeEgressModel(
       currentInterRegion += item.costUsd;
     } else if (sub.includes('Replication') || sub.includes('Multi-region')) {
       currentReplication += item.costUsd;
+    } else {
+      // Summary invoices have generic egress entries — treat as internet egress
+      currentInternetEgress += item.costUsd;
     }
   }
 

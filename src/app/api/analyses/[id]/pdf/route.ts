@@ -13,11 +13,12 @@ import { computeCostModel } from '@/lib/engine/cost-model';
 import type { ReportSnapshot } from '@/types/model';
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const userEmail = await requireUser();
   const { id } = await params;
+  const cookieHeader = req.headers.get('cookie') || '';
 
   const [meta, parsed, modelConfig] = await Promise.all([
     getAnalysisMeta(userEmail, id),
@@ -66,9 +67,18 @@ export async function GET(
   try {
     const { chromium } = await import('playwright');
     const browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage();
-
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const url = new URL(baseUrl);
+
+    const sessionCookies = cookieHeader.split(';').map(c => c.trim()).filter(Boolean).map(c => {
+      const [name, ...rest] = c.split('=');
+      return { name: name.trim(), value: rest.join('='), domain: url.hostname, path: '/' };
+    });
+
+    const context = await browser.newContext();
+    if (sessionCookies.length) await context.addCookies(sessionCookies);
+    const page = await context.newPage();
+
     const profile = await getUserProfile(userEmail);
     const reportParams = new URLSearchParams({ ae: userEmail });
     if (profile?.displayName) reportParams.set('aeName', profile.displayName);
@@ -82,9 +92,10 @@ export async function GET(
     const pdf = await page.pdf({
       format: 'Letter',
       printBackground: true,
-      margin: { top: '0.5in', bottom: '0.5in', left: '0.5in', right: '0.5in' },
+      margin: { top: '0.5in', bottom: '0.5in', left: '0.65in', right: '0.65in' },
     });
 
+    await context.close();
     await browser.close();
 
     const filename = `${meta.prospectName.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '-')}-B2-Analysis.pdf`;

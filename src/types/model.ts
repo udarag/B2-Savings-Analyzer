@@ -57,6 +57,10 @@ export interface PricingDetectionResult {
   discountPercent: number;
   assessment: 'list-price' | 'small-discount' | 'custom-agreement';
   details: string;
+  programName?: string;
+  totalAmountUsd?: number;
+  storageAmountUsd?: number;
+  storagePercentOff?: number;
 }
 
 export interface DealSizing {

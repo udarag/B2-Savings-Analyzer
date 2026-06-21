@@ -8,49 +8,46 @@ interface SavingsSummaryProps {
 }
 
 export function SavingsSummary({ result }: SavingsSummaryProps) {
-  const cards = [
-    {
-      label: 'Monthly Savings',
-      value: formatCurrency(result.monthlySavings),
-      color: result.monthlySavings > 0 ? 'text-green-700' : 'text-red-600',
-      bg: result.monthlySavings > 0 ? 'bg-green-50' : 'bg-red-50',
-    },
-    {
-      label: 'Annual Savings',
-      value: formatCurrency(result.annualSavings),
-      color: result.annualSavings > 0 ? 'text-green-700' : 'text-red-600',
-      bg: result.annualSavings > 0 ? 'bg-green-50' : 'bg-red-50',
-    },
-    {
-      label: 'Savings %',
-      value: formatPercent(result.savingsPercent),
-      color: result.savingsPercent > 0 ? 'text-green-700' : 'text-red-600',
-      bg: 'bg-bb-red-light',
-    },
-    {
-      label: 'Migration Cost',
-      value: result.udmEnabled ? '$0' : formatCurrency(result.migrationCost.egressCost + result.migrationCost.restoreCost),
-      sublabel: result.udmEnabled
-        ? 'Covered by Backblaze UDM'
-        : result.breakEvenMonth
-          ? `Break-even: month ${result.breakEvenMonth}`
-          : result.monthlySavings > 0 ? 'Immediate savings' : 'No break-even within term',
-      color: result.udmEnabled ? 'text-green-700' : 'text-gray-900',
-      bg: result.udmEnabled ? 'bg-green-50' : 'bg-amber-50',
-    },
-  ];
+  const positive = result.monthlySavings > 0;
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {cards.map((card) => (
-        <div key={card.label} className={`${card.bg} rounded-lg p-5`}>
-          <p className="text-sm font-medium text-gray-600 mb-1">{card.label}</p>
-          <p className={`text-2xl font-bold ${card.color}`}>{card.value}</p>
-          {card.sublabel && (
-            <p className="text-xs text-gray-500 mt-1">{card.sublabel}</p>
-          )}
-        </div>
-      ))}
+      <div className={`rounded-lg p-5 border-l-4 ${positive ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-400'}`}>
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Monthly Savings</p>
+        <p className={`text-2xl font-bold mt-1 ${positive ? 'text-green-700' : 'text-red-600'}`}>
+          {formatCurrency(result.monthlySavings)}
+        </p>
+      </div>
+
+      <div className={`rounded-lg p-5 border-l-4 ${positive ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-400'}`}>
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Annual Savings</p>
+        <p className={`text-2xl font-bold mt-1 ${positive ? 'text-green-700' : 'text-red-600'}`}>
+          {formatCurrency(result.annualSavings)}
+        </p>
+      </div>
+
+      <div className={`rounded-lg p-5 border-l-4 ${positive ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-400'}`}>
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Savings %</p>
+        <p className={`text-2xl font-bold mt-1 ${positive ? 'text-green-700' : 'text-red-600'}`}>
+          {formatPercent(result.savingsPercent)}
+        </p>
+      </div>
+
+      <div className={`rounded-lg p-5 border-l-4 ${
+        result.udmEnabled ? 'bg-green-50 border-green-500' : 'bg-gray-50 border-gray-300'
+      }`}>
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Migration Cost</p>
+        <p className={`text-2xl font-bold mt-1 ${result.udmEnabled ? 'text-green-700' : 'text-gray-900'}`}>
+          {result.udmEnabled ? '$0' : formatCurrency(result.migrationCost.egressCost + result.migrationCost.restoreCost)}
+        </p>
+        <p className="text-xs text-gray-500 mt-1">
+          {result.udmEnabled
+            ? 'Covered by Backblaze UDM'
+            : result.breakEvenMonth
+              ? `Break-even: month ${result.breakEvenMonth}`
+              : positive ? 'Immediate savings' : 'No break-even within term'}
+        </p>
+      </div>
     </div>
   );
 }

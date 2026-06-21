@@ -69,6 +69,8 @@ export interface NamedDiscount {
   name: string;
   service?: string;
   amountUsd: number;
+  storageAmountUsd?: number;
+  storageGrossCharges?: number;
   estimatedPercent?: number;
 }
 

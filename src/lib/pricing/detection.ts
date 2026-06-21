@@ -6,34 +6,34 @@ import azurePricing from './azure.json';
 import r2Pricing from './r2.json';
 
 function getAwsListRate(storageClass: string, region: string): number | null {
-  const regionKey = region === 'us-east-1' || region === 'us-west-2' ? 'us-east-1' : region;
-  const regionPricing = (awsPricing as Record<string, unknown>).regions as Record<string, unknown> | undefined;
-  if (!regionPricing) return null;
+  const regionKey = region === 'All Regions' ? 'us-east-1' : region;
+  const storage = (awsPricing as Record<string, unknown>).storage as Record<string, Record<string, unknown>> | undefined;
+  if (!storage) return null;
 
-  const rp = regionPricing[regionKey] as Record<string, unknown> | undefined;
-  if (!rp) return null;
+  const regionData = storage[regionKey] || storage['us-east-1'];
+  if (!regionData) return null;
 
-  const storageTiers = rp['storage'] as Record<string, unknown> | undefined;
-  if (!storageTiers) return null;
-
+  // Map parser storage class names to pricing JSON keys
   const classMap: Record<string, string> = {
-    'Standard': 'standard',
-    'Standard-IA': 'standardIa',
-    'One Zone-IA': 'oneZoneIa',
-    'Glacier Instant Retrieval': 'glacierInstantRetrieval',
-    'Glacier Flexible Retrieval': 'glacierFlexible',
-    'Glacier Deep Archive': 'glacierDeepArchive',
-    'Intelligent-Tiering (Frequent)': 'intelligentTieringFa',
-    'Intelligent-Tiering (Infrequent)': 'intelligentTieringIa',
+    'Standard': 'Standard',
+    'S3 (Summary)': 'Standard',
+    'Standard-IA': 'Standard-IA',
+    'One Zone-IA': 'One Zone-IA',
+    'Glacier Instant Retrieval': 'Glacier Instant Retrieval',
+    'Glacier Flexible Retrieval': 'Glacier Flexible Retrieval',
+    'Glacier Deep Archive': 'Glacier Deep Archive',
+    'Glacier': 'Glacier Flexible Retrieval',
+    'Intelligent-Tiering (Frequent)': 'Intelligent-Tiering-FA',
+    'Intelligent-Tiering (Infrequent)': 'Intelligent-Tiering-IA',
   };
 
   const key = classMap[storageClass];
   if (!key) return null;
 
-  const tierData = storageTiers[key];
+  const tierData = regionData[key];
   if (typeof tierData === 'number') return tierData;
-  if (tierData && typeof tierData === 'object' && 'first50Tb' in tierData) {
-    return (tierData as { first50Tb: number }).first50Tb;
+  if (Array.isArray(tierData) && tierData.length > 0) {
+    return (tierData[0] as { perGb: number }).perGb;
   }
 
   return null;
@@ -169,14 +169,46 @@ export function detectCustomPricing(
   }
 
   if (discounts && discounts.length > 0) {
+    // Compute overall effective and list rates from the tier analysis above
+    let totalStorageGb = 0;
+    let totalStorageCost = 0;
+    let weightedListCost = 0;
+    for (const [key, { totalCost, totalGb }] of grouped) {
+      const [storageClass, region] = key.split('|');
+      totalStorageCost += totalCost;
+      totalStorageGb += totalGb;
+      const provider = storageItems.find(
+        (i) => i.storageClass === storageClass && i.region === region,
+      )?.provider;
+      let lr: number | null = null;
+      if (provider === 'aws') lr = getAwsListRate(storageClass, region);
+      else if (provider === 'gcp') lr = getGcpListRate(storageClass, region.includes('multi') ? 'multi-region' : 'regional');
+      else if (provider === 'azure') lr = getAzureListRate(storageClass, region);
+      else if (provider === 'r2') lr = (r2Pricing.storage as { perGbMonth: number }).perGbMonth;
+      if (lr) weightedListCost += lr * totalGb;
+    }
+
+    const overallEffective = totalStorageGb > 0 ? totalStorageCost / totalStorageGb : 0;
+    const overallList = totalStorageGb > 0 ? weightedListCost / totalStorageGb : 0;
+    const overallDiscountPct = overallList > 0 ? ((overallList - overallEffective) / overallList) * 100 : 0;
+    const totalDiscountAmount = discounts.reduce((s, d) => s + d.amountUsd, 0);
+
     for (const d of discounts) {
+      // Approximate each program's share of the overall storage discount proportionally
+      const programShare = totalDiscountAmount > 0 ? d.amountUsd / totalDiscountAmount : 0;
+      const programStoragePctOff = overallDiscountPct * programShare;
+
       results.push({
         category: 'discount-program',
-        effectiveRate: 0,
-        listRate: 0,
-        discountPercent: d.estimatedPercent || 0,
+        effectiveRate: overallEffective,
+        listRate: overallList,
+        discountPercent: Math.round(programStoragePctOff * 10) / 10,
         assessment: 'custom-agreement',
-        details: `${d.name}: $${d.amountUsd.toLocaleString()} discount applied`,
+        details: `${d.name}: $${d.amountUsd.toLocaleString()} discount applied across all services`,
+        programName: d.name,
+        totalAmountUsd: d.amountUsd,
+        storageAmountUsd: d.storageAmountUsd,
+        storagePercentOff: d.estimatedPercent || (programStoragePctOff > 0 ? Math.round(programStoragePctOff * 10) / 10 : undefined),
       });
     }
   }
