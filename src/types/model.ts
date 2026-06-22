@@ -63,13 +63,6 @@ export interface PricingDetectionResult {
   storagePercentOff?: number;
 }
 
-export interface DealSizing {
-  monthlyB2Revenue: number;
-  annualB2Revenue: number;
-  termContractValue: number;
-  termMonths: number;
-}
-
 export interface ReportSnapshot {
   id: string;
   analysisId: string;

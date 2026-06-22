@@ -40,13 +40,6 @@ export function computeProjections(config: ProjectionConfig): ProjectionPoint[] 
   return points;
 }
 
-export function findBreakEvenMonth(points: ProjectionPoint[]): number | null {
-  for (const p of points) {
-    if (p.cumulativeSavings >= 0) return p.month;
-  }
-  return null;
-}
-
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }

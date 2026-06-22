@@ -13,18 +13,10 @@ export function PricingDetection({ results }: PricingDetectionProps) {
   const discountPrograms = results.filter(r => r.category === 'discount-program');
   const tierAnalysis = results.filter(r => r.category !== 'discount-program');
 
-  const assessmentBadge = (a: PricingDetectionResult['assessment']) => {
-    switch (a) {
-      case 'list-price':
-        return <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full whitespace-nowrap">List Price</span>;
-      case 'small-discount':
-        return <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full whitespace-nowrap">Small Discount</span>;
-      case 'custom-agreement':
-        return <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full whitespace-nowrap">Custom</span>;
-    }
-  };
+  const customTiers = tierAnalysis.filter(r => r.assessment === 'custom-agreement');
+  const discountedTiers = tierAnalysis.filter(r => r.assessment === 'small-discount');
+  const listPriceTiers = tierAnalysis.filter(r => r.assessment === 'list-price');
 
-  // Get overall effective and list rates from discount program entries
   const effectiveRate = discountPrograms[0]?.effectiveRate || tierAnalysis[0]?.effectiveRate || 0;
   const listRate = discountPrograms[0]?.listRate || tierAnalysis[0]?.listRate || 0;
 
@@ -77,25 +69,95 @@ export function PricingDetection({ results }: PricingDetectionProps) {
       )}
 
       {tierAnalysis.length > 0 && (
-        <div className="p-5 space-y-3">
-          <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Per-Tier Rate Analysis</p>
-          {tierAnalysis.map((r, i) => (
-            <div key={i} className="text-sm">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                {r.storageClass && <span className="font-medium">{r.storageClass}</span>}
-                {r.region && <span className="text-gray-400 text-xs">{r.region}</span>}
-                {assessmentBadge(r.assessment)}
-              </div>
-              <p className="text-gray-600 text-xs">{r.details}</p>
-              {r.discountPercent > 0 && (
-                <p className="text-xs text-gray-400 mt-0.5">
-                  ${(r.effectiveRate * 1000).toFixed(2)}/TB vs ${(r.listRate * 1000).toFixed(2)}/TB list ({formatPercent(r.discountPercent)} off)
-                </p>
-              )}
+        <div className="p-5 space-y-4">
+          <p className="text-xs font-semibold text-gray-500 uppercase">Per-Tier Rate Analysis</p>
+
+          {customTiers.length > 0 && (
+            <div className="space-y-2">
+              {customTiers.map((r, i) => (
+                <TierCard key={`custom-${i}`} result={r} />
+              ))}
             </div>
-          ))}
+          )}
+
+          {discountedTiers.length > 0 && (
+            <div className="space-y-2">
+              {discountedTiers.map((r, i) => (
+                <TierCard key={`discount-${i}`} result={r} />
+              ))}
+            </div>
+          )}
+
+          {listPriceTiers.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-gray-400 mb-2">
+                At list price ({listPriceTiers.length} {listPriceTiers.length === 1 ? 'tier' : 'tiers'})
+              </p>
+              <div className="rounded-md border border-gray-100 divide-y divide-gray-100">
+                {listPriceTiers.map((r, i) => (
+                  <div key={`list-${i}`} className="flex items-center justify-between px-3 py-1.5 text-xs">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-medium text-gray-700 truncate">{r.storageClass}</span>
+                      {r.region && <span className="text-gray-400 shrink-0">{r.region}</span>}
+                    </div>
+                    <span className="text-gray-400 shrink-0 ml-2">
+                      ${(r.listRate * 1000).toFixed(2)}/TB
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
+    </div>
+  );
+}
+
+function TierCard({ result: r }: { result: PricingDetectionResult }) {
+  const isCustom = r.assessment === 'custom-agreement';
+  const borderColor = isCustom ? 'border-red-200' : 'border-yellow-200';
+  const bgColor = isCustom ? 'bg-red-50' : 'bg-yellow-50';
+  const badgeColor = isCustom
+    ? 'bg-red-100 text-red-700'
+    : 'bg-yellow-100 text-yellow-700';
+  const badgeLabel = isCustom ? 'Custom' : 'Small Discount';
+  const barColor = isCustom ? 'bg-red-400' : 'bg-yellow-400';
+
+  const effectiveTb = (r.effectiveRate * 1000).toFixed(2);
+  const listTb = (r.listRate * 1000).toFixed(2);
+  const barWidth = r.listRate > 0 ? Math.max(5, (r.effectiveRate / r.listRate) * 100) : 100;
+
+  return (
+    <div className={`rounded-md border ${borderColor} ${bgColor} px-3 py-2.5`}>
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-sm font-medium text-gray-900 truncate">{r.storageClass}</span>
+          {r.region && <span className="text-xs text-gray-400">{r.region}</span>}
+        </div>
+        <span className={`px-2 py-0.5 text-xs rounded-full whitespace-nowrap ${badgeColor}`}>
+          {badgeLabel}
+        </span>
+      </div>
+
+      <div className="mt-2 mb-1">
+        <div className="flex items-baseline justify-between text-xs mb-1">
+          <span className="text-gray-600">
+            <span className="font-semibold text-gray-900">${effectiveTb}</span>/TB
+          </span>
+          <span className="text-gray-400">
+            vs ${listTb}/TB list
+          </span>
+        </div>
+        <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+          <div className={`h-full ${barColor} rounded-full`} style={{ width: `${barWidth}%` }} />
+        </div>
+      </div>
+
+      <p className="text-xs text-gray-500 mt-1.5">
+        {formatPercent(r.discountPercent)} below list
+        {isCustom && ' — likely EDP, PRC, or committed spend'}
+      </p>
     </div>
   );
 }

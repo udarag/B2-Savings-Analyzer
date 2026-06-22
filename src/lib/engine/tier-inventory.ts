@@ -1,6 +1,7 @@
 import type { ParsedLineItem, TierInventoryRow } from '@/types/analysis';
 import { v4 as uuid } from 'uuid';
 import b2Pricing from '../pricing/b2.json';
+import { getListRate } from '../pricing/lookup';
 
 const COLD_TIERS = new Set([
   'Glacier Instant Retrieval',
@@ -9,23 +10,6 @@ const COLD_TIERS = new Set([
   'Archive',
   'Coldline',
 ]);
-
-const LIST_RATE_PER_GB: Record<string, number> = {
-  'Standard': 0.023,
-  'S3 (Summary)': 0.023,
-  'Standard-IA': 0.0125,
-  'One Zone-IA': 0.01,
-  'Intelligent-Tiering (Frequent)': 0.023,
-  'Intelligent-Tiering (Infrequent)': 0.0125,
-  'Intelligent-Tiering (Archive Instant)': 0.004,
-  'Glacier Instant Retrieval': 0.004,
-  'Glacier Flexible Retrieval': 0.0036,
-  'Glacier Deep Archive': 0.00099,
-  'Glacier': 0.004,
-  'Nearline': 0.010,
-  'Coldline': 0.004,
-  'Archive': 0.0012,
-};
 
 const EXCLUDED_TIERS = new Set([
   'Glacier Staging',
@@ -113,7 +97,7 @@ export function buildTierInventory(
 
     // If no usage quantity was parsed (summary invoices), estimate from cost
     if (tier.gbStored <= 0 && tier.monthlyStorageCost > 0) {
-      const listRate = LIST_RATE_PER_GB[tier.storageClass];
+      const listRate = getListRate(tier.provider, tier.storageClass, tier.region);
       if (listRate) {
         tier.gbStored = Math.round(tier.monthlyStorageCost / listRate);
       }

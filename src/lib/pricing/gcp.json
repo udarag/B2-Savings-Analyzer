@@ -1,30 +1,43 @@
 {
-  "lastVerified": "2026-06-17",
+  "lastVerified": "2026-06-21",
+  "source": "cloud.google.com/storage/pricing",
   "provider": "gcp",
   "storage": {
-    "multi-region": {
-      "Standard": 0.026,
-      "Nearline": 0.010,
-      "Coldline": 0.004,
-      "Archive": 0.0012
-    },
     "regional": {
       "Standard": 0.020,
       "Nearline": 0.010,
       "Coldline": 0.004,
       "Archive": 0.0012
     },
+    "multi-region": {
+      "Standard": 0.026,
+      "Nearline": 0.015,
+      "Coldline": 0.004,
+      "Archive": 0.0024
+    },
     "asia-multi-region": {
       "Standard": 0.026,
-      "Nearline": 0.010,
-      "Coldline": 0.007,
-      "Archive": 0.0024
+      "Nearline": 0.015,
+      "Coldline": 0.00875,
+      "Archive": 0.003
+    },
+    "dual-region": {
+      "Standard": 0.044,
+      "Nearline": 0.022,
+      "Coldline": 0.0088,
+      "Archive": 0.0028
+    },
+    "asia-dual-region": {
+      "Standard": 0.0506,
+      "Nearline": 0.0352,
+      "Coldline": 0.0132,
+      "Archive": 0.0056
     }
   },
   "operations": {
     "Standard": { "classAPer10k": 0.05, "classBPer10k": 0.004 },
     "Nearline": { "classAPer10k": 0.10, "classBPer10k": 0.01 },
-    "Coldline": { "classAPer10k": 0.10, "classBPer10k": 0.05 },
+    "Coldline": { "classAPer10k": 0.20, "classBPer10k": 0.10 },
     "Archive": { "classAPer10k": 0.50, "classBPer10k": 0.50 }
   },
   "retrieval": {
@@ -38,8 +51,10 @@
     { "maxTb": null, "perGb": 0.08 }
   ],
   "interRegion": {
-    "sameContinentPerGb": 0.01,
-    "crossContinentPerGb": 0.08,
+    "northAmericaPerGb": 0.02,
+    "europePerGb": 0.02,
+    "asiaPerGb": 0.08,
+    "crossContinentPerGb": 0.05,
     "multiRegionReplicationPerGb": 0.02
   },
   "minStorageDays": {

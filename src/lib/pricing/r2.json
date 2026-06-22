@@ -1,39 +1,34 @@
 {
-  "lastVerified": "2026-06-18",
+  "lastVerified": "2026-06-21",
+  "source": "developers.cloudflare.com/r2/pricing",
   "provider": "r2",
   "storage": {
-    "perGbMonth": 0.015,
-    "perTbMonth": 15.00,
-    "note": "Flat rate, no tiers, no regions — single global price"
+    "Standard": 0.015,
+    "Infrequent Access": 0.01
   },
   "egress": {
     "perGb": 0,
-    "note": "R2 egress is free — this is R2's primary differentiator"
+    "note": "R2 egress is free"
   },
   "operations": {
-    "classA": {
-      "description": "Writes: PutObject, CopyObject, ListBuckets, ListObjects, etc.",
-      "pricePerMillion": 4.50,
-      "pricePer10k": 0.045
+    "Standard": {
+      "classAPerMillion": 4.5,
+      "classBPerMillion": 0.36
     },
-    "classB": {
-      "description": "Reads: GetObject, HeadObject, etc.",
-      "pricePerMillion": 0.36,
-      "pricePer10k": 0.0036
+    "Infrequent Access": {
+      "classAPerMillion": 9,
+      "classBPerMillion": 0.9
     }
+  },
+  "retrieval": {
+    "Infrequent Access": 0.01
   },
   "freeTier": {
     "storageGb": 10,
     "classAOperations": 1000000,
     "classBOperations": 10000000
   },
-  "minimumStorageDuration": null,
-  "retrievalFees": null,
-  "storageClasses": ["Standard"],
-  "notes": {
-    "noTiers": "R2 has no storage classes or access tiers — all storage is hot by default.",
-    "noEgress": "Zero egress fees regardless of volume. No free tier limit on egress.",
-    "noRegions": "R2 storage is globally distributed. No region selection needed.",
-    "s3Compatible": "R2 is S3-compatible. Bills may reference S3-style API operations."
+  "minStorageDays": {
+    "Infrequent Access": 30
   }
 }

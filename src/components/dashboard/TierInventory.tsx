@@ -43,7 +43,7 @@ interface TierInventoryProps {
 
 export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInventoryProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [storageUnit, setStorageUnit] = useState<StorageUnit>('GB');
+  const [storageUnit, setStorageUnit] = useState<StorageUnit>('TB');
 
   const totalCurrent = tiers.reduce((s, t) => s + t.totalTrueCost, 0);
   const totalB2 = tiers.filter((t) => t.migrateToB2).reduce((s, t) => s + t.modeledB2Cost, 0);

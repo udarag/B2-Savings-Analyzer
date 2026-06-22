@@ -1,12 +1,3 @@
-import type { Category } from '@/types/analysis';
-
-export interface CategoryMapping {
-  pattern: RegExp;
-  category: Category;
-  subcategory?: string;
-  storageClass?: string;
-}
-
 export const GCP_LOCATION_TYPES: Record<string, string> = {
   'US Multi-region': 'multi-region',
   'EU Multi-region': 'multi-region',
@@ -66,17 +57,6 @@ export const AWS_REGION_CODES: Record<string, string> = {
   AKL1: 'ap-southeast-5',
   PER1: 'ap-southeast-4',
   APE2: 'ap-east-2',
-};
-
-export const AWS_REGION_NAMES: Record<string, string> = {
-  'us-east-1': 'US East (N. Virginia)',
-  'us-east-2': 'US East (Ohio)',
-  'us-west-1': 'US West (N. California)',
-  'us-west-2': 'US West (Oregon)',
-  'ap-southeast-1': 'Asia Pacific (Singapore)',
-  'ap-south-1': 'Asia Pacific (Mumbai)',
-  'ap-northeast-1': 'Asia Pacific (Tokyo)',
-  'eu-north-1': 'EU (Stockholm)',
 };
 
 export const AWS_SKU_STORAGE_CLASS: Record<string, string> = {

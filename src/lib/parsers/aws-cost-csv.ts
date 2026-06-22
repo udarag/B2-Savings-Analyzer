@@ -3,7 +3,7 @@ import Papa from 'papaparse';
 import type { ParsedLineItem, Category } from '@/types/analysis';
 import type { ParseResult } from './types';
 import { AWS_REGION_CODES, AWS_SKU_STORAGE_CLASS } from '../categories/types';
-import awsPricing from '../pricing/aws.json';
+import { getListRate } from '../pricing/lookup';
 
 function classifySku(sku: string): {
   category: Category;
@@ -84,19 +84,9 @@ function classifySku(sku: string): {
 }
 
 function estimateGbFromCost(costUsd: number, storageClass: string, region: string): number | undefined {
-  const storage = awsPricing.storage as Record<string, unknown>;
-  const regionPricing = (storage[region] || storage['us-east-1']) as Record<string, unknown> | undefined;
-  if (!regionPricing) return undefined;
-
-  const rateData = regionPricing[storageClass];
-  if (typeof rateData === 'number' && rateData > 0) {
-    return costUsd / rateData;
-  }
-  if (Array.isArray(rateData) && rateData.length > 0) {
-    const blended = rateData[0].perGb as number;
-    if (blended > 0) return costUsd / blended;
-  }
-  return undefined;
+  const rate = getListRate('aws', storageClass, region);
+  if (!rate || rate <= 0) return undefined;
+  return costUsd / rate;
 }
 
 function extractRegion(sku: string): string {

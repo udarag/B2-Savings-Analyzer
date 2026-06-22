@@ -103,7 +103,7 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto px-6 py-12 flex flex-col items-center justify-center min-h-[60vh]">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 flex flex-col items-center justify-center min-h-[60vh]">
         <div className="relative w-12 h-12 mb-4">
           <div className="absolute inset-0 rounded-full border-4 border-gray-200" />
           <div className="absolute inset-0 rounded-full border-4 border-bb-red border-t-transparent animate-spin" />
@@ -114,7 +114,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-12">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Opportunities</h1>

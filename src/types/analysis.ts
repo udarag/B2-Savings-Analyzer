@@ -1,3 +1,5 @@
+import b2Pricing from '@/lib/pricing/b2.json';
+
 export type Provider = 'aws' | 'gcp' | 'azure' | 'r2';
 
 export type BillType = 'summary-invoice' | 'detailed-statement' | 'sku-export';
@@ -110,7 +112,7 @@ export interface ModelConfig {
   projectionTermMonths: number;
 }
 
-export const DEFAULT_EGRESS_CONFIG: EgressConfig = {
+const DEFAULT_EGRESS_CONFIG: EgressConfig = {
   computeStaysInHyperscaler: false,
   computeMovingToPartner: false,
   gbPerMonthHyperscalerToB2: 0,
@@ -124,6 +126,6 @@ export const DEFAULT_EGRESS_CONFIG: EgressConfig = {
 export const DEFAULT_MODEL_CONFIG: ModelConfig = {
   tierToggles: {},
   egressConfig: DEFAULT_EGRESS_CONFIG,
-  b2PricePerTb: 6.95,
+  b2PricePerTb: b2Pricing.storage.perTbMonth,
   projectionTermMonths: 36,
 };

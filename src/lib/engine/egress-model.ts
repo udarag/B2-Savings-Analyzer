@@ -1,5 +1,6 @@
 import type { ParsedLineItem, EgressConfig, TierInventoryRow } from '@/types/analysis';
 import b2Pricing from '../pricing/b2.json';
+import { getRetrievalRate, getDefaultEgressRate } from '../pricing/lookup';
 
 export interface EgressModelResult {
   eliminatedEgressCost: number;
@@ -16,32 +17,6 @@ export interface EgressModelResult {
     b2EgressOverageGb: number;
   };
 }
-
-const GLACIER_RESTORE_PER_GB: Record<string, number> = {
-  'Glacier Instant Retrieval': 0.03,
-  'Glacier Flexible Retrieval': 0.01,
-  'Glacier Deep Archive': 0.0065,
-  'Coldline': 0.02,
-  'Archive': 0.05,
-  'Cool (LRS)': 0.01,
-  'Cool (ZRS)': 0.01,
-  'Cool (GRS)': 0.01,
-  'Cool (RA-GRS)': 0.01,
-  'Cold (LRS)': 0.03,
-  'Cold (ZRS)': 0.03,
-  'Cold (GRS)': 0.03,
-  'Cold (RA-GRS)': 0.03,
-  'Archive (LRS)': 0.02,
-  'Archive (GRS)': 0.02,
-  'Archive (RA-GRS)': 0.02,
-};
-
-const DEFAULT_EGRESS_RATE: Record<string, number> = {
-  aws: 0.09,
-  gcp: 0.12,
-  azure: 0.087,
-  r2: 0,
-};
 
 export function computeEgressModel(
   lineItems: ParsedLineItem[],
@@ -80,7 +55,7 @@ export function computeEgressModel(
 
   // Determine provider for egress rate
   const provider = migratedTiers[0]?.provider || 'aws';
-  const providerEgressRate = DEFAULT_EGRESS_RATE[provider] ?? 0.09;
+  const providerEgressRate = getDefaultEgressRate(provider);
 
   // New egress: hyperscaler → B2 if compute stays in hyperscaler
   let newEgressCost = 0;
@@ -117,7 +92,7 @@ export function computeEgressModel(
   // Restore costs for cold tiers
   let migrationRestoreCost = 0;
   for (const tier of migratedTiers) {
-    const restoreRate = GLACIER_RESTORE_PER_GB[tier.storageClass] || 0;
+    const restoreRate = getRetrievalRate(tier.provider, tier.storageClass);
     migrationRestoreCost += tier.gbStored * restoreRate;
   }
 

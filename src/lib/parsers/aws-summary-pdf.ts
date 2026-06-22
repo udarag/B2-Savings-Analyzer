@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid';
 import type { ParsedLineItem, AccountBreakdown, AccountServiceBreakdown, Category, NamedDiscount } from '@/types/analysis';
 import type { ParseResult } from './types';
 import { parseFormattedNumber } from './normalize';
+import { getListRate } from '@/lib/pricing/lookup';
 
 function extractText(pdfBuffer: Buffer): string {
   const tmpPath = join(tmpdir(), `bill-${Date.now()}.pdf`);
@@ -64,16 +65,9 @@ function classifyService(name: string): { category: Category; subcategory?: stri
 }
 
 function estimateStorageGb(costUsd: number, storageClass: string | undefined): number | undefined {
-  if (!costUsd || costUsd <= 0) return undefined;
+  if (!costUsd || costUsd <= 0 || !storageClass) return undefined;
 
-  const ratePerGb: Record<string, number> = {
-    'S3 (Summary)': 0.023,
-    'Glacier Deep Archive': 0.00099,
-    'Glacier Flexible Retrieval': 0.0036,
-    'Glacier': 0.004,
-  };
-
-  const rate = storageClass ? ratePerGb[storageClass] : undefined;
+  const rate = getListRate('aws', storageClass, 'us-east-1');
   if (!rate) return undefined;
 
   return Math.round(costUsd / rate);
