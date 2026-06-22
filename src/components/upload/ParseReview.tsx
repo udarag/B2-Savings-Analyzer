@@ -1,10 +1,16 @@
 'use client';
 
-import type { ParsedBill, Category } from '@/types/analysis';
+import type { ParsedBill, Category, BillType, Provider } from '@/types/analysis';
+import type { ReadinessCheckTone, ReadinessStatus } from '@/lib/analysis/readiness';
+import { assessReadiness } from '@/lib/analysis/readiness';
 import { formatCurrency } from '../shared/FormatCurrency';
 
 interface ParseReviewProps {
   parsed: ParsedBill;
+  billType?: BillType;
+  provider?: Provider;
+  pricingDiscountConfirmed?: boolean;
+  onPricingDiscountConfirmedChange?: (confirmed: boolean) => void;
 }
 
 const CATEGORY_ORDER: Category[] = ['storage', 'egress', 'operations', 'retrieval', 'storage-adjacent', 'out-of-scope'];
@@ -25,7 +31,67 @@ const CATEGORY_COLORS: Record<Category, string> = {
   'out-of-scope': 'bg-gray-50 text-gray-500',
 };
 
-export function ParseReview({ parsed }: ParseReviewProps) {
+const READINESS_STYLES: Record<ReadinessStatus, {
+  dot: string;
+  badge: string;
+  panel: string;
+  text: string;
+}> = {
+  ready: {
+    dot: 'bg-green-500',
+    badge: 'bg-green-100 text-green-800 ring-green-200 dark:bg-green-950/40 dark:text-green-300 dark:ring-green-400/40',
+    panel: 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-400/30',
+    text: 'text-green-900 dark:text-green-300',
+  },
+  directional: {
+    dot: 'bg-yellow-500',
+    badge: 'bg-yellow-100 text-yellow-800 ring-yellow-200 dark:bg-yellow-950/40 dark:text-yellow-300 dark:ring-yellow-400/40',
+    panel: 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-400/30',
+    text: 'text-yellow-900 dark:text-yellow-300',
+  },
+  'needs-detail': {
+    dot: 'bg-orange-500',
+    badge: 'bg-orange-100 text-orange-800 ring-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:ring-orange-400/40',
+    panel: 'bg-orange-50 border-orange-200 dark:bg-orange-950/20 dark:border-orange-400/30',
+    text: 'text-orange-900 dark:text-orange-300',
+  },
+  'not-useful': {
+    dot: 'bg-red-500',
+    badge: 'bg-red-100 text-red-800 ring-red-200 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-400/40',
+    panel: 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-400/30',
+    text: 'text-red-900 dark:text-red-300',
+  },
+};
+
+const CHECK_STYLES: Record<ReadinessCheckTone, {
+  dot: string;
+  value: string;
+}> = {
+  good: {
+    dot: 'bg-green-500',
+    value: 'text-green-800 dark:text-green-300',
+  },
+  warning: {
+    dot: 'bg-yellow-500',
+    value: 'text-yellow-800 dark:text-yellow-300',
+  },
+  missing: {
+    dot: 'bg-red-500',
+    value: 'text-red-800 dark:text-red-300',
+  },
+  neutral: {
+    dot: 'bg-gray-400',
+    value: 'text-gray-800 dark:text-gray-200',
+  },
+};
+
+export function ParseReview({
+  parsed,
+  billType,
+  provider,
+  pricingDiscountConfirmed = false,
+  onPricingDiscountConfirmedChange,
+}: ParseReviewProps) {
   const categorySums = new Map<Category, { count: number; total: number }>();
 
   for (const item of parsed.lineItems) {
@@ -39,11 +105,13 @@ export function ParseReview({ parsed }: ParseReviewProps) {
     (categorySums.get('egress')?.total || 0) +
     (categorySums.get('operations')?.total || 0) +
     (categorySums.get('retrieval')?.total || 0);
+  const readiness = assessReadiness(parsed, billType, provider, { pricingDiscountConfirmed });
+  const readinessStyle = READINESS_STYLES[readiness.status];
 
   return (
     <div className="bg-white rounded-lg shadow">
       <div className="px-6 py-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Parse Review</h3>
             <p className="text-sm text-gray-500 mt-1">
@@ -51,11 +119,12 @@ export function ParseReview({ parsed }: ParseReviewProps) {
               Addressable storage spend: {formatCurrency(addressable)}.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className={`h-3 w-3 rounded-full ${parsed.parseConfidence >= 0.8 ? 'bg-green-500' : parsed.parseConfidence >= 0.6 ? 'bg-yellow-500' : 'bg-red-500'}`} />
-            <span className="text-sm text-gray-600">
-              {Math.round(parsed.parseConfidence * 100)}% Confidence
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold ring-1 ${readinessStyle.badge}`}>
+              <span className={`h-2.5 w-2.5 rounded-full ${readinessStyle.dot}`} />
+              {readiness.label}
             </span>
+            <span className="text-xs text-gray-500">{readiness.score}/100 readiness</span>
           </div>
         </div>
         {parsed.warnings.length > 0 && (
@@ -67,6 +136,48 @@ export function ParseReview({ parsed }: ParseReviewProps) {
         )}
       </div>
       <div className="p-6">
+        <div className={`mb-5 rounded-lg border p-4 ${readinessStyle.panel}`}>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <p className={`text-sm font-semibold ${readinessStyle.text}`}>Bill Savings Report Readiness</p>
+              <p className="mt-1 max-w-4xl text-sm leading-6 text-gray-700 dark:text-gray-300">{readiness.summary}</p>
+            </div>
+            <div className="rounded-md bg-white/70 px-3 py-2 ring-1 ring-black/5 dark:bg-[#11141a] dark:ring-white/10">
+              <p className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Readiness Score</p>
+              <p className="mt-0.5 text-lg font-semibold text-gray-900 dark:text-gray-100">{readiness.score}/100</p>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">Readiness Checks</p>
+            <div className="mt-2 overflow-hidden rounded-md bg-white/70 ring-1 ring-black/5 divide-y divide-gray-200 dark:bg-[#11141a] dark:ring-white/10 dark:divide-gray-800">
+              {readiness.checks.map((check) => (
+                <ReadinessCheckRow
+                  key={check.label}
+                  label={check.label}
+                  value={check.value}
+                  detail={check.detail}
+                  tone={check.tone}
+                  action={check.action}
+                  actionLabel={check.actionLabel}
+                  actionChecked={pricingDiscountConfirmed}
+                  onActionChange={onPricingDiscountConfirmedChange}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            <ReadinessList title="Reliable Signals" items={readiness.trustedSignals} empty="No strong reliability signals yet." />
+            <ReadinessList title="Gaps to Understand" items={readiness.attentionItems} empty="No major bill-detail gaps detected." />
+            <ReadinessList title="AE Next Steps" items={readiness.nextSteps} empty="Confirm assumptions before sharing externally." />
+          </div>
+
+          <div className="mt-3 border-t border-black/10 pt-3 text-xs text-gray-500 dark:border-white/10 dark:text-gray-400">
+            Parser confidence: {Math.round(parsed.parseConfidence * 100)}%. Readiness scores whether the bill has enough commercial detail to sell B2 against it.
+          </div>
+        </div>
+
         <div className="space-y-3">
           {CATEGORY_ORDER.map((cat) => {
             const data = categorySums.get(cat);
@@ -118,6 +229,75 @@ export function ParseReview({ parsed }: ParseReviewProps) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function ReadinessCheckRow({
+  label,
+  value,
+  detail,
+  tone,
+  action,
+  actionLabel,
+  actionChecked = false,
+  onActionChange,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone: ReadinessCheckTone;
+  action?: 'confirm-discount';
+  actionLabel?: string;
+  actionChecked?: boolean;
+  onActionChange?: (checked: boolean) => void;
+}) {
+  const style = CHECK_STYLES[tone];
+  const actionBoxClass = tone === 'good'
+    ? 'border-green-200 bg-green-50 text-green-900 dark:border-green-400/30 dark:bg-green-950/30 dark:text-green-200'
+    : tone === 'missing'
+    ? 'border-red-200 bg-red-50 text-red-900 dark:border-red-400/30 dark:bg-red-950/30 dark:text-red-200'
+    : 'border-yellow-200 bg-yellow-50 text-yellow-900 dark:border-yellow-400/30 dark:bg-yellow-950/30 dark:text-yellow-200';
+
+  return (
+    <div className="grid gap-2 px-3 py-3 sm:grid-cols-[180px_1fr] sm:gap-4">
+      <div className="flex items-center gap-2">
+        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${style.dot}`} />
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{label}</p>
+      </div>
+      <div>
+        <p className={`text-sm font-semibold ${style.value}`}>{value}</p>
+        <p className="mt-0.5 text-xs leading-5 text-gray-600 dark:text-gray-400">{detail}</p>
+        {action === 'confirm-discount' && onActionChange && (
+          <label className={`mt-2 flex items-start gap-2 rounded-md border px-3 py-2 text-xs ${actionBoxClass}`}>
+            <input
+              type="checkbox"
+              checked={actionChecked}
+              onChange={(event) => onActionChange(event.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 text-bb-red accent-bb-red rounded"
+            />
+            <span>{actionLabel}</span>
+          </label>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ReadinessList({ title, items, empty }: { title: string; items: string[]; empty: string }) {
+  const visibleItems = items.length > 0 ? items : [empty];
+
+  return (
+    <div className="rounded-md bg-white/70 p-3 ring-1 ring-black/5 dark:bg-[#11141a] dark:ring-white/10">
+      <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">{title}</p>
+      <ul className="mt-2 space-y-1.5">
+        {visibleItems.map((item, index) => (
+          <li key={`${title}-${index}`} className="flex gap-2 text-xs leading-5 text-gray-600 dark:text-gray-300">
+            <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-gray-400 dark:bg-gray-500" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

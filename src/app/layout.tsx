@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { UserMenu } from "@/components/shared/UserMenu";
+import { ThemeController } from "@/components/shared/ThemeController";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,6 +25,24 @@ export const metadata: Metadata = {
   },
 };
 
+const themeInitScript = `
+(function(){
+  try {
+    var path = window.location.pathname;
+    var isReport = /^\\/analyses\\/[^/]+\\/report(?:\\/|$)/.test(path);
+    var stored = window.localStorage.getItem('b2-savings-theme');
+    var theme = stored === 'dark' || stored === 'light'
+      ? stored
+      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    var darkEnabled = theme === 'dark' && !isReport;
+    var root = document.documentElement;
+    root.classList.toggle('dark', darkEnabled);
+    root.dataset.theme = darkEnabled ? 'dark' : 'light';
+    root.style.colorScheme = darkEnabled ? 'dark' : 'light';
+  } catch (e) {}
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -34,8 +54,15 @@ export default function RootLayout({
       data-theme="light"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       style={{ colorScheme: 'light' }}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-gray-50">
+      <body className="min-h-full flex flex-col bg-gray-50 transition-colors duration-300">
+        <Script
+          id="b2-theme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: themeInitScript }}
+        />
+        <ThemeController />
         <header className="bg-bb-navy px-4 sm:px-6 py-2.5 print:hidden">
           <div className="max-w-[1600px] mx-auto flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">

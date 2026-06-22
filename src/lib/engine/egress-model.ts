@@ -57,18 +57,19 @@ export function computeEgressModel(
   const provider = migratedTiers[0]?.provider || 'aws';
   const providerEgressRate = getDefaultEgressRate(provider);
 
-  // New egress: hyperscaler → B2 if compute stays in hyperscaler
+  // New egress: hyperscaler -> B2 if hyperscaler compute writes processed data to B2.
   let newEgressCost = 0;
-  if (config.computeStaysInHyperscaler && !config.computeMovingToPartner) {
+  if (config.hasHyperscalerCompute && config.hyperscalerComputeFeedsStorage && !config.computeMovingToPartner) {
     newEgressCost = config.gbPerMonthHyperscalerToB2 * providerEgressRate;
   }
 
   // B2 egress cost
   const b2FreeAllowanceGb = totalStorageGb * b2Pricing.egress.freeMultiplier;
   const totalEgressGb = config.gbPerMonthServedToUsers;
+  const isTrainingWorkflow = config.hasHyperscalerCompute && !config.hyperscalerComputeFeedsStorage;
   let b2EgressCost = 0;
 
-  if (config.usesPartnerCdn) {
+  if (config.usesPartnerCdn && !isTrainingWorkflow) {
     b2EgressCost = 0; // Partner CDN = free egress
   } else {
     const overageGb = Math.max(0, totalEgressGb - b2FreeAllowanceGb);

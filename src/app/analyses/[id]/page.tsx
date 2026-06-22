@@ -68,6 +68,7 @@ export default function AnalysisDashboard() {
   const [egressConfig, setEgressConfig] = useState<EgressConfig>(() => normalizeEgressConfig());
   const [b2PricePerTb, setB2PricePerTb] = useState(b2Pricing.storage.perTbMonth);
   const [termMonths, setTermMonths] = useState(12);
+  const [pricingDiscountConfirmed, setPricingDiscountConfirmed] = useState(false);
 
   useEffect(() => {
     fetch(`/api/analyses/${id}`)
@@ -87,6 +88,7 @@ export default function AnalysisDashboard() {
             setEgressConfig(normalizeEgressConfig(d.modelConfig.egressConfig));
             setB2PricePerTb(d.modelConfig.b2PricePerTb);
             setTermMonths(d.modelConfig.projectionTermMonths);
+            setPricingDiscountConfirmed(Boolean(d.modelConfig.pricingDiscountConfirmed));
           }
         }
       })
@@ -107,6 +109,7 @@ export default function AnalysisDashboard() {
             egressConfig,
             b2PricePerTb,
             projectionTermMonths: termMonths,
+            pricingDiscountConfirmed,
             ...config,
           },
         }),
@@ -116,7 +119,7 @@ export default function AnalysisDashboard() {
     } finally {
       setSaving(false);
     }
-  }, [id, tiers, egressConfig, b2PricePerTb, termMonths]);
+  }, [id, tiers, egressConfig, b2PricePerTb, termMonths, pricingDiscountConfirmed]);
 
   const handleToggleTier = useCallback((tierId: string, migrateToB2: boolean) => {
     setTiers((prev) => prev.map((t) => t.id === tierId ? { ...t, migrateToB2 } : t));
@@ -150,7 +153,7 @@ export default function AnalysisDashboard() {
     if (!data?.parsed) return;
     const timer = setTimeout(() => saveConfig({}), 1000);
     return () => clearTimeout(timer);
-  }, [tiers, egressConfig, b2PricePerTb, termMonths, data?.parsed, saveConfig]);
+  }, [tiers, egressConfig, b2PricePerTb, termMonths, pricingDiscountConfirmed, data?.parsed, saveConfig]);
 
   const parsedLineItems = data?.parsed?.lineItems;
   const parsedDiscounts = data?.parsed?.discounts;
@@ -409,7 +412,13 @@ export default function AnalysisDashboard() {
         {/* Main content */}
         <div className="min-w-0 space-y-6">
           {costModel && <SavingsSummary result={costModel} />}
-          <ParseReview parsed={data.parsed} />
+          <ParseReview
+            parsed={data.parsed}
+            billType={data.meta.billType}
+            provider={data.meta.provider}
+            pricingDiscountConfirmed={pricingDiscountConfirmed}
+            onPricingDiscountConfirmedChange={setPricingDiscountConfirmed}
+          />
           {projections.length > 0 && (
             <ProjectionChart
               points={projections}
@@ -421,7 +430,12 @@ export default function AnalysisDashboard() {
           )}
           <TierInventory tiers={tiers} onToggle={handleToggleTier} accountBreakdowns={data.parsed.accountServiceBreakdowns} />
           <TransactionAnalysis lineItems={data.parsed.lineItems} />
-          <EgressQuestionnaire config={egressConfig} onChange={handleEgressChange} />
+          <EgressQuestionnaire
+            config={egressConfig}
+            onChange={handleEgressChange}
+            partnerComputeScenario={costModel?.partnerComputeScenario}
+            b2FreeAllowanceGb={migratedStorageGb * b2Pricing.egress.freeMultiplier}
+          />
           {costModel && <CostBreakdown result={costModel} />}
         </div>
 

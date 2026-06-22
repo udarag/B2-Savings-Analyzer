@@ -26,6 +26,10 @@ export function ProjectionChart({
   const endingStorageGb = finalPoint?.storageGb ?? 0;
   const endingMonthlySavings = finalPoint?.monthlySavings ?? 0;
   const xAxisTicks = getXAxisTicks(termMonths);
+  const savingsTrend =
+    endingMonthlySavings > 0
+      ? `The gap between ${providerLabel} and Backblaze B2 widens with storage growth, reaching ${formatCurrency(endingMonthlySavings)}/month across ${formatStorage(endingStorageGb)}.`
+      : `The projection does not show monthly savings by the final month across ${formatStorage(endingStorageGb)}.`;
 
   return (
     <div className="bg-white rounded-lg shadow">
@@ -55,10 +59,12 @@ export function ProjectionChart({
       <div className="p-6">
         <div className="mb-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
           <ChartMetric label="Total Savings" value={formatCurrency(totalSavings)} tone="savings" />
+          <ChartMetric label="Final Monthly Savings" value={formatCurrency(endingMonthlySavings)} tone="savings" />
           <ChartMetric label="Break-Even" value={breakEven ? `Month ${breakEven.month}` : 'Not in Term'} />
           <ChartMetric label="Ending Storage" value={formatStorage(endingStorageGb)} />
-          <ChartMetric label="Final Monthly Savings" value={formatCurrency(endingMonthlySavings)} tone="savings" />
         </div>
+
+        <p className="mb-4 text-sm font-medium text-gray-600">{savingsTrend}</p>
 
         <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-gray-600">
           <ChartLegendItem colorClass="bg-slate-500" label={providerLabel} />
