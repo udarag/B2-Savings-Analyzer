@@ -1,6 +1,6 @@
 import type { ParsedLineItem, NamedDiscount } from '@/types/analysis';
 import type { PricingDetectionResult } from '@/types/model';
-import { getListRate } from './lookup';
+import { getListRate, getBlendedListRate } from './lookup';
 
 export function detectCustomPricing(
   lineItems: ParsedLineItem[],
@@ -22,24 +22,25 @@ export function detectCustomPricing(
   }
 
   for (const [key, { totalCost, totalGb }] of grouped) {
-    // Skip negligible tiers — effective rate is meaningless below 1 GB
     if (totalGb < 1) continue;
+    // Skip tiers where cost is too small for reliable rate calculation (rounding noise)
+    if (totalCost < 0.50) continue;
 
     const [storageClass, region] = key.split('|');
     const effectiveRate = totalCost / totalGb;
 
-    let listRate: number | null = null;
     const provider = storageItems.find(
       (i) => i.storageClass === storageClass && i.region === region,
     )?.provider;
+    if (!provider) continue;
 
-    if (provider) {
-      listRate = getListRate(provider, storageClass, region);
-    }
-
+    const listRate = getListRate(provider, storageClass, region);
     if (listRate === null || listRate === 0) continue;
 
-    const discountPercent = ((listRate - effectiveRate) / listRate) * 100;
+    // Compare against the expected blended rate for this volume (accounts for volume tiering)
+    const expectedBlendedRate = getBlendedListRate(provider, storageClass, region, totalGb) ?? listRate;
+    const discountPercent = ((expectedBlendedRate - effectiveRate) / expectedBlendedRate) * 100;
+
     let assessment: PricingDetectionResult['assessment'];
     let details: string;
 
@@ -48,7 +49,7 @@ export function detectCustomPricing(
       details = 'Paying at or near list price';
     } else if (discountPercent <= 15) {
       assessment = 'small-discount';
-      details = `~${Math.round(discountPercent)}% below list — likely volume tiering or small negotiated discount`;
+      details = `~${Math.round(discountPercent)}% below list — likely a small negotiated discount`;
     } else {
       assessment = 'custom-agreement';
       details = `~${Math.round(discountPercent)}% below list — likely a custom pricing agreement (EDP, PRC, or committed spend)`;
@@ -59,7 +60,7 @@ export function detectCustomPricing(
       storageClass,
       region,
       effectiveRate: Math.round(effectiveRate * 1e6) / 1e6,
-      listRate,
+      listRate: expectedBlendedRate,
       discountPercent: Math.round(discountPercent * 10) / 10,
       assessment,
       details,
@@ -67,7 +68,6 @@ export function detectCustomPricing(
   }
 
   if (discounts && discounts.length > 0) {
-    // Compute overall effective and list rates from the tier analysis above
     let totalStorageGb = 0;
     let totalStorageCost = 0;
     let weightedListCost = 0;
@@ -78,7 +78,7 @@ export function detectCustomPricing(
       const provider = storageItems.find(
         (i) => i.storageClass === storageClass && i.region === region,
       )?.provider;
-      const lr = provider ? getListRate(provider, storageClass, region) : null;
+      const lr = provider ? getBlendedListRate(provider, storageClass, region, totalGb) : null;
       if (lr) weightedListCost += lr * totalGb;
     }
 
@@ -88,7 +88,6 @@ export function detectCustomPricing(
     const totalDiscountAmount = discounts.reduce((s, d) => s + d.amountUsd, 0);
 
     for (const d of discounts) {
-      // Approximate each program's share of the overall storage discount proportionally
       const programShare = totalDiscountAmount > 0 ? d.amountUsd / totalDiscountAmount : 0;
       const programStoragePctOff = overallDiscountPct * programShare;
 

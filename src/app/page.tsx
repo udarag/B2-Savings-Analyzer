@@ -192,7 +192,7 @@ export default function HomePage() {
                           )}
                         </div>
                         <div className="flex items-center gap-3 mt-1.5 text-sm text-gray-500">
-                          <span className="uppercase text-xs font-semibold px-2 py-0.5 bg-gray-100 rounded">
+                          <span className="text-xs font-semibold px-2 py-0.5 bg-gray-100 rounded">
                             {PROVIDER_LABELS[a.provider] || a.provider}
                           </span>
                           {a.billingPeriod && <span>{a.billingPeriod}</span>}

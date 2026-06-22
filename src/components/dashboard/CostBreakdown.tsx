@@ -15,12 +15,12 @@ export function CostBreakdown({ result }: CostBreakdownProps) {
   return (
     <div className="bg-white rounded-lg shadow">
       <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Cost Breakdown</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Cost breakdown</h3>
       </div>
       <div className="p-6 space-y-8">
         {/* Current bill */}
         <div>
-          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Current Monthly Bill</h4>
+          <h4 className="text-xs font-semibold text-gray-500 tracking-wide mb-3">Current monthly bill</h4>
           <div className="space-y-2">
             <Row label="Storage" value={currentMonthly.storage} />
             <Row label="Egress" value={currentMonthly.egress} />
@@ -35,7 +35,7 @@ export function CostBreakdown({ result }: CostBreakdownProps) {
 
         {/* Savings walkthrough */}
         <div className="bg-gray-50 rounded-lg p-5">
-          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Savings Calculation</h4>
+          <h4 className="text-xs font-semibold text-gray-500 tracking-wide mb-4">Savings calculation</h4>
 
           <div className="space-y-3">
             {/* What's being migrated */}

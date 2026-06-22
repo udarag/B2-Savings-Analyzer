@@ -57,6 +57,29 @@ function firstTierRate(tierData: unknown): number | null {
   return null;
 }
 
+function blendedRate(tierData: unknown, totalGb: number): number | null {
+  if (typeof tierData === 'number') return tierData;
+  if (!Array.isArray(tierData) || tierData.length === 0) return null;
+
+  const tiers = tierData as { maxTb: number | null; perGb: number }[];
+  let remaining = totalGb;
+  let totalCost = 0;
+
+  for (const tier of tiers) {
+    if (remaining <= 0) break;
+    const tierCapGb = tier.maxTb !== null ? tier.maxTb * 1000 : Infinity;
+    const prevCapGb = tiers.indexOf(tier) > 0
+      ? (tiers[tiers.indexOf(tier) - 1].maxTb ?? 0) * 1000
+      : 0;
+    const tierSizeGb = tierCapGb - prevCapGb;
+    const gbInTier = Math.min(remaining, tierSizeGb);
+    totalCost += gbInTier * tier.perGb;
+    remaining -= gbInTier;
+  }
+
+  return totalGb > 0 ? totalCost / totalGb : null;
+}
+
 function getAwsListRate(storageClass: string, region: string): number | null {
   const regionKey = AWS_REGION_ALIASES[region] || region;
   const storage = (awsPricing as Record<string, unknown>).storage as Record<string, Record<string, unknown>> | undefined;
@@ -69,6 +92,20 @@ function getAwsListRate(storageClass: string, region: string): number | null {
   if (!key) return null;
 
   return firstTierRate(regionData[key]);
+}
+
+function getAwsBlendedRate(storageClass: string, region: string, totalGb: number): number | null {
+  const regionKey = AWS_REGION_ALIASES[region] || region;
+  const storage = (awsPricing as Record<string, unknown>).storage as Record<string, Record<string, unknown>> | undefined;
+  if (!storage) return null;
+
+  const regionData = storage[regionKey] || storage['us-east-1'];
+  if (!regionData) return null;
+
+  const key = AWS_CLASS_MAP[storageClass];
+  if (!key) return null;
+
+  return blendedRate(regionData[key], totalGb);
 }
 
 function getGcpListRate(storageClass: string, locationType: string): number | null {
@@ -104,6 +141,16 @@ function getAzureListRate(storageClass: string, region: string): number | null {
 
   const key = AZURE_CLASS_MAP[storageClass] || storageClass;
   return firstTierRate(rp[key]);
+}
+
+export function getBlendedListRate(
+  provider: string,
+  storageClass: string,
+  region: string,
+  totalGb: number,
+): number | null {
+  if (provider === 'aws') return getAwsBlendedRate(storageClass, region, totalGb);
+  return getListRate(provider, storageClass, region);
 }
 
 export function getListRate(

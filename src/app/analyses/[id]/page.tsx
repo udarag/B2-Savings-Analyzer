@@ -229,7 +229,7 @@ export default function AnalysisDashboard() {
           {saving && <span className="text-xs text-gray-400 shrink-0">Saving...</span>}
         </div>
         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Source:</span>
+          <span className="text-xs font-medium text-gray-500 tracking-wide">Source:</span>
           <select
             value={data.meta.provider}
             onChange={(e) => patchMeta({ provider: e.target.value as Provider } as Partial<Analysis>)}
@@ -280,7 +280,7 @@ export default function AnalysisDashboard() {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 rounded-md hover:bg-gray-100 transition-colors"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m9.86-2.54a4.5 4.5 0 0 0-1.242-7.244l-4.5-4.5a4.5 4.5 0 0 0-6.364 6.364L5.25 9.879" /></svg>
-            {linkCopied ? 'Copied!' : 'Copy Link'}
+            {linkCopied ? 'Copied!' : 'Copy link'}
           </button>
           <button
             onClick={() => setShowReplaceConfirm(true)}
@@ -350,7 +350,7 @@ export default function AnalysisDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Upload New Bill</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Upload new bill</h3>
               <button
                 onClick={() => setShowReplaceUpload(false)}
                 className="p-1 text-gray-400 hover:text-gray-600 rounded"
@@ -394,7 +394,7 @@ export default function AnalysisDashboard() {
         {/* Sidebar — internal only */}
         <div className="space-y-6">
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <p className="text-xs font-semibold text-amber-800 uppercase">Internal Only</p>
+            <p className="text-xs font-semibold text-amber-800">Internal only</p>
             <p className="text-xs text-amber-600 mt-1">
               Sidebar panels are not included in customer-facing reports.
             </p>

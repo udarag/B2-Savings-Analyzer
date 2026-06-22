@@ -13,8 +13,8 @@ const CATEGORY_LABELS: Record<Category, string> = {
   'egress': 'Egress / Data Transfer',
   'operations': 'API Operations',
   'retrieval': 'Retrieval / Early Deletion',
-  'storage-adjacent': 'Storage-Adjacent (EBS, EFS, ECR, CloudFront)',
-  'out-of-scope': 'Out of Scope',
+  'storage-adjacent': 'Storage-adjacent (EBS, EFS, ECR, CloudFront)',
+  'out-of-scope': 'Out of scope',
 };
 const CATEGORY_COLORS: Record<Category, string> = {
   'storage': 'bg-red-100 text-red-800',
@@ -45,7 +45,7 @@ export function ParseReview({ parsed }: ParseReviewProps) {
       <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Parse Review</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Parse review</h3>
             <p className="text-sm text-gray-500 mt-1">
               {parsed.lineItems.length} line items parsed. Grand total: {formatCurrency(parsed.grandTotal)}.
               Addressable storage spend: {formatCurrency(addressable)}.
@@ -100,7 +100,7 @@ export function ParseReview({ parsed }: ParseReviewProps) {
         {parsed.accounts && parsed.accounts.length > 0 && !parsed.accountServiceBreakdowns && (
           <div className="mt-4 pt-4 border-t">
             <h4 className="text-sm font-medium text-gray-700 mb-2">
-              Linked Accounts ({parsed.accounts.length})
+              Linked accounts ({parsed.accounts.length})
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
               {parsed.accounts.slice(0, 10).map((acct) => (

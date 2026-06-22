@@ -23,13 +23,13 @@ export function PricingDetection({ results }: PricingDetectionProps) {
   return (
     <div className="bg-white rounded-lg shadow border-l-4 border-amber-400">
       <div className="px-5 py-3 border-b border-gray-200">
-        <h4 className="text-sm font-semibold text-gray-900">Pricing Detection</h4>
+        <h4 className="text-sm font-semibold text-gray-900">Pricing detection</h4>
         <p className="text-xs text-gray-500">Internal only — not shown in customer report</p>
       </div>
 
       {discountPrograms.length > 0 && (
         <div className="px-5 py-4 bg-amber-50 border-b border-amber-100">
-          <p className="text-xs font-semibold text-amber-800 uppercase mb-3">Active Discount Programs</p>
+          <p className="text-xs font-semibold text-amber-800 mb-3">Active discount programs</p>
           <div className="space-y-2">
             {discountPrograms.map((r, i) => {
               const pctOff = r.storagePercentOff || r.discountPercent || 0;
@@ -70,7 +70,7 @@ export function PricingDetection({ results }: PricingDetectionProps) {
 
       {tierAnalysis.length > 0 && (
         <div className="p-5 space-y-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase">Per-Tier Rate Analysis</p>
+          <p className="text-xs font-semibold text-gray-500">Per-tier rate analysis</p>
 
           {customTiers.length > 0 && (
             <div className="space-y-2">
@@ -89,18 +89,23 @@ export function PricingDetection({ results }: PricingDetectionProps) {
           )}
 
           {listPriceTiers.length > 0 && (
-            <div>
-              <p className="text-xs font-medium text-gray-400 mb-2">
-                At list price ({listPriceTiers.length} {listPriceTiers.length === 1 ? 'tier' : 'tiers'})
-              </p>
-              <div className="rounded-md border border-gray-100 divide-y divide-gray-100">
+            <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800 whitespace-nowrap">
+                  List price
+                </span>
+                <span className="text-xs font-medium text-green-700">
+                  {listPriceTiers.length} {listPriceTiers.length === 1 ? 'tier' : 'tiers'} — no discount detected
+                </span>
+              </div>
+              <div className="rounded border border-green-100 bg-white divide-y divide-green-100">
                 {listPriceTiers.map((r, i) => (
                   <div key={`list-${i}`} className="flex items-center justify-between px-3 py-1.5 text-xs">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="font-medium text-gray-700 truncate">{r.storageClass}</span>
                       {r.region && <span className="text-gray-400 shrink-0">{r.region}</span>}
                     </div>
-                    <span className="text-gray-400 shrink-0 ml-2">
+                    <span className="text-green-700 font-medium shrink-0 ml-2">
                       ${(r.listRate * 1000).toFixed(2)}/TB
                     </span>
                   </div>
@@ -121,7 +126,7 @@ function TierCard({ result: r }: { result: PricingDetectionResult }) {
   const badgeColor = isCustom
     ? 'bg-red-100 text-red-700'
     : 'bg-yellow-100 text-yellow-700';
-  const badgeLabel = isCustom ? 'Custom' : 'Small Discount';
+  const badgeLabel = isCustom ? 'Custom' : 'Small discount';
   const barColor = isCustom ? 'bg-red-400' : 'bg-yellow-400';
 
   const effectiveTb = (r.effectiveRate * 1000).toFixed(2);

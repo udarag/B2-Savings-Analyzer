@@ -24,9 +24,45 @@ function resolveRegionCode(code: string): string {
   return AWS_REGION_CODES[code] || code;
 }
 
-function extractRegionCode(sku: string): string {
+function extractRegionCode(sku: string): string | null {
   const match = sku.match(/^([A-Z]{2,4}\d?)-/);
-  return match ? match[1] : 'GLOBAL';
+  return match ? match[1] : null;
+}
+
+const REGION_NAME_TO_CODE: Record<string, string> = {
+  'N. Virginia': 'us-east-1',
+  'Ohio': 'us-east-2',
+  'N. California': 'us-west-1',
+  'Oregon': 'us-west-2',
+  'Singapore': 'ap-southeast-1',
+  'Sydney': 'ap-southeast-2',
+  'Mumbai': 'ap-south-1',
+  'Tokyo': 'ap-northeast-1',
+  'Seoul': 'ap-northeast-2',
+  'Osaka': 'ap-northeast-3',
+  'Ireland': 'eu-west-1',
+  'London': 'eu-west-2',
+  'Paris': 'eu-west-3',
+  'Frankfurt': 'eu-central-1',
+  'Stockholm': 'eu-north-1',
+  'Sao Paulo': 'sa-east-1',
+  'São Paulo': 'sa-east-1',
+  'Canada': 'ca-central-1',
+  'Bahrain': 'me-south-1',
+  'Cape Town': 'af-south-1',
+  'Hong Kong': 'ap-east-1',
+  'Jakarta': 'ap-southeast-3',
+  'Hyderabad': 'ap-south-2',
+  'Milan': 'eu-south-1',
+  'Auckland': 'ap-southeast-5',
+  'Melbourne': 'ap-southeast-4',
+};
+
+function regionCodeFromName(regionName: string): string | null {
+  for (const [name, code] of Object.entries(REGION_NAME_TO_CODE)) {
+    if (regionName.includes(name)) return code;
+  }
+  return null;
 }
 
 function classifyAwsLine(
@@ -220,8 +256,9 @@ export function parseAwsDetailPdf(pdfBuffer: Buffer): ParseResult {
     });
   }
 
-  // SKU line pattern: service name + SKU code + USD amount
-  const skuLinePattern = /^\s*(Amazon Simple Storage Service|AWS Data Transfer|Amazon S3 Glacier[^U]*?|Amazon Elastic[^U]*?|Amazon EC2 Container Registry[^U]*?|Amazon CloudFront[^U]*?|AWS Transfer Family[^U]*?)\s+(\S+-[\w-]+)\s+(?:USD\s+)?([\d,.]+)\s*$/;
+  // SKU line pattern: service name + SKU code + optional USD amount
+  // Matches both hyphenated SKUs (APS1-TimedStorage-ByteHrs) and single-word SKUs (CopyObject)
+  const skuLinePattern = /^\s*(Amazon Simple Storage Service|AWS Data Transfer|Amazon S3 Glacier[^U]*?|Amazon Elastic[^U]*?|Amazon EC2 Container Registry[^U]*?|Amazon CloudFront[^U]*?|AWS Transfer Family[^U]*?)\s+([\w][\w-]*(?:-[\w-]+)?)(?:\s+(?:USD\s+)?([\d,.]+))?\s*$/;
 
   // Rate line pattern: $rate per description ... quantity unit ... USD cost
   const rateLinePattern = /^\s+\$?([\d.]+)\s+per\s+(.*?)\s{2,}([\d,.]+)\s+([\w-]+)\s+USD\s+([\d,.]+)/;
@@ -230,11 +267,15 @@ export function parseAwsDetailPdf(pdfBuffer: Buffer): ParseResult {
 
   // Region header pattern
   const regionPattern = /^(US (?:East|West)|Asia Pacific|EU|South America|Canada|Middle East|Africa)\s+\(([^)]+)\)\s+(?:USD\s+)?([\d,.]+)/;
+  const globalRegionPattern = /^Global\s+(?:USD\s+)?([\d,.]+)/;
 
   // Service section markers — broad set to detect when we leave a relevant section
-  const serviceSectionPattern = /^(Simple Storage Service|Data Transfer|Elastic Compute Cloud|Elastic Block Store|Elastic File System|CloudFront|ElastiCache|Relational Database|DynamoDB|Redshift|Lambda|CloudWatch|Security Hub|Glue|Athena|EMR|SQS|SNS|Config|WAF|Guard|Shield|Key Management|Secrets Manager|CodeBuild|CodePipeline|Step Functions|Managed Streaming|Kinesis|Backup|Organizations|Systems Manager|Directory Service|Inspector|Macie|Certificate|Route 53|API Gateway)/;
-  const relevantServices = new Set(['Simple Storage Service', 'Data Transfer', 'Elastic Block Store', 'Elastic File System', 'CloudFront', 'Elastic Compute Cloud']);
+  const serviceSectionPattern = /^\s{0,4}(Simple Storage Service|S3 Glacier Deep Archive|Data Transfer|Elastic Compute Cloud|Elastic Block Store|Elastic File System|CloudFront|ElastiCache|Relational Database|DynamoDB|Redshift|Lambda|CloudWatch|Security Hub|Glue|Athena|EMR|SQS|SNS|Config|WAF|Guard|Shield|Key Management|Secrets Manager|CodeBuild|CodePipeline|Step Functions|Managed Streaming|Kinesis|Backup|Organizations|Systems Manager|Directory Service|Inspector|Macie|Certificate|Route 53|API Gateway|Virtual Private Cloud|Elastic Load Balancing|QuickSight|Elastic Container|Cost Explorer|CloudTrail|Simple Email|Simple Notification|Simple Queue|SimpleDB|Bedrock|SageMaker|Comprehend|Textract|Rekognition)\b/;
+  const relevantServices = new Set(['Simple Storage Service', 'S3 Glacier Deep Archive', 'Data Transfer', 'Elastic Block Store', 'Elastic File System', 'CloudFront', 'Elastic Compute Cloud']);
   let inRelevantService = false;
+
+  // Entity boundary pattern — clears all parsing state on new billing entity
+  const entityBoundaryPattern = /^Amazon Web Services\b/;
 
   // Accounts section
   const accountsHeaderPattern = /Charges by account\s+\((\d+)\)/;
@@ -263,20 +304,29 @@ export function parseAwsDetailPdf(pdfBuffer: Buffer): ParseResult {
       continue;
     }
 
-    // Detect service section
+    // Detect entity boundary (e.g. "Amazon Web Services EMEA SARL")
+    if (entityBoundaryPattern.test(line)) {
+      currentSkuCode = '';
+      currentSkuService = '';
+      currentService = '';
+      inRelevantService = false;
+    }
+
+    // Detect service section — always reset SKU state to prevent cross-service contamination
     const svcMatch = line.match(serviceSectionPattern);
     if (svcMatch) {
       currentService = svcMatch[1];
       inRelevantService = relevantServices.has(currentService);
-      if (!inRelevantService) {
-        currentSkuCode = '';
-      }
+      currentSkuCode = '';
+      currentSkuService = '';
     }
 
     // Detect region header
     const regMatch = line.match(regionPattern);
     if (regMatch) {
       currentRegionName = `${regMatch[1]} (${regMatch[2]})`;
+    } else if (globalRegionPattern.test(line)) {
+      currentRegionName = 'Global';
     }
 
     // Detect SKU line
@@ -284,7 +334,7 @@ export function parseAwsDetailPdf(pdfBuffer: Buffer): ParseResult {
     if (skuMatch) {
       currentSkuService = skuMatch[1].trim();
       currentSkuCode = skuMatch[2];
-      currentSkuSubtotal = parseUsdAmount(skuMatch[3]);
+      currentSkuSubtotal = skuMatch[3] ? parseUsdAmount(skuMatch[3]) : 0;
       continue;
     }
 
@@ -305,7 +355,9 @@ export function parseAwsDetailPdf(pdfBuffer: Buffer): ParseResult {
       const costUsd = parseUsdAmount(rateMatch[5]);
 
       const regionCode = extractRegionCode(currentSkuCode);
-      const region = resolveRegionCode(regionCode);
+      const region = regionCode
+        ? resolveRegionCode(regionCode)
+        : (regionCodeFromName(currentRegionName) ?? 'GLOBAL');
 
       const { category, subcategory, storageClass } = classifyAwsLine(
         currentSkuService,
@@ -339,7 +391,7 @@ export function parseAwsDetailPdf(pdfBuffer: Buffer): ParseResult {
     const diff = Math.abs(parsedTotal - grandTotal);
     if (diff > grandTotal * 0.05) {
       warnings.push(
-        `Parsed storage/transfer total ($${parsedTotal.toFixed(2)}) captures ${((parsedTotal / grandTotal) * 100).toFixed(1)}% of bill grand total ($${grandTotal.toFixed(2)}). Non-storage services are categorized as out-of-scope.`
+        `Parsed storage/transfer total ($${parsedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) captures ${((parsedTotal / grandTotal) * 100).toFixed(1)}% of bill grand total ($${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}). Non-storage services are categorized as out-of-scope.`
       );
     }
   }
