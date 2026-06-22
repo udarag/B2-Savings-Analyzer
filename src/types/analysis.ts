@@ -95,10 +95,14 @@ export interface TierInventoryRow {
 }
 
 export interface EgressConfig {
+  hasHyperscalerCompute: boolean;
+  hyperscalerComputeFeedsStorage: boolean;
   computeStaysInHyperscaler: boolean;
   computeMovingToPartner: boolean;
   gbPerMonthHyperscalerToB2: number;
   gbPerMonthServedToUsers: number;
+  trainingRunsPerMonth: number;
+  trainingDataTbPerRun: number;
   usesPartnerCdn: boolean;
   dataGrowthMode: 'percent' | 'fixed-tb';
   dataGrowthRatePercent: number;
@@ -113,15 +117,20 @@ export interface ModelConfig {
   egressConfig: EgressConfig;
   b2PricePerTb: number;
   projectionTermMonths: number;
+  pricingDiscountConfirmed?: boolean;
 }
 
 export const TIER_SELECTION_VERSION = 2;
 
 export const DEFAULT_EGRESS_CONFIG: EgressConfig = {
+  hasHyperscalerCompute: false,
+  hyperscalerComputeFeedsStorage: false,
   computeStaysInHyperscaler: false,
   computeMovingToPartner: false,
   gbPerMonthHyperscalerToB2: 0,
   gbPerMonthServedToUsers: 0,
+  trainingRunsPerMonth: 0,
+  trainingDataTbPerRun: 0,
   usesPartnerCdn: false,
   dataGrowthMode: 'percent',
   dataGrowthRatePercent: 10,
@@ -131,9 +140,35 @@ export const DEFAULT_EGRESS_CONFIG: EgressConfig = {
 };
 
 export function normalizeEgressConfig(config?: Partial<EgressConfig> | null): EgressConfig {
+  const legacyPipeline = config?.computeStaysInHyperscaler ?? DEFAULT_EGRESS_CONFIG.computeStaysInHyperscaler;
+  const hasHyperscalerCompute = config?.hasHyperscalerCompute ?? legacyPipeline;
+  const hyperscalerComputeFeedsStorage = hasHyperscalerCompute
+    ? config?.hyperscalerComputeFeedsStorage ?? legacyPipeline
+    : false;
+  const isTrainingWorkflow = hasHyperscalerCompute && !hyperscalerComputeFeedsStorage;
+  const trainingRunsPerMonth = config?.trainingRunsPerMonth ?? DEFAULT_EGRESS_CONFIG.trainingRunsPerMonth;
+  const trainingDataTbPerRun = config?.trainingDataTbPerRun ?? DEFAULT_EGRESS_CONFIG.trainingDataTbPerRun;
+
   return {
     ...DEFAULT_EGRESS_CONFIG,
     ...config,
+    hasHyperscalerCompute,
+    hyperscalerComputeFeedsStorage,
+    computeStaysInHyperscaler: hasHyperscalerCompute && hyperscalerComputeFeedsStorage,
+    computeMovingToPartner: hasHyperscalerCompute && hyperscalerComputeFeedsStorage
+      ? config?.computeMovingToPartner ?? DEFAULT_EGRESS_CONFIG.computeMovingToPartner
+      : false,
+    gbPerMonthHyperscalerToB2: hasHyperscalerCompute && hyperscalerComputeFeedsStorage
+      ? config?.gbPerMonthHyperscalerToB2 ?? DEFAULT_EGRESS_CONFIG.gbPerMonthHyperscalerToB2
+      : 0,
+    gbPerMonthServedToUsers: isTrainingWorkflow
+      ? trainingRunsPerMonth * trainingDataTbPerRun * 1000
+      : config?.gbPerMonthServedToUsers ?? DEFAULT_EGRESS_CONFIG.gbPerMonthServedToUsers,
+    trainingRunsPerMonth,
+    trainingDataTbPerRun,
+    usesPartnerCdn: isTrainingWorkflow
+      ? false
+      : config?.usesPartnerCdn ?? DEFAULT_EGRESS_CONFIG.usesPartnerCdn,
     dataGrowthMode: config?.dataGrowthMode ?? DEFAULT_EGRESS_CONFIG.dataGrowthMode,
     dataGrowthRatePercent: config?.dataGrowthRatePercent ?? DEFAULT_EGRESS_CONFIG.dataGrowthRatePercent,
     dataGrowthFixedTbPerMonth: config?.dataGrowthFixedTbPerMonth ?? DEFAULT_EGRESS_CONFIG.dataGrowthFixedTbPerMonth,
@@ -146,4 +181,5 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
   egressConfig: DEFAULT_EGRESS_CONFIG,
   b2PricePerTb: b2Pricing.storage.perTbMonth,
   projectionTermMonths: 12,
+  pricingDiscountConfirmed: false,
 };

@@ -2,6 +2,13 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import {
+  getPreferredTheme,
+  setThemePreference,
+  THEME_CHANGE_EVENT,
+  THEME_STORAGE_KEY,
+  type ThemePreference,
+} from './ThemeController';
 
 interface UserProfile {
   displayName: string;
@@ -17,6 +24,7 @@ export function UserMenu() {
   const [titleInput, setTitleInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [theme, setTheme] = useState<ThemePreference>('light');
   const panelRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
@@ -49,6 +57,30 @@ export function UserMenu() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showPanel]);
 
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const syncTheme = () => setTheme(getPreferredTheme());
+    const handleSystemChange = () => {
+      try {
+        if (window.localStorage.getItem(THEME_STORAGE_KEY)) return;
+      } catch {
+        // Fall back to system preference if storage is unavailable.
+      }
+      syncTheme();
+    };
+
+    syncTheme();
+    window.addEventListener('storage', syncTheme);
+    window.addEventListener(THEME_CHANGE_EVENT, syncTheme);
+    media.addEventListener('change', handleSystemChange);
+
+    return () => {
+      window.removeEventListener('storage', syncTheme);
+      window.removeEventListener(THEME_CHANGE_EVENT, syncTheme);
+      media.removeEventListener('change', handleSystemChange);
+    };
+  }, []);
+
   if (!email) return null;
 
   async function saveProfile() {
@@ -78,8 +110,15 @@ export function UserMenu() {
     window.location.href = '/login';
   }
 
+  function toggleTheme() {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    setThemePreference(nextTheme);
+  }
+
   const displayName = profile?.displayName || email.split('@')[0];
   const initials = displayName.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+  const darkMode = theme === 'dark';
 
   return (
     <div className="relative" ref={panelRef}>
@@ -136,7 +175,7 @@ export function UserMenu() {
 
       {/* Profile panel */}
       {showPanel && (
-        <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-50">
+        <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-50">
           <div className="px-4 pt-4 pb-3">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-bb-navy flex items-center justify-center shrink-0">
@@ -185,6 +224,40 @@ export function UserMenu() {
             </div>
           ) : (
             <div className="border-t border-gray-100">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={darkMode}
+                onClick={toggleTheme}
+                className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors ${
+                    darkMode ? 'bg-bb-red/15 text-bb-red' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {darkMode ? (
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 15.5A9.75 9.75 0 0 1 8.5 2.25a7.5 7.5 0 1 0 13.25 13.25Z" />
+                      </svg>
+                    ) : (
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m0 13.5V21m9-9h-2.25M5.25 12H3m15.364-6.364-1.591 1.591M7.227 16.773l-1.591 1.591m12.728 0-1.591-1.591M7.227 7.227 5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
+                      </svg>
+                    )}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-gray-700">Dark Mode</span>
+                    <span className="block text-xs text-gray-400">{darkMode ? 'On' : 'Off'}</span>
+                  </span>
+                </span>
+                <span className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-all ${
+                  darkMode ? 'bg-bb-red shadow-[0_0_18px_rgba(209,35,42,0.35)]' : 'bg-gray-200'
+                }`}>
+                  <span className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                    darkMode ? 'translate-x-5' : 'translate-x-0'
+                  }`} />
+                </span>
+              </button>
               <button
                 onClick={() => setEditing(true)}
                 className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors"

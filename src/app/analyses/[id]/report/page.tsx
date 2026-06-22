@@ -339,6 +339,11 @@ function ReportPageContent() {
                 ? ` Backblaze covers the estimated ${formatCurrency(migrationCostCovered)} migration cost through the Universal Data Migration program, so your modeled migration cost is $0.`
                 : costModel.breakEvenMonth ? ` Your modeled migration cost of ${formatCurrency(customerMigrationCost)} is recovered within ${costModel.breakEvenMonth} month${costModel.breakEvenMonth !== 1 ? 's' : ''}.` : ''}
             </p>
+            {costModel.partnerComputeScenario && (
+              <p className="mt-3 text-sm text-gray-700 leading-relaxed">
+                If the processed-data write path later moves to a B2 bandwidth alliance compute partner, this model avoids another {formatCurrency(costModel.partnerComputeScenario.monthlyEgressAvoided)}/month in hyperscaler egress and increases savings to {formatCurrency(costModel.partnerComputeScenario.monthlySavings)}/month.
+              </p>
+            )}
             <div className="mt-4 grid grid-cols-3 gap-3 text-xs">
               <div className="rounded-lg bg-gray-50 p-3">
                 <p className="font-semibold text-gray-900 mb-1">Lower Recurring Spend</p>

@@ -127,7 +127,7 @@ export function computeCostModel(
   const newCosts: { description: string; amountUsd: number }[] = [];
   if (egress.newEgressCost > 0) {
     newCosts.push({
-      description: 'Hyperscaler → B2 pipeline egress (compute stays in hyperscaler)',
+      description: 'Hyperscaler to B2 processed-data egress',
       amountUsd: egress.newEgressCost,
     });
   }
@@ -136,6 +136,13 @@ export function computeCostModel(
   const totalEliminated = eliminatedFees.reduce((s, f) => s + f.amountUsd, 0);
   const totalNew = b2Monthly.total + newCosts.reduce((s, c) => s + c.amountUsd, 0);
   const monthlySavings = totalEliminated - totalNew;
+  const partnerComputeScenario = egress.newEgressCost > 0
+    ? {
+        monthlyEgressAvoided: egress.newEgressCost,
+        monthlySavings: round2(monthlySavings + egress.newEgressCost),
+        annualSavings: round2((monthlySavings + egress.newEgressCost) * 12),
+      }
+    : null;
   const addressableSpend = migratedTiers.reduce((s, t) => s + t.totalTrueCost, 0) +
     egress.eliminatedEgressCost;
   const savingsPercent = addressableSpend > 0 ? (monthlySavings / addressableSpend) * 100 : 0;
@@ -164,6 +171,7 @@ export function computeCostModel(
     b2Monthly,
     eliminatedFees,
     newCosts,
+    partnerComputeScenario,
     migrationCost,
     udmEnabled,
     udmCostToBackblaze,

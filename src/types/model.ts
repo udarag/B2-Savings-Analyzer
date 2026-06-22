@@ -26,11 +26,18 @@ export interface MigrationCost {
   total: number;
 }
 
+export interface PartnerComputeScenario {
+  monthlyEgressAvoided: number;
+  monthlySavings: number;
+  annualSavings: number;
+}
+
 export interface CostModelResult {
   currentMonthly: CostBreakdown;
   b2Monthly: B2CostBreakdown;
   eliminatedFees: EliminatedFee[];
   newCosts: { description: string; amountUsd: number }[];
+  partnerComputeScenario: PartnerComputeScenario | null;
   migrationCost: MigrationCost;
   udmEnabled: boolean;
   udmCostToBackblaze: number;
