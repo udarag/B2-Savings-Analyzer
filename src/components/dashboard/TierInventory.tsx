@@ -80,7 +80,7 @@ export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInvent
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Storage Tier Inventory</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Storage tier inventory</h3>
         <p className="text-sm text-gray-500 mt-1">
           Toggle tiers to include in B2 migration. Hot tiers are enabled by default.
         </p>

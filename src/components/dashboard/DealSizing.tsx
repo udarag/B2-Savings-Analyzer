@@ -37,7 +37,7 @@ export function DealSizing({
   return (
     <div className="bg-white rounded-lg shadow border-l-4 border-bb-red">
       <div className="px-5 py-3 border-b border-gray-200">
-        <h4 className="text-sm font-semibold text-gray-900">Deal Sizing</h4>
+        <h4 className="text-sm font-semibold text-gray-900">Deal sizing</h4>
         <p className="text-xs text-gray-500">Internal only — B2 revenue estimate</p>
       </div>
       <div className="p-5 space-y-4">

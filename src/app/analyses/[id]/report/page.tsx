@@ -257,7 +257,7 @@ export default function ReportPage() {
               <div className="mb-6 p-4 bg-amber-50 rounded-lg border border-amber-200 print:break-inside-avoid">
                 <div className="flex items-start gap-2 mb-2">
                   <svg className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
-                  <p className="text-sm font-semibold text-amber-800">Discounted Pricing Detected</p>
+                  <p className="text-sm font-semibold text-amber-800">Discounted pricing detected</p>
                 </div>
                 <p className="text-xs text-amber-700 mb-2">
                   This analysis reflects the customer&apos;s negotiated rates, not list pricing. The following discount programs are applied on their current bill:
@@ -295,7 +295,7 @@ export default function ReportPage() {
 
       {/* Tier Comparison */}
       <div className="p-8">
-        <h2 className="text-lg font-semibold mb-4 border-l-4 border-bb-red pl-3">Storage Tier Comparison</h2>
+        <h2 className="text-lg font-semibold mb-4 border-l-4 border-bb-red pl-3">Storage tier comparison</h2>
         <table className="w-full text-xs">
           <thead className="bg-bb-navy text-white">
             <tr>
@@ -332,9 +332,9 @@ export default function ReportPage() {
 
         {costModel.udmEnabled ? (
           <div className="mt-8 keep-together">
-            <h3 className="text-sm font-semibold mb-3 border-l-4 border-bb-red pl-3">Data Migration</h3>
+            <h3 className="text-sm font-semibold mb-3 border-l-4 border-bb-red pl-3">Data migration</h3>
             <div className="p-4 bg-gray-50 rounded-lg mb-3">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Cost to Leave Hyperscaler</p>
+              <p className="text-xs font-semibold text-gray-500 tracking-wide mb-2">Cost to leave hyperscaler</p>
               <div className="text-sm space-y-1">
                 {costModel.migrationCost.egressCost > 0 && (
                   <div className="flex justify-between">
@@ -370,7 +370,7 @@ export default function ReportPage() {
           </div>
         ) : (costModel.migrationCost.egressCost + costModel.migrationCost.restoreCost) > 0 ? (
           <div className="mt-8 p-4 bg-amber-50 rounded-lg">
-            <h3 className="text-sm font-semibold mb-2">One-Time Migration Cost</h3>
+            <h3 className="text-sm font-semibold mb-2">One-time migration cost</h3>
             <div className="text-sm space-y-1">
               {costModel.migrationCost.egressCost > 0 && (
                 <div className="flex justify-between">
@@ -395,7 +395,7 @@ export default function ReportPage() {
 
       {/* Projections */}
       <div className="p-8">
-        <h2 className="text-lg font-semibold mb-4 border-l-4 border-bb-red pl-3">Cost Projections ({termYears}-Year)</h2>
+        <h2 className="text-lg font-semibold mb-4 border-l-4 border-bb-red pl-3">Cost projections ({termYears}-year)</h2>
         <p className="text-sm text-gray-600 mb-6">
           Based on current pricing with {modelConfig?.egressConfig.dataGrowthRatePercent || 10}% annual storage growth.
         </p>
@@ -428,7 +428,7 @@ export default function ReportPage() {
 
       {/* Assumptions */}
       <div className="p-8">
-        <h2 className="text-lg font-semibold mb-4 border-l-4 border-bb-red pl-3">Assumptions & Sources</h2>
+        <h2 className="text-lg font-semibold mb-4 border-l-4 border-bb-red pl-3">Assumptions & sources</h2>
         <table className="w-full text-sm">
           <tbody className="divide-y">
             <tr>
