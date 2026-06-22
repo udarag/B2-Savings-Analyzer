@@ -1,104 +1,6 @@
 import type { ParsedLineItem, NamedDiscount } from '@/types/analysis';
-import type { PricingDetectionResult, DealSizing } from '@/types/model';
-import awsPricing from './aws.json';
-import gcpPricing from './gcp.json';
-import azurePricing from './azure.json';
-import r2Pricing from './r2.json';
-
-function getAwsListRate(storageClass: string, region: string): number | null {
-  const regionKey = region === 'All Regions' ? 'us-east-1' : region;
-  const storage = (awsPricing as Record<string, unknown>).storage as Record<string, Record<string, unknown>> | undefined;
-  if (!storage) return null;
-
-  const regionData = storage[regionKey] || storage['us-east-1'];
-  if (!regionData) return null;
-
-  // Map parser storage class names to pricing JSON keys
-  const classMap: Record<string, string> = {
-    'Standard': 'Standard',
-    'S3 (Summary)': 'Standard',
-    'Standard-IA': 'Standard-IA',
-    'One Zone-IA': 'One Zone-IA',
-    'Glacier Instant Retrieval': 'Glacier Instant Retrieval',
-    'Glacier Flexible Retrieval': 'Glacier Flexible Retrieval',
-    'Glacier Deep Archive': 'Glacier Deep Archive',
-    'Glacier': 'Glacier Flexible Retrieval',
-    'Intelligent-Tiering (Frequent)': 'Intelligent-Tiering-FA',
-    'Intelligent-Tiering (Infrequent)': 'Intelligent-Tiering-IA',
-  };
-
-  const key = classMap[storageClass];
-  if (!key) return null;
-
-  const tierData = regionData[key];
-  if (typeof tierData === 'number') return tierData;
-  if (Array.isArray(tierData) && tierData.length > 0) {
-    return (tierData[0] as { perGb: number }).perGb;
-  }
-
-  return null;
-}
-
-function getGcpListRate(storageClass: string, locationType: string): number | null {
-  const gcpRegions = (gcpPricing as Record<string, unknown>).regions as Record<string, unknown> | undefined;
-  if (!gcpRegions) return null;
-
-  const classMap: Record<string, string> = {
-    'Standard': 'standard',
-    'Nearline': 'nearline',
-    'Coldline': 'coldline',
-    'Archive': 'archive',
-  };
-
-  const key = classMap[storageClass];
-  if (!key) return null;
-
-  const regionType = locationType === 'multi-region' ? 'multi-region' : 'regional';
-  const rp = gcpRegions[regionType] as Record<string, unknown> | undefined;
-  if (!rp) return null;
-
-  const storageTiers = rp['storage'] as Record<string, unknown> | undefined;
-  if (!storageTiers) return null;
-
-  const rate = storageTiers[key];
-  return typeof rate === 'number' ? rate : null;
-}
-
-function getAzureListRate(storageClass: string, region: string): number | null {
-  const regionKey = region || 'eastus';
-  const regionPricing = (azurePricing as Record<string, unknown>).storage as Record<string, Record<string, unknown>> | undefined;
-  if (!regionPricing) return null;
-
-  const rp = regionPricing[regionKey] || regionPricing['eastus'];
-  if (!rp) return null;
-
-  const classMap: Record<string, string> = {
-    'Hot (LRS)': 'Hot-LRS',
-    'Hot (ZRS)': 'Hot-ZRS',
-    'Hot (GRS)': 'Hot-GRS',
-    'Hot (RA-GRS)': 'Hot-RA-GRS',
-    'Cool (LRS)': 'Cool-LRS',
-    'Cool (ZRS)': 'Cool-ZRS',
-    'Cool (GRS)': 'Cool-GRS',
-    'Cool (RA-GRS)': 'Cool-RA-GRS',
-    'Cold (LRS)': 'Cold-LRS',
-    'Cold (ZRS)': 'Cold-ZRS',
-    'Cold (GRS)': 'Cold-GRS',
-    'Cold (RA-GRS)': 'Cold-RA-GRS',
-    'Archive (LRS)': 'Archive-LRS',
-    'Archive (GRS)': 'Archive-GRS',
-    'Archive (RA-GRS)': 'Archive-RA-GRS',
-  };
-
-  const key = classMap[storageClass] || storageClass;
-  const tierData = rp[key];
-  if (typeof tierData === 'number') return tierData;
-  if (Array.isArray(tierData) && tierData.length > 0) {
-    return (tierData[0] as { perGb: number }).perGb;
-  }
-
-  return null;
-}
+import type { PricingDetectionResult } from '@/types/model';
+import { getListRate } from './lookup';
 
 export function detectCustomPricing(
   lineItems: ParsedLineItem[],
@@ -120,6 +22,9 @@ export function detectCustomPricing(
   }
 
   for (const [key, { totalCost, totalGb }] of grouped) {
+    // Skip negligible tiers — effective rate is meaningless below 1 GB
+    if (totalGb < 1) continue;
+
     const [storageClass, region] = key.split('|');
     const effectiveRate = totalCost / totalGb;
 
@@ -128,15 +33,8 @@ export function detectCustomPricing(
       (i) => i.storageClass === storageClass && i.region === region,
     )?.provider;
 
-    if (provider === 'aws') {
-      listRate = getAwsListRate(storageClass, region);
-    } else if (provider === 'gcp') {
-      const locationType = region.includes('multi') ? 'multi-region' : 'regional';
-      listRate = getGcpListRate(storageClass, locationType);
-    } else if (provider === 'azure') {
-      listRate = getAzureListRate(storageClass, region);
-    } else if (provider === 'r2') {
-      listRate = (r2Pricing.storage as { perGbMonth: number }).perGbMonth;
+    if (provider) {
+      listRate = getListRate(provider, storageClass, region);
     }
 
     if (listRate === null || listRate === 0) continue;
@@ -180,11 +78,7 @@ export function detectCustomPricing(
       const provider = storageItems.find(
         (i) => i.storageClass === storageClass && i.region === region,
       )?.provider;
-      let lr: number | null = null;
-      if (provider === 'aws') lr = getAwsListRate(storageClass, region);
-      else if (provider === 'gcp') lr = getGcpListRate(storageClass, region.includes('multi') ? 'multi-region' : 'regional');
-      else if (provider === 'azure') lr = getAzureListRate(storageClass, region);
-      else if (provider === 'r2') lr = (r2Pricing.storage as { perGbMonth: number }).perGbMonth;
+      const lr = provider ? getListRate(provider, storageClass, region) : null;
       if (lr) weightedListCost += lr * totalGb;
     }
 
@@ -214,16 +108,4 @@ export function detectCustomPricing(
   }
 
   return results;
-}
-
-export function computeDealSizing(
-  b2MonthlyCost: number,
-  termMonths: number,
-): DealSizing {
-  return {
-    monthlyB2Revenue: Math.round(b2MonthlyCost * 100) / 100,
-    annualB2Revenue: Math.round(b2MonthlyCost * 12 * 100) / 100,
-    termContractValue: Math.round(b2MonthlyCost * termMonths * 100) / 100,
-    termMonths,
-  };
 }

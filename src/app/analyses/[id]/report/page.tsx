@@ -9,6 +9,7 @@ import { computeCostModel } from '@/lib/engine/cost-model';
 import { computeProjections } from '@/lib/engine/projections';
 import { detectCustomPricing } from '@/lib/pricing/detection';
 import { formatCurrency, formatNumber, formatPercent } from '@/components/shared/FormatCurrency';
+import b2Pricing from '@/lib/pricing/b2.json';
 
 interface AEInfo {
   name: string;
@@ -208,6 +209,15 @@ export default function ReportPage() {
         </div>
 
         <div className="px-8 pt-6 pb-8">
+          {meta.provider !== 'aws' && (
+            <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 print:hidden">
+              <span className="mt-0.5 shrink-0 rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold uppercase text-white leading-none">Beta</span>
+              <p className="text-sm text-amber-800">
+                This report was generated from a {meta.provider === 'gcp' ? 'GCP' : meta.provider === 'azure' ? 'Azure' : 'Cloudflare R2'} bill
+                using beta parsing. Please work with your SE to verify the numbers before sharing with the customer.
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-3 gap-4 mb-4">
             <div className="bg-green-50 rounded-lg p-5 text-center">
               <p className="text-sm text-gray-600 mb-1">Monthly Savings</p>
@@ -427,7 +437,7 @@ export default function ReportPage() {
             </tr>
             <tr>
               <td className="py-2 font-medium text-gray-600">B2 Storage Price</td>
-              <td className="py-2">${modelConfig?.b2PricePerTb || 6.95}/TB/month (list: $6.95)</td>
+              <td className="py-2">${modelConfig?.b2PricePerTb || b2Pricing.storage.perTbMonth}/TB/month (list: ${b2Pricing.storage.perTbMonth})</td>
             </tr>
             <tr>
               <td className="py-2 font-medium text-gray-600">B2 Transactions</td>

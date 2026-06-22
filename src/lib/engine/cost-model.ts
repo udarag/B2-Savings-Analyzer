@@ -1,6 +1,7 @@
 import type { ParsedLineItem, TierInventoryRow, EgressConfig } from '@/types/analysis';
 import type { CostModelResult, EliminatedFee, B2CostBreakdown, CostBreakdown } from '@/types/model';
 import { computeEgressModel } from './egress-model';
+import b2Pricing from '../pricing/b2.json';
 
 export function computeCostModel(
   lineItems: ParsedLineItem[],
@@ -150,10 +151,8 @@ export function computeCostModel(
     total: customerMigrationCost,
   };
 
-  // Backblaze's UDM cost: $0.03/GB (their negotiated hyperscaler egress rate)
-  const BACKBLAZE_UDM_RATE_PER_GB = 0.03;
   const udmCostToBackblaze = udmEnabled
-    ? round2(totalStorageGb * BACKBLAZE_UDM_RATE_PER_GB)
+    ? round2(totalStorageGb * b2Pricing.udm.costPerGb)
     : 0;
 
   const breakEvenMonth = monthlySavings > 0 && customerMigrationCost > 0

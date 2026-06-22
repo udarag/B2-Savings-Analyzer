@@ -72,14 +72,14 @@ export function ParseReview({ parsed }: ParseReviewProps) {
             const data = categorySums.get(cat);
             if (!data) return null;
             return (
-              <div key={cat} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${CATEGORY_COLORS[cat]}`}>
+              <div key={cat} className="flex items-center justify-between gap-2 p-3 rounded-lg bg-gray-50">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${CATEGORY_COLORS[cat]}`}>
                     {CATEGORY_LABELS[cat]}
                   </span>
-                  <span className="text-sm text-gray-500">{data.count} items</span>
+                  <span className="text-sm text-gray-500 shrink-0">{data.count} items</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-900">{formatCurrency(data.total)}</span>
+                <span className="text-sm font-semibold text-gray-900 shrink-0">{formatCurrency(data.total)}</span>
               </div>
             );
           })}
@@ -102,7 +102,7 @@ export function ParseReview({ parsed }: ParseReviewProps) {
             <h4 className="text-sm font-medium text-gray-700 mb-2">
               Linked Accounts ({parsed.accounts.length})
             </h4>
-            <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
               {parsed.accounts.slice(0, 10).map((acct) => (
                 <div key={acct.accountId} className="flex justify-between py-1">
                   <span className="text-gray-600 truncate mr-2">{acct.accountName}</span>

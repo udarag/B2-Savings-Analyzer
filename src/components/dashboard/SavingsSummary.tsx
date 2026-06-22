@@ -11,7 +11,7 @@ export function SavingsSummary({ result }: SavingsSummaryProps) {
   const positive = result.monthlySavings > 0;
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       <div className={`rounded-lg p-5 border-l-4 ${positive ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-400'}`}>
         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Monthly Savings</p>
         <p className={`text-2xl font-bold mt-1 ${positive ? 'text-green-700' : 'text-red-600'}`}>
@@ -44,7 +44,7 @@ export function SavingsSummary({ result }: SavingsSummaryProps) {
           {result.udmEnabled
             ? 'Covered by Backblaze UDM'
             : result.breakEvenMonth
-              ? `Break-even: month ${result.breakEvenMonth}`
+              ? `Break-even: Month ${result.breakEvenMonth}`
               : positive ? 'Immediate savings' : 'No break-even within term'}
         </p>
       </div>

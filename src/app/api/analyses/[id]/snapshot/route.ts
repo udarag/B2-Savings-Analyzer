@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid';
 import { saveReportSnapshot, listReportSnapshots } from '@/lib/storage/storage';
 import { requireUser } from '@/lib/auth/session';
 import type { ReportSnapshot } from '@/types/model';
+import b2Pricing from '@/lib/pricing/b2.json';
 
 export async function POST(
   req: Request,
@@ -22,7 +23,7 @@ export async function POST(
     savingsPercent: body.savingsPercent ?? 0,
     totalStorageGb: body.totalStorageGb ?? 0,
     migratedTierCount: body.migratedTierCount ?? 0,
-    b2PricePerTb: body.b2PricePerTb ?? 6.95,
+    b2PricePerTb: body.b2PricePerTb ?? b2Pricing.storage.perTbMonth,
     termMonths: body.termMonths ?? 36,
     udmEnabled: body.udmEnabled ?? false,
   };

@@ -20,6 +20,7 @@ import { DealSizing } from '@/components/dashboard/DealSizing';
 import { TransactionAnalysis } from '@/components/dashboard/TransactionAnalysis';
 import { FileUpload } from '@/components/upload/FileUpload';
 import { InlineEditText } from '@/components/shared/InlineEditText';
+import b2Pricing from '@/lib/pricing/b2.json';
 
 interface AnalysisData {
   meta: Analysis;
@@ -59,7 +60,7 @@ export default function AnalysisDashboard() {
     dataGrowthPeriod: 'yearly',
     udmEnabled: false,
   });
-  const [b2PricePerTb, setB2PricePerTb] = useState(6.95);
+  const [b2PricePerTb, setB2PricePerTb] = useState(b2Pricing.storage.perTbMonth);
   const [termMonths, setTermMonths] = useState(36);
   const [growthRate, setGrowthRate] = useState(10);
 
@@ -189,7 +190,7 @@ export default function AnalysisDashboard() {
 
   if (error || !data) {
     return (
-      <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="max-w-[1600px] mx-auto px-6 py-12">
         <div className="bg-red-50 rounded-lg p-6">
           <p className="text-red-800">{error || 'Something went wrong'}</p>
           <a href="/" className="text-sm text-red-600 underline mt-2 inline-block">Back to home</a>
@@ -213,11 +214,11 @@ export default function AnalysisDashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+      <div className="mb-4">
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
             <InlineEditText
               value={data.meta.prospectName}
               onSave={(name) => patchMeta({ prospectName: name } as Partial<Analysis>)}
@@ -225,81 +226,97 @@ export default function AnalysisDashboard() {
               maxLength={100}
             />
           </h1>
-          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Source:</span>
-            <select
-              value={data.meta.provider}
-              onChange={(e) => patchMeta({ provider: e.target.value as Provider } as Partial<Analysis>)}
-              className="text-sm font-semibold bg-white border border-gray-300 rounded-md px-2 py-1 pr-7 cursor-pointer focus:ring-2 focus:ring-bb-red focus:border-transparent"
-            >
-              <option value="aws">Amazon Web Services (AWS)</option>
-              <option value="gcp">Google Cloud Platform (GCP)</option>
-              <option value="azure">Microsoft Azure</option>
-              <option value="r2">Cloudflare R2</option>
-            </select>
-            <span className="text-xs text-gray-400">|</span>
-            <span className="text-sm text-gray-600">{formatBillType(data.meta.billType)}</span>
-            {data.meta.billingPeriod && (
-              <>
-                <span className="text-xs text-gray-400">|</span>
-                <span className="text-sm text-gray-600">{data.meta.billingPeriod}</span>
-              </>
-            )}
-            {data.meta.detectionSignals && data.meta.detectionSignals.length > 0 && (
-              <span className="relative group">
-                <span className="text-xs text-gray-400 cursor-help underline decoration-dotted">
-                  Auto-detected
-                </span>
-                <span className="absolute left-0 top-full mt-1 z-10 hidden group-hover:block w-80 bg-bb-navy text-white text-xs rounded-lg p-3 shadow-lg">
-                  <span className="font-semibold block mb-1">Detection signals:</span>
-                  {data.meta.detectionSignals.map((s, i) => (
-                    <span key={i} className="block py-0.5">• {s}</span>
-                  ))}
-                </span>
-              </span>
-            )}
-          </div>
-          {/* Notes */}
-          <div className="mt-2">
-            <InlineEditText
-              value={data.meta.notes || ''}
-              onSave={(notes) => patchMeta({ notes } as Partial<Analysis>)}
-              placeholder="+ Add notes"
-              className="text-sm text-gray-500"
-              multiline
-              maxLength={500}
-            />
-          </div>
+          {saving && <span className="text-xs text-gray-400 shrink-0">Saving...</span>}
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          {saving && <span className="text-xs text-gray-400">Saving...</span>}
+        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Source:</span>
+          <select
+            value={data.meta.provider}
+            onChange={(e) => patchMeta({ provider: e.target.value as Provider } as Partial<Analysis>)}
+            className="text-sm font-semibold bg-white border border-gray-300 rounded-md px-2 py-1 pr-7 cursor-pointer focus:ring-2 focus:ring-bb-red focus:border-transparent"
+          >
+            <option value="aws">Amazon Web Services (AWS)</option>
+            <option value="gcp">Google Cloud Platform (GCP)</option>
+            <option value="azure">Microsoft Azure</option>
+            <option value="r2">Cloudflare R2</option>
+          </select>
+          <span className="text-xs text-gray-400">|</span>
+          <span className="text-sm text-gray-600">{formatBillType(data.meta.billType)}</span>
+          {data.meta.billingPeriod && (
+            <>
+              <span className="text-xs text-gray-400">|</span>
+              <span className="text-sm text-gray-600">{data.meta.billingPeriod}</span>
+            </>
+          )}
+          {data.meta.detectionSignals && data.meta.detectionSignals.length > 0 && (
+            <span className="relative group">
+              <span className="text-xs text-gray-400 cursor-help underline decoration-dotted">
+                Auto-detected
+              </span>
+              <span className="absolute left-0 top-full mt-1 z-10 hidden group-hover:block w-80 bg-bb-navy text-white text-xs rounded-lg p-3 shadow-lg">
+                <span className="font-semibold block mb-1">Detection signals:</span>
+                {data.meta.detectionSignals.map((s, i) => (
+                  <span key={i} className="block py-0.5">• {s}</span>
+                ))}
+              </span>
+            </span>
+          )}
+        </div>
+        {/* Notes */}
+        <div className="mt-2">
+          <InlineEditText
+            value={data.meta.notes || ''}
+            onSave={(notes) => patchMeta({ notes } as Partial<Analysis>)}
+            placeholder="+ Add notes"
+            className="text-sm text-gray-500"
+            multiline
+            maxLength={500}
+          />
+        </div>
+        {/* Actions */}
+        <div className="flex items-center gap-1.5 mt-3">
           <button
             onClick={handleCopyLink}
-            className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 rounded-md hover:bg-gray-100 transition-colors"
           >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m9.86-2.54a4.5 4.5 0 0 0-1.242-7.244l-4.5-4.5a4.5 4.5 0 0 0-6.364 6.364L5.25 9.879" /></svg>
             {linkCopied ? 'Copied!' : 'Copy Link'}
           </button>
           <button
             onClick={() => setShowReplaceConfirm(true)}
-            className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 rounded-md hover:bg-gray-100 transition-colors"
           >
-            Replace Bill
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12-3-3m0 0-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>
+            Replace
           </button>
+          <div className="w-px h-4 bg-gray-200 mx-1" />
           <a
             href={`/analyses/${id}/report`}
             target="_blank"
-            className="px-4 py-2 bg-bb-red text-white text-sm font-medium rounded-lg hover:bg-bb-red-dark"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-bb-red text-white rounded-md hover:bg-bb-red-dark transition-colors"
           >
-            View Report
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+            Report
           </a>
           <a
             href={`/api/analyses/${id}/pdf`}
-            className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 rounded-md hover:bg-gray-100 transition-colors"
           >
-            Download PDF
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+            PDF
           </a>
         </div>
       </div>
+
+      {data.meta.provider !== 'aws' && (
+        <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+          <span className="mt-0.5 shrink-0 rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold uppercase text-white leading-none">Beta</span>
+          <p className="text-sm text-amber-800">
+            Support for {data.meta.provider === 'gcp' ? 'GCP' : data.meta.provider === 'azure' ? 'Azure' : 'Cloudflare R2'} bill
+            parsing is in beta. Please work with your SE to verify the numbers before sharing with the customer so we can improve analysis for this provider.
+          </p>
+        </div>
+      )}
 
       {/* Replace bill confirmation modal */}
       {showReplaceConfirm && (
@@ -352,9 +369,9 @@ export default function AnalysisDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         {/* Main content */}
-        <div className="lg:col-span-3 space-y-6">
+        <div className="min-w-0 space-y-6">
           {costModel && <SavingsSummary result={costModel} />}
           <ParseReview parsed={data.parsed} />
           <TierInventory tiers={tiers} onToggle={handleToggleTier} accountBreakdowns={data.parsed.accountServiceBreakdowns} />

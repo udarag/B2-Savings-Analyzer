@@ -1,8 +1,9 @@
 'use client';
 
 import { formatCurrency } from '../shared/FormatCurrency';
+import b2Pricing from '@/lib/pricing/b2.json';
 
-const B2_LIST_PRICE_PER_TB = 6.95;
+const B2_LIST_PRICE_PER_TB = b2Pricing.storage.perTbMonth;
 
 interface DealSizingProps {
   b2PricePerTb: number;
@@ -99,11 +100,11 @@ export function DealSizing({
             return (
               <div className="mt-2 bg-bb-red-light rounded p-2.5 space-y-2">
                 <div className="flex justify-between text-xs">
-                  <span className="text-bb-red-dark">B2 UDM Cost (at $0.03/GB)</span>
+                  <span className="text-bb-red-dark">B2 UDM Cost (at ${b2Pricing.udm.costPerGb}/GB)</span>
                   <span className="font-semibold text-bb-navy">{formatCurrency(udmCostToBackblaze)}</span>
                 </div>
                 <p className="text-xs text-gray-500">
-                  {(totalStorageGb / 1000).toFixed(1)} TB × $0.03/GB — one-time cost to Backblaze
+                  {(totalStorageGb / 1000).toFixed(1)} TB × ${b2Pricing.udm.costPerGb}/GB — one-time cost to Backblaze
                 </p>
                 <div className="flex justify-between text-xs border-t border-red-200 pt-2">
                   <span className="text-bb-red-dark">B2 UDM Break-even</span>

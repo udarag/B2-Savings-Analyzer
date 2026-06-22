@@ -1,5 +1,5 @@
 {
-  "lastVerified": "2026-06-17",
+  "lastVerified": "2026-06-21",
   "provider": "b2",
   "storage": {
     "perTbMonth": 6.95,
@@ -10,19 +10,45 @@
     "overagePerGb": 0.01,
     "partnerNetworkFree": true,
     "partners": [
-      "Cloudflare", "Fastly", "bunny.net", "CacheFly",
-      "CoreWeave", "Equinix Metal", "Vultr", "phoenixNAP"
+      "Cloudflare",
+      "Fastly",
+      "bunny.net",
+      "CacheFly",
+      "CoreWeave",
+      "Equinix Metal",
+      "Vultr",
+      "phoenixNAP"
     ]
   },
   "transactions": {
-    "classA": { "description": "Uploads, deletes", "pricePerCall": 0, "note": "Free" },
-    "classB": { "description": "Downloads, get info", "pricePerCall": 0, "note": "Free" },
-    "classC": { "description": "List, copy, buckets", "pricePerCall": 0, "note": "Free" },
-    "classD": { "description": "Event notifications", "pricePer10k": 0.004, "freeDailyLimit": 2500 }
+    "classA": {
+      "description": "Uploads, deletes",
+      "pricePerCall": 0,
+      "note": "Free"
+    },
+    "classB": {
+      "description": "Downloads, get info",
+      "pricePerCall": 0,
+      "note": "Free"
+    },
+    "classC": {
+      "description": "List, copy, buckets",
+      "pricePerCall": 0,
+      "note": "Free"
+    },
+    "classD": {
+      "description": "Event notifications",
+      "pricePer10k": 0.004,
+      "freeDailyLimit": 2500
+    }
   },
   "reserve": {
-    "perTbMonth": 6.50,
+    "perTbMonth": 6.5,
     "note": "250TB annual commitment, ~$19,500/year"
+  },
+  "udm": {
+    "costPerGb": 0.03,
+    "note": "Universal Data Migration — Backblaze covers migration egress at negotiated hyperscaler rate"
   },
   "overdrive": {
     "startsAtPerTbMonth": 15,
