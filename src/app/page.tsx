@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import type { AnalysisSummary } from './api/analyses/route';
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -118,7 +119,7 @@ export default function HomePage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Opportunities</h1>
-          <p className="text-gray-500 mt-1">Upload a cloud bill to model B2 savings</p>
+          <p className="text-gray-500 mt-1">Upload a Cloud Bill to Model B2 Savings</p>
         </div>
       </div>
 
@@ -130,7 +131,7 @@ export default function HomePage() {
             </svg>
             <input
               type="text"
-              placeholder="Search prospects..."
+              placeholder="Search Prospects..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-bb-red focus:border-transparent"
@@ -154,20 +155,20 @@ export default function HomePage() {
           <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
           </svg>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No opportunities yet</h3>
-          <p className="text-gray-500 mb-6">Upload a customer&apos;s cloud bill to get started</p>
-          <a
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Opportunities Yet</h3>
+          <p className="text-gray-500 mb-6">Upload a Customer&apos;s Cloud Bill to Get Started</p>
+          <Link
             href="/analyses/new"
             className="inline-flex items-center px-4 py-2 bg-bb-red text-white text-sm font-medium rounded-lg hover:bg-bb-red-dark"
           >
             New Analysis
-          </a>
+          </Link>
         </div>
       ) : (
         <div className="space-y-3">
           {filteredAnalyses.length === 0 && searchQuery && (
             <div className="text-center py-8 text-gray-500">
-              No opportunities matching &ldquo;{searchQuery}&rdquo;
+              No Opportunities Matching &ldquo;{searchQuery}&rdquo;
             </div>
           )}
           {filteredAnalyses.map((a) => {
@@ -215,14 +216,14 @@ export default function HomePage() {
 
                       {!a.latestSnapshot && a.hasBill && (
                         <div className="shrink-0 text-right">
-                          <p className="text-sm text-gray-400 italic">Bill uploaded</p>
-                          <p className="text-xs text-gray-400">No report yet</p>
+                          <p className="text-sm text-gray-400 italic">Bill Uploaded</p>
+                          <p className="text-xs text-gray-400">No Report Yet</p>
                         </div>
                       )}
 
                       {!a.hasBill && (
                         <div className="shrink-0 text-right">
-                          <p className="text-sm text-gray-400 italic">Awaiting bill</p>
+                          <p className="text-sm text-gray-400 italic">Awaiting Bill</p>
                         </div>
                       )}
                     </div>
@@ -237,7 +238,7 @@ export default function HomePage() {
                       }}
                       disabled={duplicating === a.id}
                       className="p-2 text-gray-300 hover:text-bb-red rounded-lg hover:bg-bb-red-light transition-colors disabled:opacity-50"
-                      title="Duplicate opportunity"
+                      title="Duplicate Opportunity"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
@@ -249,7 +250,7 @@ export default function HomePage() {
                         setDeleteTarget(a.id);
                       }}
                       className="p-2 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
-                      title="Delete opportunity"
+                      title="Delete Opportunity"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
@@ -267,7 +268,7 @@ export default function HomePage() {
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete opportunity?</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Opportunity?</h3>
             <p className="text-sm text-gray-600 mb-1">
               This will permanently delete <span className="font-medium">{analyses.find((a) => a.id === deleteTarget)?.prospectName}</span> and all associated data including uploaded bills, snapshots, and reports.
             </p>

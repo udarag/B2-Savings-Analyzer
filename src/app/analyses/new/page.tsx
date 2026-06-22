@@ -40,7 +40,7 @@ export default function NewAnalysisPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
-      <h1 className="text-2xl font-bold text-gray-900 mb-8">New analysis</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-8">New Analysis</h1>
 
       {!analysisId ? (
         <div className="bg-white rounded-lg shadow p-6 space-y-4">
@@ -64,7 +64,7 @@ export default function NewAnalysisPage() {
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any context about this deal..."
+              placeholder="Any Context About This Deal..."
               rows={3}
               className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-bb-red focus:border-transparent"
             />

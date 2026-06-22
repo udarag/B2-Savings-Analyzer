@@ -9,7 +9,9 @@ import {
 } from '@/lib/storage/storage';
 import { requireUser } from '@/lib/auth/session';
 import { buildTierInventory } from '@/lib/engine/tier-inventory';
+import { applyTierSelectionConfig } from '@/lib/engine/tier-selection';
 import { computeCostModel } from '@/lib/engine/cost-model';
+import { normalizeEgressConfig } from '@/types/analysis';
 import type { ReportSnapshot } from '@/types/model';
 
 export async function GET(
@@ -33,14 +35,13 @@ export async function GET(
   // Save a snapshot of the current analysis state
   if (parsed && modelConfig) {
     try {
-      const tiers = buildTierInventory(parsed.lineItems, modelConfig.b2PricePerTb);
-      for (const tier of tiers) {
-        if (tier.id in modelConfig.tierToggles) {
-          tier.migrateToB2 = modelConfig.tierToggles[tier.id];
-        }
-      }
+      const tiers = applyTierSelectionConfig(
+        buildTierInventory(parsed.lineItems, modelConfig.b2PricePerTb),
+        modelConfig,
+      );
+      const egressConfig = normalizeEgressConfig(modelConfig.egressConfig);
       const costModel = computeCostModel(
-        parsed.lineItems, tiers, modelConfig.egressConfig, modelConfig.b2PricePerTb,
+        parsed.lineItems, tiers, egressConfig, modelConfig.b2PricePerTb,
       );
       const migratedTiers = tiers.filter((t) => t.migrateToB2);
 
@@ -56,7 +57,10 @@ export async function GET(
         migratedTierCount: migratedTiers.length,
         b2PricePerTb: modelConfig.b2PricePerTb,
         termMonths: modelConfig.projectionTermMonths,
-        udmEnabled: modelConfig.egressConfig.udmEnabled,
+        growthMode: egressConfig.dataGrowthMode,
+        growthRatePercent: egressConfig.dataGrowthRatePercent,
+        growthFixedTbPerMonth: egressConfig.dataGrowthFixedTbPerMonth,
+        udmEnabled: egressConfig.udmEnabled,
       };
       await saveReportSnapshot(userEmail, id, snapshot);
     } catch {

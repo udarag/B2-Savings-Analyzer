@@ -11,7 +11,7 @@ export function EgressQuestionnaire({ config, onChange }: EgressQuestionnairePro
   return (
     <div className="bg-white rounded-lg shadow">
       <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Egress configuration</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Egress Configuration</h3>
         <p className="text-sm text-gray-500 mt-1">
           How the customer accesses their data affects egress costs.
         </p>
@@ -37,7 +37,7 @@ export function EgressQuestionnaire({ config, onChange }: EgressQuestionnairePro
                 className="h-4 w-4 text-bb-red accent-bb-red"
               />
               <div>
-                <p className="text-sm font-medium">No hyperscaler compute in the pipeline</p>
+                <p className="text-sm font-medium">No Hyperscaler Compute in the Pipeline</p>
                 <p className="text-xs text-gray-500">Data goes directly to B2 — no inter-cloud egress</p>
               </div>
             </label>
@@ -54,7 +54,7 @@ export function EgressQuestionnaire({ config, onChange }: EgressQuestionnairePro
                 className="h-4 w-4 text-bb-red accent-bb-red"
               />
               <div>
-                <p className="text-sm font-medium">Compute stays in hyperscaler</p>
+                <p className="text-sm font-medium">Compute Stays in Hyperscaler</p>
                 <p className="text-xs text-gray-500">Data egresses from hyperscaler to B2 — new egress cost applies</p>
               </div>
             </label>
@@ -72,7 +72,7 @@ export function EgressQuestionnaire({ config, onChange }: EgressQuestionnairePro
                 className="h-4 w-4 text-bb-red accent-bb-red"
               />
               <div>
-                <p className="text-sm font-medium">Compute moving to B2 partner (CoreWeave, Vultr, etc.)</p>
+                <p className="text-sm font-medium">Compute Moving to B2 Partner (CoreWeave, Vultr, etc.)</p>
                 <p className="text-xs text-gray-500">Free egress between B2 and partner compute</p>
               </div>
             </label>
@@ -83,7 +83,7 @@ export function EgressQuestionnaire({ config, onChange }: EgressQuestionnairePro
         {config.computeStaysInHyperscaler && !config.computeMovingToPartner && (
           <div>
             <label className="block font-medium text-gray-900 mb-2">
-              Estimated GB/month transferred from hyperscaler to B2
+              Estimated GB/Month Transferred from Hyperscaler to B2
             </label>
             <input
               type="number"
@@ -102,7 +102,7 @@ export function EgressQuestionnaire({ config, onChange }: EgressQuestionnairePro
         {/* Q3: End-user egress */}
         <div>
           <label className="block font-medium text-gray-900 mb-2">
-            Estimated GB/month served to end users or external consumers
+            Estimated GB/Month Served to End Users or External Consumers
           </label>
           <input
             type="number"
@@ -131,7 +131,7 @@ export function EgressQuestionnaire({ config, onChange }: EgressQuestionnairePro
             />
             <div>
               <p className="text-sm font-medium text-gray-900">
-                Uses or plans to use a B2 CDN partner (Cloudflare, Fastly, bunny.net)
+                Uses or Plans to Use a B2 CDN Partner (Cloudflare, Fastly, bunny.net)
               </p>
               <p className="text-xs text-gray-500">
                 B2 egress to CDN partners is free

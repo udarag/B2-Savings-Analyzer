@@ -9,7 +9,7 @@ import {
 import { requireUser } from '@/lib/auth/session';
 import { detectAndParse } from '@/lib/parsers/detect';
 import { buildTierInventory } from '@/lib/engine/tier-inventory';
-import { DEFAULT_MODEL_CONFIG } from '@/types/analysis';
+import { DEFAULT_MODEL_CONFIG, TIER_SELECTION_VERSION } from '@/types/analysis';
 
 export async function POST(
   req: Request,
@@ -58,6 +58,7 @@ export async function POST(
   const modelConfig = {
     ...DEFAULT_MODEL_CONFIG,
     tierToggles,
+    tierSelectionVersion: TIER_SELECTION_VERSION,
   };
   await saveModelConfig(userEmail, id, modelConfig);
 

@@ -1,9 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginShell />}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
@@ -41,7 +49,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <img src="/backblaze-webclip.png" alt="Backblaze" className="w-14 h-14 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900">Savings Analyzer</h1>
-          <p className="text-gray-500 mt-1">Sign in with your Backblaze email</p>
+          <p className="text-gray-500 mt-1">Sign In with Your Backblaze Email</p>
         </div>
 
         {urlError === 'invalid-token' && (
@@ -57,7 +65,7 @@ export default function LoginPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
               </svg>
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Check your email</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Check Your Email</h2>
             <p className="text-sm text-gray-600 mb-4">
               We sent a sign-in link to <span className="font-medium">{email}</span>
             </p>
@@ -65,13 +73,13 @@ export default function LoginPage() {
               onClick={() => { setStatus('idle'); setEmail(''); }}
               className="text-sm text-bb-red hover:text-bb-red-dark"
             >
-              Use a different email
+              Use a Different Email
             </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border p-6">
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
-              Email address
+              Email Address
             </label>
             <input
               id="email"
@@ -92,10 +100,22 @@ export default function LoginPage() {
               disabled={status === 'sending'}
               className="w-full mt-4 px-4 py-2.5 bg-bb-red text-white text-sm font-medium rounded-lg hover:bg-bb-red-dark disabled:opacity-50 transition-colors"
             >
-              {status === 'sending' ? 'Sending...' : 'Send sign-in link'}
+              {status === 'sending' ? 'Sending...' : 'Send Sign-In Link'}
             </button>
           </form>
         )}
+      </div>
+    </div>
+  );
+}
+
+function LoginShell() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-sm rounded-xl border bg-white p-6 shadow-sm">
+        <div className="mx-auto mb-4 h-14 w-14 rounded bg-gray-100" />
+        <div className="mx-auto mb-3 h-6 w-40 rounded bg-gray-100" />
+        <div className="mx-auto h-4 w-56 rounded bg-gray-100" />
       </div>
     </div>
   );

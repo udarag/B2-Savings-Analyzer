@@ -13,14 +13,14 @@ export function SavingsSummary({ result }: SavingsSummaryProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       <div className={`rounded-lg p-5 border-l-4 ${positive ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-400'}`}>
-        <p className="text-xs font-medium text-gray-500 tracking-wide">Monthly savings</p>
+        <p className="text-xs font-medium text-gray-500 tracking-wide">Monthly Savings</p>
         <p className={`text-2xl font-bold mt-1 ${positive ? 'text-green-700' : 'text-red-600'}`}>
           {formatCurrency(result.monthlySavings)}
         </p>
       </div>
 
       <div className={`rounded-lg p-5 border-l-4 ${positive ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-400'}`}>
-        <p className="text-xs font-medium text-gray-500 tracking-wide">Annual savings</p>
+        <p className="text-xs font-medium text-gray-500 tracking-wide">Annual Savings</p>
         <p className={`text-2xl font-bold mt-1 ${positive ? 'text-green-700' : 'text-red-600'}`}>
           {formatCurrency(result.annualSavings)}
         </p>
@@ -36,16 +36,16 @@ export function SavingsSummary({ result }: SavingsSummaryProps) {
       <div className={`rounded-lg p-5 border-l-4 ${
         result.udmEnabled ? 'bg-green-50 border-green-500' : 'bg-gray-50 border-gray-300'
       }`}>
-        <p className="text-xs font-medium text-gray-500 tracking-wide">Migration cost</p>
+        <p className="text-xs font-medium text-gray-500 tracking-wide">Migration Cost</p>
         <p className={`text-2xl font-bold mt-1 ${result.udmEnabled ? 'text-green-700' : 'text-gray-900'}`}>
           {result.udmEnabled ? '$0' : formatCurrency(result.migrationCost.egressCost + result.migrationCost.restoreCost)}
         </p>
         <p className="text-xs text-gray-500 mt-1">
           {result.udmEnabled
             ? 'Covered by Backblaze UDM'
-            : result.breakEvenMonth
-              ? `Break-even: Month ${result.breakEvenMonth}`
-              : positive ? 'Immediate savings' : 'No break-even within term'}
+              : result.breakEvenMonth
+              ? `Break-Even: Month ${result.breakEvenMonth}`
+              : positive ? 'Immediate Savings' : 'No Break-Even Within Term'}
         </p>
       </div>
     </div>

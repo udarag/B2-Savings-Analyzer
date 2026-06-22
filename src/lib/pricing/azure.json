@@ -1,2060 +1,161 @@
 {
-  "lastVerified": "2026-06-21",
+  "lastVerified": "2026-06-22",
   "source": "Azure Retail Prices API (prices.azure.com)",
   "provider": "azure",
+  "refresh": {
+    "provider": "azure",
+    "status": "success",
+    "lastAttempt": "2026-06-22",
+    "lastSuccess": "2026-06-22",
+    "message": "Storage pricing refreshed from Azure Retail Prices API."
+  },
   "storage": {
-    "eastus": {
+    "australiacentral": {
       "Hot-LRS": [
         {
-          "maxTb": 50,
-          "perGb": 0.0208
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.019968
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.019136
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0458
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.043968
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.042136
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0589
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.056544
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.054188
-        }
-      ],
-      "Cool-LRS": 0.0152,
-      "Cool-GRS": 0.0334,
-      "Cool-RA-GRS": 0.0425,
-      "Cold-LRS": 0.0036,
-      "Cold-GRS": 0.0081,
-      "Cold-RA-GRS": 0.0101,
-      "Archive-LRS": 0.00099,
-      "Archive-GRS": 0.00299,
-      "Archive-RA-GRS": 0.00299
-    },
-    "eastus2": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0184
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.017664
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.016928
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0368
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.035328
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.033856
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.046
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.04416
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.04232
-        }
-      ],
-      "Cool-LRS": 0.01,
-      "Cool-GRS": 0.02,
-      "Cool-RA-GRS": 0.025,
-      "Cold-LRS": 0.0036,
-      "Cold-GRS": 0.00803,
-      "Cold-RA-GRS": 0.01,
-      "Archive-LRS": 0.002,
-      "Archive-GRS": 0.004,
-      "Archive-RA-GRS": 0.004
-    },
-    "centralus": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0184
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.017664
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.016928
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0368
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.035328
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.033856
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.046
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.04416
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.04232
-        }
-      ],
-      "Cool-LRS": 0.01,
-      "Cool-GRS": 0.02,
-      "Cool-RA-GRS": 0.025,
-      "Cold-LRS": 0.00443,
-      "Cold-GRS": 0.00803,
-      "Cold-RA-GRS": 0.01,
-      "Archive-LRS": 0.002,
-      "Archive-GRS": 0.004,
-      "Archive-RA-GRS": 0.004
-    },
-    "northcentralus": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0208
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.019968
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.019136
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0416
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.039936
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.038272
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.052
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.04992
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.04784
-        }
-      ],
-      "Cool-LRS": 0.0152,
-      "Cool-GRS": 0.0304,
-      "Cool-RA-GRS": 0.038,
-      "Cold-LRS": 0.0036,
-      "Cold-GRS": 0.00792,
-      "Cold-RA-GRS": 0.0099,
-      "Archive-LRS": 0.00099,
-      "Archive-GRS": 0.00339,
-      "Archive-RA-GRS": 0.00339
-    },
-    "southcentralus": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0184
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.017664
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.016928
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0368
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.035328
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.033856
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.046
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.04416
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.04232
-        }
-      ],
-      "Cool-LRS": 0.01,
-      "Cool-GRS": 0.02,
-      "Cool-RA-GRS": 0.025,
-      "Cold-LRS": 0.00432,
-      "Cold-GRS": 0.00792,
-      "Cold-RA-GRS": 0.0099,
-      "Archive-LRS": 0.0024,
-      "Archive-GRS": 0.00339,
-      "Archive-RA-GRS": 0.00339
-    },
-    "westcentralus": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0184
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.017664
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.016928
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0368
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.035328
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.033856
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.046
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.04416
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.04232
-        }
-      ],
-      "Cool-LRS": 0.01,
-      "Cool-GRS": 0.02,
-      "Cool-RA-GRS": 0.025,
-      "Cold-LRS": 0.00432,
-      "Cold-GRS": 0.00792,
-      "Cold-RA-GRS": 0.0099,
-      "Archive-LRS": 0.002,
-      "Archive-GRS": 0.00299,
-      "Archive-RA-GRS": 0.00299
-    },
-    "westus": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0208
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.019968
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.019136
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0458
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.043968
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.042136
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0478
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.045888
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.043976
-        }
-      ],
-      "Cool-LRS": 0.0115,
-      "Cool-GRS": 0.023,
-      "Cool-RA-GRS": 0.0288,
-      "Cold-LRS": 0.0045,
-      "Cold-GRS": 0.0081,
-      "Cold-RA-GRS": 0.0101,
-      "Archive-LRS": 0.002,
-      "Archive-GRS": 0.00299,
-      "Archive-RA-GRS": 0.00299
-    },
-    "westus2": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0184
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.017664
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.016928
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0368
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.035328
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.033856
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.046
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.04416
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.04232
-        }
-      ],
-      "Cool-LRS": 0.01,
-      "Cool-GRS": 0.02,
-      "Cool-RA-GRS": 0.025,
-      "Cold-LRS": 0.0036,
-      "Cold-GRS": 0.00792,
-      "Cold-RA-GRS": 0.0099,
-      "Archive-LRS": 0.00099,
-      "Archive-GRS": 0.00299,
-      "Archive-RA-GRS": 0.00299
-    },
-    "westus3": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0184
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.017664
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.016928
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0368
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.035328
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.033856
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.046
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.04416
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.04232
-        }
-      ],
-      "Cool-LRS": 0.01,
-      "Cool-GRS": 0.02,
-      "Cool-RA-GRS": 0.025,
-      "Cold-LRS": 0.0036,
-      "Cold-GRS": 0.0072,
-      "Cold-RA-GRS": 0.009,
-      "Archive-LRS": 0.00099,
-      "Archive-GRS": 0.00299,
-      "Archive-RA-GRS": 0.00299
-    },
-    "canadacentral": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.02
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0192
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.0184
         }
       ],
       "Hot-GRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.04
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0384
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.0368
         }
       ],
       "Hot-RA-GRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.05
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.048
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.046
-        }
-      ],
-      "Cool-LRS": 0.011,
-      "Cool-GRS": 0.022,
-      "Cool-RA-GRS": 0.0275,
-      "Cold-LRS": 0.0045,
-      "Cold-GRS": 0.009,
-      "Cold-RA-GRS": 0.0113,
-      "Archive-LRS": 0.0018,
-      "Archive-GRS": 0.0042,
-      "Archive-RA-GRS": 0.0042
-    },
-    "canadaeast": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.02
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0192
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0184
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.04
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0384
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0368
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.05
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.048
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.046
-        }
-      ],
-      "Cool-LRS": 0.011,
-      "Cool-GRS": 0.022,
-      "Cool-RA-GRS": 0.0275,
-      "Cold-LRS": 0.0045,
-      "Cold-GRS": 0.009,
-      "Cold-RA-GRS": 0.0113,
-      "Archive-LRS": 0.0024,
-      "Archive-GRS": 0.0042,
-      "Archive-RA-GRS": 0.0042
-    },
-    "brazilsouth": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0326
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.03146
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.03032
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0652
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.06292
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.06064
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0832
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.08029
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.07738
-        }
-      ],
-      "Cool-LRS": 0.0177,
-      "Cool-GRS": 0.0354,
-      "Cool-RA-GRS": 0.0443,
-      "Cold-LRS": 0.00747,
-      "Cold-GRS": 0.0118,
-      "Cold-RA-GRS": 0.0147,
-      "Archive-LRS": 0.0032,
-      "Archive-GRS": 0.0056,
-      "Archive-RA-GRS": 0.0056
-    },
-    "brazilsoutheast": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.04238
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.04069
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.03899
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.07498
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.07198
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.069
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.09373
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.08998
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0862
-        }
-      ],
-      "Cool-LRS": 0.02704,
-      "Cool-GRS": 0.04784,
-      "Cool-RA-GRS": 0.0598,
-      "Cold-LRS": 0.00971,
-      "Cold-GRS": 0.0172,
-      "Cold-RA-GRS": 0.0215
-    },
-    "northeurope": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.022
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.02112
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.02024
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0368
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.035328
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.033856
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.046
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.04416
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.04232
-        }
-      ],
-      "Cool-LRS": 0.01,
-      "Cool-GRS": 0.02,
-      "Cool-RA-GRS": 0.025,
-      "Cold-LRS": 0.0036,
-      "Cold-GRS": 0.0081,
-      "Cold-RA-GRS": 0.0101,
-      "Archive-LRS": 0.00099,
-      "Archive-GRS": 0.00279,
-      "Archive-RA-GRS": 0.00279
-    },
-    "westeurope": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0196
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.018816
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.018032
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0392
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.037632
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.036064
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.049
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.04704
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.04508
-        }
-      ],
-      "Cool-LRS": 0.01,
-      "Cool-GRS": 0.02,
-      "Cool-RA-GRS": 0.025,
-      "Cold-LRS": 0.0045,
-      "Cold-GRS": 0.0081,
-      "Cold-RA-GRS": 0.0101,
-      "Archive-LRS": 0.0018,
-      "Archive-GRS": 0.00279,
-      "Archive-RA-GRS": 0.00279
-    },
-    "uksouth": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0192
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.018432
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.017664
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0384
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.036864
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.035328
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.048
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.04608
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.04416
-        }
-      ],
-      "Cool-LRS": 0.0105,
-      "Cool-GRS": 0.021,
-      "Cool-RA-GRS": 0.02625,
-      "Cold-LRS": 0.0045,
-      "Cold-GRS": 0.00922,
-      "Cold-RA-GRS": 0.0115,
-      "Archive-LRS": 0.0018,
-      "Archive-GRS": 0.0043,
-      "Archive-RA-GRS": 0.0043
-    },
-    "ukwest": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0192
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.018432
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.017664
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0384
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.036864
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.035328
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.048
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.04608
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.04416
-        }
-      ],
-      "Cool-LRS": 0.0105,
-      "Cool-GRS": 0.021,
-      "Cool-RA-GRS": 0.02625,
-      "Cold-LRS": 0.00472,
-      "Cold-GRS": 0.00922,
-      "Cold-RA-GRS": 0.0115,
-      "Archive-LRS": 0.0025,
-      "Archive-GRS": 0.0043,
-      "Archive-RA-GRS": 0.0043
-    },
-    "francecentral": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0192
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.018432
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.017664
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0384
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.036864
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.035328
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.048
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.04608
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.04416
-        }
-      ],
-      "Cool-LRS": 0.0105,
-      "Cool-GRS": 0.021,
-      "Cool-RA-GRS": 0.02625,
-      "Cold-LRS": 0.0045,
-      "Cold-GRS": 0.0104,
-      "Cold-RA-GRS": 0.0129,
-      "Archive-LRS": 0.0018,
-      "Archive-GRS": 0.00484,
-      "Archive-RA-GRS": 0.00484
-    },
-    "francesouth": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.02496
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.023961
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.022963
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.04992
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.047923
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.045926
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0624
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.059904
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.057408
-        }
-      ],
-      "Cool-LRS": 0.01365,
-      "Cool-GRS": 0.0273,
-      "Cool-RA-GRS": 0.034125,
-      "Cold-LRS": 0.00585,
-      "Cold-GRS": 0.0104,
-      "Cold-RA-GRS": 0.0129,
-      "Archive-LRS": 0.00304,
-      "Archive-GRS": 0.00484,
-      "Archive-RA-GRS": 0.00484
-    },
-    "germanywestcentral": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0196
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0188
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.018
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0392
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0376
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0361
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.049
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.047
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0451
-        }
-      ],
-      "Cool-LRS": 0.01,
-      "Cool-GRS": 0.02,
-      "Cool-RA-GRS": 0.025,
-      "Cold-LRS": 0.0045,
-      "Cold-GRS": 0.0081,
-      "Cold-RA-GRS": 0.0101,
-      "Archive-LRS": 0.0018,
-      "Archive-GRS": 0.00279,
-      "Archive-RA-GRS": 0.00279
-    },
-    "germanynorth": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0196
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0188
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.018
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0392
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0376
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0361
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.049
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.047
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0451
-        }
-      ],
-      "Cool-LRS": 0.01,
-      "Cool-GRS": 0.02,
-      "Cool-RA-GRS": 0.025,
-      "Cold-LRS": 0.0045,
-      "Cold-GRS": 0.0081,
-      "Cold-RA-GRS": 0.0101,
-      "Archive-LRS": 0.0018,
-      "Archive-GRS": 0.00279,
-      "Archive-RA-GRS": 0.00279
-    },
-    "swedencentral": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0184
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.017664
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.016928
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0392
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.037632
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.036064
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.049
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.04704
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.04508
-        }
-      ],
-      "Cool-LRS": 0.01,
-      "Cool-GRS": 0.02,
-      "Cool-RA-GRS": 0.025,
-      "Cold-LRS": 0.0036,
-      "Cold-GRS": 0.0081,
-      "Cold-RA-GRS": 0.0101,
-      "Archive-LRS": 0.00099,
-      "Archive-GRS": 0.002277,
-      "Archive-RA-GRS": 0.00279
-    },
-    "swedensouth": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0184
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.017664
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.016928
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0392
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.037632
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.036064
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.049
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.04704
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.04508
-        }
-      ],
-      "Cool-LRS": 0.01,
-      "Cool-GRS": 0.02,
-      "Cool-RA-GRS": 0.025,
-      "Cold-LRS": 0.0036,
-      "Cold-GRS": 0.0081,
-      "Cold-RA-GRS": 0.0101,
-      "Archive-LRS": 0.00099,
-      "Archive-GRS": 0.002277,
-      "Archive-RA-GRS": 0.00279
-    },
-    "norwayeast": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0216
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0207
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0198
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0496
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0476
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0456
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.062
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0595
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.057
-        }
-      ],
-      "Cool-LRS": 0.011,
-      "Cool-GRS": 0.0253,
-      "Cool-RA-GRS": 0.0316,
-      "Cold-LRS": 0.00515,
-      "Cold-GRS": 0.0118,
-      "Cold-RA-GRS": 0.0148,
-      "Archive-LRS": 0.001416,
-      "Archive-GRS": 0.003256,
-      "Archive-RA-GRS": 0.003256
-    },
-    "norwaywest": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.028
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0269
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0258
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0496
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0476
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0456
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.062
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0595
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.057
-        }
-      ],
-      "Cool-LRS": 0.0143,
-      "Cool-GRS": 0.0253,
-      "Cool-RA-GRS": 0.0316,
-      "Cold-LRS": 0.00669,
-      "Cold-GRS": 0.0118,
-      "Cold-RA-GRS": 0.0148,
-      "Archive-LRS": 0.00184,
-      "Archive-GRS": 0.004233,
-      "Archive-RA-GRS": 0.004233
-    },
-    "switzerlandnorth": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.02156
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.020734
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.019817
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.04312
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.041469
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.039725
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0539
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.051792
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.049592
-        }
-      ],
-      "Cool-LRS": 0.011,
-      "Cool-GRS": 0.022,
-      "Cool-RA-GRS": 0.0275,
-      "Cold-LRS": 0.00515,
-      "Cold-GRS": 0.0118,
-      "Cold-RA-GRS": 0.0148,
-      "Archive-LRS": 0.00198,
-      "Archive-GRS": 0.003069,
-      "Archive-RA-GRS": 0.003069
-    },
-    "switzerlandwest": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.028074
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.026973
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.025779
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.056148
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.053854
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.051654
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.070033
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.067284
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.064444
-        }
-      ],
-      "Cool-LRS": 0.0143,
-      "Cool-GRS": 0.0286,
-      "Cool-RA-GRS": 0.03575,
-      "Cold-LRS": 0.00669,
-      "Cold-GRS": 0.0118,
-      "Cold-RA-GRS": 0.0148,
-      "Archive-LRS": 0.00351,
-      "Archive-GRS": 0.00702,
-      "Archive-RA-GRS": 0.00878
-    },
-    "polandcentral": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0196
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.018816
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.018032
-        }
-      ],
-      "Cool-LRS": 0.01,
-      "Cold-LRS": 0.0045
-    },
-    "italynorth": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0192
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.018432
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.017664
-        }
-      ],
-      "Cool-LRS": 0.01,
-      "Cold-LRS": 0.0045,
-      "Archive-LRS": 0.0018
-    },
-    "spaincentral": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0184
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.017664
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.016928
-        }
-      ],
-      "Cool-LRS": 0.01,
-      "Cold-LRS": 0.0045,
-      "Archive-LRS": 0.0018
-    },
-    "austriaeast": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0196
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0188
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.018
-        }
-      ],
-      "Cool-LRS": 0.01,
-      "Cold-LRS": 0.0045
-    },
-    "belgiumcentral": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0196
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0188
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.018
-        }
-      ],
-      "Cool-LRS": 0.01,
-      "Cold-LRS": 0.0045
-    },
-    "denmarkeast": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0196
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0188
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.018
-        }
-      ],
-      "Cool-LRS": 0.01,
-      "Cold-LRS": 0.0045
-    },
-    "eastasia": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.02304
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.02208
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.048
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.04608
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.04416
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.06
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0576
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0552
-        }
-      ],
-      "Cool-LRS": 0.011,
-      "Cool-GRS": 0.022,
-      "Cool-RA-GRS": 0.0275,
-      "Cold-LRS": 0.0045,
-      "Cold-GRS": 0.009,
-      "Cold-RA-GRS": 0.0113,
-      "Archive-LRS": 0.002,
-      "Archive-GRS": 0.004,
-      "Archive-RA-GRS": 0.004
-    },
-    "southeastasia": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.02
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0192
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0184
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.04
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0384
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0368
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.05
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.048
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.046
-        }
-      ],
-      "Cool-LRS": 0.011,
-      "Cool-GRS": 0.022,
-      "Cool-RA-GRS": 0.0275,
-      "Cold-LRS": 0.0045,
-      "Cold-GRS": 0.009,
-      "Cold-RA-GRS": 0.0113,
-      "Archive-LRS": 0.002,
-      "Archive-GRS": 0.004,
-      "Archive-RA-GRS": 0.004
-    },
-    "japaneast": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.02
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0192
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0184
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.04
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0384
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0368
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.05
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.048
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.046
-        }
-      ],
-      "Cool-LRS": 0.011,
-      "Cool-GRS": 0.022,
-      "Cool-RA-GRS": 0.0275,
-      "Cold-LRS": 0.0045,
-      "Cold-GRS": 0.009,
-      "Cold-RA-GRS": 0.0113,
-      "Archive-LRS": 0.002,
-      "Archive-GRS": 0.004,
-      "Archive-RA-GRS": 0.004
-    },
-    "japanwest": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.02
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0192
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0184
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.04
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0384
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0368
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.05
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.048
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.046
-        }
-      ],
-      "Cool-LRS": 0.011,
-      "Cool-GRS": 0.022,
-      "Cool-RA-GRS": 0.0275,
-      "Cold-LRS": 0.0045,
-      "Cold-GRS": 0.009,
-      "Cold-RA-GRS": 0.0113,
-      "Archive-LRS": 0.002,
-      "Archive-GRS": 0.004,
-      "Archive-RA-GRS": 0.004
-    },
-    "koreacentral": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.02
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0192
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0184
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.04
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0384
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0368
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.05
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.048
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.046
-        }
-      ],
-      "Cool-LRS": 0.011,
-      "Cool-GRS": 0.0254,
-      "Cool-RA-GRS": 0.0318,
-      "Cold-LRS": 0.0045,
-      "Cold-GRS": 0.009,
-      "Cold-RA-GRS": 0.0113,
-      "Archive-LRS": 0.002,
-      "Archive-GRS": 0.0047,
-      "Archive-RA-GRS": 0.0047
-    },
-    "koreasouth": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.02
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0192
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0184
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.04
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0384
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0368
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.05
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.048
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.046
-        }
-      ],
-      "Cool-LRS": 0.0144,
-      "Cool-GRS": 0.0288,
-      "Cool-RA-GRS": 0.036,
-      "Cold-LRS": 0.0045,
-      "Cold-GRS": 0.009,
-      "Cold-RA-GRS": 0.0113,
-      "Archive-LRS": 0.0027,
-      "Archive-GRS": 0.0047,
-      "Archive-RA-GRS": 0.0047
-    },
-    "centralindia": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.02
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0192
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0184
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.04
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0384
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0368
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.05
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.048
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.046
-        }
-      ],
-      "Cool-LRS": 0.011,
-      "Cool-GRS": 0.026,
-      "Cool-RA-GRS": 0.0325,
-      "Cold-LRS": 0.0045,
-      "Cold-GRS": 0.00994,
-      "Cold-RA-GRS": 0.0124,
-      "Archive-LRS": 0.002,
-      "Archive-GRS": 0.005,
-      "Archive-RA-GRS": 0.005
-    },
-    "southindia": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0238
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.022848
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.021896
-        }
-      ],
-      "Hot-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0475
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.045696
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.043792
-        }
-      ],
-      "Hot-RA-GRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0595
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.05712
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.05474
         }
       ],
       "Cool-LRS": 0.015,
       "Cool-GRS": 0.03,
       "Cool-RA-GRS": 0.0375,
-      "Cold-LRS": 0.00544,
-      "Cold-GRS": 0.00994,
-      "Cold-RA-GRS": 0.0124,
-      "Archive-LRS": 0.003,
-      "Archive-GRS": 0.005,
-      "Archive-RA-GRS": 0.005
+      "Cold-LRS": 0.0045,
+      "Cold-GRS": 0.009,
+      "Cold-RA-GRS": 0.0113,
+      "Archive-LRS": 0.00326,
+      "Archive-GRS": 0.00826,
+      "Archive-RA-GRS": 0.00826
     },
-    "indiasouthcentral": {
+    "australiacentral2": {
       "Hot-LRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.02
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0192
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.0184
         }
       ],
       "Hot-GRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.04
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0384
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.0368
         }
       ],
       "Hot-RA-GRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.05
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.048
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.046
         }
       ],
-      "Cool-LRS": 0.011,
-      "Cool-GRS": 0.022,
-      "Cool-RA-GRS": 0.0275,
+      "Cool-LRS": 0.015,
+      "Cool-GRS": 0.03,
+      "Cool-RA-GRS": 0.0375,
       "Cold-LRS": 0.0045,
       "Cold-GRS": 0.009,
-      "Cold-RA-GRS": 0.01125
+      "Cold-RA-GRS": 0.0113,
+      "Archive-LRS": 0.005,
+      "Archive-GRS": 0.00826,
+      "Archive-RA-GRS": 0.00826
     },
     "australiaeast": {
       "Hot-LRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.02
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0192
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.0184
         }
       ],
       "Hot-GRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.04
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0384
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.0368
         }
       ],
       "Hot-RA-GRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.05
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.048
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.046
         }
       ],
@@ -2071,43 +172,43 @@
     "australiasoutheast": {
       "Hot-LRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.02
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0192
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.0184
         }
       ],
       "Hot-GRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.04
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0384
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.0368
         }
       ],
       "Hot-RA-GRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.05
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.048
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.046
         }
       ],
@@ -2121,86 +222,1484 @@
       "Archive-GRS": 0.0049,
       "Archive-RA-GRS": 0.0049
     },
-    "australiacentral": {
+    "austriaeast": {
       "Hot-LRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
+          "perGb": 0.0196
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0188
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.018
+        }
+      ],
+      "Cool-LRS": 0.01,
+      "Cold-LRS": 0.0045
+    },
+    "belgiumcentral": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0196
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0188
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.018
+        }
+      ],
+      "Cool-LRS": 0.01,
+      "Cold-LRS": 0.0045
+    },
+    "brazilsouth": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0326
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.03146
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.03032
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0652
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.06292
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.06064
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0832
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.08029
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.07738
+        }
+      ],
+      "Cool-LRS": 0.0177,
+      "Cool-GRS": 0.0354,
+      "Cool-RA-GRS": 0.0443,
+      "Cold-LRS": 0.00747,
+      "Cold-GRS": 0.0118,
+      "Cold-RA-GRS": 0.0147,
+      "Archive-LRS": 0.0032,
+      "Archive-GRS": 0.0056,
+      "Archive-RA-GRS": 0.0056
+    },
+    "brazilsoutheast": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.04238
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.04069
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.03899
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.07498
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.07198
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.069
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.09373
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.08998
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0862
+        }
+      ],
+      "Cool-LRS": 0.02704,
+      "Cool-GRS": 0.04784,
+      "Cool-RA-GRS": 0.0598,
+      "Cold-LRS": 0.00971,
+      "Cold-GRS": 0.0172,
+      "Cold-RA-GRS": 0.0215
+    },
+    "canadacentral": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
           "perGb": 0.02
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0192
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.0184
         }
       ],
       "Hot-GRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.04
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0384
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.0368
         }
       ],
       "Hot-RA-GRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.05
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.048
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.046
         }
       ],
-      "Cool-LRS": 0.015,
-      "Cool-GRS": 0.03,
-      "Cool-RA-GRS": 0.0375,
+      "Cool-LRS": 0.011,
+      "Cool-GRS": 0.022,
+      "Cool-RA-GRS": 0.0275,
       "Cold-LRS": 0.0045,
       "Cold-GRS": 0.009,
       "Cold-RA-GRS": 0.0113,
-      "Archive-LRS": 0.00326,
-      "Archive-GRS": 0.00826,
-      "Archive-RA-GRS": 0.00826
+      "Archive-LRS": 0.0018,
+      "Archive-GRS": 0.0042,
+      "Archive-RA-GRS": 0.0042
     },
-    "southafricanorth": {
+    "canadaeast": {
       "Hot-LRS": [
         {
-          "maxTb": 50,
-          "perGb": 0.0219
+          "maxGb": 51200,
+          "perGb": 0.02
         },
         {
-          "maxTb": 500,
-          "perGb": 0.021
+          "maxGb": 512000,
+          "perGb": 0.0192
         },
         {
-          "maxTb": null,
-          "perGb": 0.0202
+          "maxGb": null,
+          "perGb": 0.0184
         }
       ],
       "Hot-GRS": [
         {
-          "maxTb": 50,
-          "perGb": 0.0493
+          "maxGb": 51200,
+          "perGb": 0.04
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0384
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0368
         }
       ],
       "Hot-RA-GRS": [
         {
-          "maxTb": 50,
-          "perGb": 0.0616
+          "maxGb": 51200,
+          "perGb": 0.05
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.048
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.046
         }
       ],
+      "Cool-LRS": 0.011,
+      "Cool-GRS": 0.022,
+      "Cool-RA-GRS": 0.0275,
+      "Cold-LRS": 0.0045,
+      "Cold-GRS": 0.009,
+      "Cold-RA-GRS": 0.0113,
+      "Archive-LRS": 0.0024,
+      "Archive-GRS": 0.0042,
+      "Archive-RA-GRS": 0.0042
+    },
+    "centralindia": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0192
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0184
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.04
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0384
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0368
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.05
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.048
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.046
+        }
+      ],
+      "Cool-LRS": 0.011,
+      "Cool-GRS": 0.026,
+      "Cool-RA-GRS": 0.0325,
+      "Cold-LRS": 0.0045,
+      "Cold-GRS": 0.00994,
+      "Cold-RA-GRS": 0.0124,
+      "Archive-LRS": 0.002,
+      "Archive-GRS": 0.005,
+      "Archive-RA-GRS": 0.005
+    },
+    "centralus": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0184
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.017664
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.016928
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0368
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.035328
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.033856
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.046
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.04416
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.04232
+        }
+      ],
+      "Cool-LRS": 0.01,
+      "Cool-GRS": 0.02,
+      "Cool-RA-GRS": 0.025,
+      "Cold-LRS": 0.00443,
+      "Cold-GRS": 0.00803,
+      "Cold-RA-GRS": 0.01,
+      "Archive-LRS": 0.002,
+      "Archive-GRS": 0.004,
+      "Archive-RA-GRS": 0.004
+    },
+    "chilecentral": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02576
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.02473
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023699
+        }
+      ],
+      "Cool-LRS": 0.02128,
+      "Cold-LRS": 0.00504
+    },
+    "denmarkeast": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0196
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0188
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.018
+        }
+      ],
+      "Cool-LRS": 0.01,
+      "Cold-LRS": 0.0045
+    },
+    "eastasia": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.02304
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.02208
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.048
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.04608
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.04416
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.06
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0576
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0552
+        }
+      ],
+      "Cool-LRS": 0.011,
+      "Cool-GRS": 0.022,
+      "Cool-RA-GRS": 0.0275,
+      "Cold-LRS": 0.0045,
+      "Cold-GRS": 0.009,
+      "Cold-RA-GRS": 0.0113,
+      "Archive-LRS": 0.002,
+      "Archive-GRS": 0.004,
+      "Archive-RA-GRS": 0.004
+    },
+    "eastus": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0208
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.019968
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.019136
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0458
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.043968
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.042136
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0589
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.056544
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.054188
+        }
+      ],
+      "Cool-LRS": 0.0152,
+      "Cool-GRS": 0.0334,
+      "Cool-RA-GRS": 0.0425,
+      "Cold-LRS": 0.0036,
+      "Cold-GRS": 0.0081,
+      "Cold-RA-GRS": 0.0101,
+      "Archive-LRS": 0.00099,
+      "Archive-GRS": 0.00299,
+      "Archive-RA-GRS": 0.00299
+    },
+    "eastus2": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0184
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.017664
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.016928
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0368
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.035328
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.033856
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.046
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.04416
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.04232
+        }
+      ],
+      "Cool-LRS": 0.01,
+      "Cool-GRS": 0.02,
+      "Cool-RA-GRS": 0.025,
+      "Cold-LRS": 0.0036,
+      "Cold-GRS": 0.00803,
+      "Cold-RA-GRS": 0.01,
+      "Archive-LRS": 0.002,
+      "Archive-GRS": 0.004,
+      "Archive-RA-GRS": 0.004
+    },
+    "francecentral": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0192
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.018432
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.017664
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0384
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.036864
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.035328
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.048
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.04608
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.04416
+        }
+      ],
+      "Cool-LRS": 0.0105,
+      "Cool-GRS": 0.021,
+      "Cool-RA-GRS": 0.02625,
+      "Cold-LRS": 0.0045,
+      "Cold-GRS": 0.0104,
+      "Cold-RA-GRS": 0.0129,
+      "Archive-LRS": 0.0018,
+      "Archive-GRS": 0.00484,
+      "Archive-RA-GRS": 0.00484
+    },
+    "francesouth": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02496
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.023961
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.022963
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.04992
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.047923
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.045926
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0624
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.059904
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.057408
+        }
+      ],
+      "Cool-LRS": 0.01365,
+      "Cool-GRS": 0.0273,
+      "Cool-RA-GRS": 0.034125,
+      "Cold-LRS": 0.00585,
+      "Cold-GRS": 0.0104,
+      "Cold-RA-GRS": 0.0129,
+      "Archive-LRS": 0.00304,
+      "Archive-GRS": 0.00484,
+      "Archive-RA-GRS": 0.00484
+    },
+    "germanynorth": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0196
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0188
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.018
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0392
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0376
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0361
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.049
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.047
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0451
+        }
+      ],
+      "Cool-LRS": 0.01,
+      "Cool-GRS": 0.02,
+      "Cool-RA-GRS": 0.025,
+      "Cold-LRS": 0.0045,
+      "Cold-GRS": 0.0081,
+      "Cold-RA-GRS": 0.0101,
+      "Archive-LRS": 0.0018,
+      "Archive-GRS": 0.00279,
+      "Archive-RA-GRS": 0.00279
+    },
+    "germanywestcentral": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0196
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0188
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.018
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0392
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0376
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0361
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.049
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.047
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0451
+        }
+      ],
+      "Cool-LRS": 0.01,
+      "Cool-GRS": 0.02,
+      "Cool-RA-GRS": 0.025,
+      "Cold-LRS": 0.0045,
+      "Cold-GRS": 0.0081,
+      "Cold-RA-GRS": 0.0101,
+      "Archive-LRS": 0.0018,
+      "Archive-GRS": 0.00279,
+      "Archive-RA-GRS": 0.00279
+    },
+    "indiasouthcentral": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0192
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0184
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.04
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0384
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0368
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.05
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.048
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.046
+        }
+      ],
+      "Cool-LRS": 0.011,
+      "Cool-GRS": 0.022,
+      "Cool-RA-GRS": 0.0275,
+      "Cold-LRS": 0.0045,
+      "Cold-GRS": 0.009,
+      "Cold-RA-GRS": 0.01125
+    },
+    "indonesiacentral": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.018
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.01728
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.01656
+        }
+      ],
+      "Cool-LRS": 0.01,
+      "Cold-LRS": 0.00405,
+      "Archive-LRS": 0.0018
+    },
+    "israelcentral": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0192
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0184
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.065494
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.062874
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.060254
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.084227
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.080858
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.077489
+        }
+      ],
+      "Cool-LRS": 0.01104,
+      "Cool-GRS": 0.024,
+      "Cool-RA-GRS": 0.03,
+      "Cold-LRS": 0.0045,
+      "Cold-GRS": 0.011583,
+      "Cold-RA-GRS": 0.014443
+    },
+    "israelnorthwest": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.019268
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.018465
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.04
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.038535
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.03693
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.05
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.048169
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.046162
+        }
+      ],
+      "Cool-LRS": 0.01104,
+      "Cool-GRS": 0.02208,
+      "Cool-RA-GRS": 0.0276,
+      "Cold-LRS": 0.0045,
+      "Cold-GRS": 0.009,
+      "Cold-RA-GRS": 0.01125
+    },
+    "italynorth": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0192
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.018432
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.017664
+        }
+      ],
+      "Cool-LRS": 0.01,
+      "Cold-LRS": 0.0045,
+      "Archive-LRS": 0.0018
+    },
+    "japaneast": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0192
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0184
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.04
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0384
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0368
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.05
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.048
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.046
+        }
+      ],
+      "Cool-LRS": 0.011,
+      "Cool-GRS": 0.022,
+      "Cool-RA-GRS": 0.0275,
+      "Cold-LRS": 0.0045,
+      "Cold-GRS": 0.009,
+      "Cold-RA-GRS": 0.0113,
+      "Archive-LRS": 0.002,
+      "Archive-GRS": 0.004,
+      "Archive-RA-GRS": 0.004
+    },
+    "japanwest": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0192
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0184
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.04
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0384
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0368
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.05
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.048
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.046
+        }
+      ],
+      "Cool-LRS": 0.011,
+      "Cool-GRS": 0.022,
+      "Cool-RA-GRS": 0.0275,
+      "Cold-LRS": 0.0045,
+      "Cold-GRS": 0.009,
+      "Cold-RA-GRS": 0.0113,
+      "Archive-LRS": 0.002,
+      "Archive-GRS": 0.004,
+      "Archive-RA-GRS": 0.004
+    },
+    "koreacentral": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0192
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0184
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.04
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0384
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0368
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.05
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.048
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.046
+        }
+      ],
+      "Cool-LRS": 0.011,
+      "Cool-GRS": 0.0254,
+      "Cool-RA-GRS": 0.0318,
+      "Cold-LRS": 0.0045,
+      "Cold-GRS": 0.009,
+      "Cold-RA-GRS": 0.0113,
+      "Archive-LRS": 0.002,
+      "Archive-GRS": 0.0047,
+      "Archive-RA-GRS": 0.0047
+    },
+    "koreasouth": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0192
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0184
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.04
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0384
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0368
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.05
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.048
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.046
+        }
+      ],
+      "Cool-LRS": 0.0144,
+      "Cool-GRS": 0.0288,
+      "Cool-RA-GRS": 0.036,
+      "Cold-LRS": 0.0045,
+      "Cold-GRS": 0.009,
+      "Cold-RA-GRS": 0.0113,
+      "Archive-LRS": 0.0027,
+      "Archive-GRS": 0.0047,
+      "Archive-RA-GRS": 0.0047
+    },
+    "malaysiawest": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.018
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.01728
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.01656
+        }
+      ],
+      "Cool-LRS": 0.01,
+      "Cold-LRS": 0.00405,
+      "Archive-LRS": 0.0018
+    },
+    "mexicocentral": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02288
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.021965
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.02105
+        }
+      ],
+      "Cool-LRS": 0.01672,
+      "Cold-LRS": 0.00396
+    },
+    "newzealandnorth": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0192
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0184
+        }
+      ],
+      "Cool-LRS": 0.01155,
+      "Cold-LRS": 0.004725
+    },
+    "northcentralus": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0208
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.019968
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.019136
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0416
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.039936
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.038272
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.052
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.04992
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.04784
+        }
+      ],
+      "Cool-LRS": 0.0152,
+      "Cool-GRS": 0.0304,
+      "Cool-RA-GRS": 0.038,
+      "Cold-LRS": 0.0036,
+      "Cold-GRS": 0.00792,
+      "Cold-RA-GRS": 0.0099,
+      "Archive-LRS": 0.00099,
+      "Archive-GRS": 0.00339,
+      "Archive-RA-GRS": 0.00339
+    },
+    "northeurope": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.022
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.02112
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.02024
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0368
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.035328
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.033856
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.046
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.04416
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.04232
+        }
+      ],
+      "Cool-LRS": 0.01,
+      "Cool-GRS": 0.02,
+      "Cool-RA-GRS": 0.025,
+      "Cold-LRS": 0.0036,
+      "Cold-GRS": 0.0081,
+      "Cold-RA-GRS": 0.0101,
+      "Archive-LRS": 0.00099,
+      "Archive-GRS": 0.00279,
+      "Archive-RA-GRS": 0.00279
+    },
+    "norwayeast": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0216
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0207
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0198
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0496
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0476
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0456
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.062
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0595
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.057
+        }
+      ],
+      "Cool-LRS": 0.011,
+      "Cool-GRS": 0.0253,
+      "Cool-RA-GRS": 0.0316,
+      "Cold-LRS": 0.00515,
+      "Cold-GRS": 0.0118,
+      "Cold-RA-GRS": 0.0148,
+      "Archive-LRS": 0.001416,
+      "Archive-GRS": 0.003256,
+      "Archive-RA-GRS": 0.003256
+    },
+    "norwaywest": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.028
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0269
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0258
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0496
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0476
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0456
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.062
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0595
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.057
+        }
+      ],
+      "Cool-LRS": 0.0143,
+      "Cool-GRS": 0.0253,
+      "Cool-RA-GRS": 0.0316,
+      "Cold-LRS": 0.00669,
+      "Cold-GRS": 0.0118,
+      "Cold-RA-GRS": 0.0148,
+      "Archive-LRS": 0.00184,
+      "Archive-GRS": 0.004233,
+      "Archive-RA-GRS": 0.004233
+    },
+    "polandcentral": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0196
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.018816
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.018032
+        }
+      ],
+      "Cool-LRS": 0.01,
+      "Cold-LRS": 0.0045
+    },
+    "qatarcentral": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0192
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0184
+        }
+      ],
+      "Cool-LRS": 0.01104,
+      "Cold-LRS": 0.0045
+    },
+    "southafricanorth": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0219
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.021
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0202
+        }
+      ],
+      "Hot-GRS": 0.0493,
+      "Hot-RA-GRS": 0.0616,
       "Cool-LRS": 0.0119,
       "Cool-GRS": 0.0268,
       "Cool-RA-GRS": 0.0335,
@@ -2214,43 +1713,43 @@
     "southafricawest": {
       "Hot-LRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.0274
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0263
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.0252
         }
       ],
       "Hot-GRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.0493
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0473
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.0454
         }
       ],
       "Hot-RA-GRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.0617
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0592
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.0567
         }
       ],
@@ -2264,99 +1763,436 @@
       "Archive-GRS": 0.002989,
       "Archive-RA-GRS": 0.00506
     },
-    "uaenorth": {
+    "southcentralus": {
       "Hot-LRS": [
         {
-          "maxTb": 50,
-          "perGb": 0.020275
+          "maxGb": 51200,
+          "perGb": 0.0184
         },
         {
-          "maxTb": 500,
-          "perGb": 0.019464
+          "maxGb": 512000,
+          "perGb": 0.017664
         },
         {
-          "maxTb": null,
-          "perGb": 0.018653
+          "maxGb": null,
+          "perGb": 0.016928
         }
       ],
       "Hot-GRS": [
         {
-          "maxTb": 50,
-          "perGb": 0.04055
+          "maxGb": 51200,
+          "perGb": 0.0368
         },
         {
-          "maxTb": 500,
-          "perGb": 0.038928
+          "maxGb": 512000,
+          "perGb": 0.035328
         },
         {
-          "maxTb": null,
-          "perGb": 0.037306
+          "maxGb": null,
+          "perGb": 0.033856
         }
       ],
       "Hot-RA-GRS": [
         {
-          "maxTb": 50,
-          "perGb": 0.050688
+          "maxGb": 51200,
+          "perGb": 0.046
         },
         {
-          "maxTb": 500,
-          "perGb": 0.04866
+          "maxGb": 512000,
+          "perGb": 0.04416
         },
         {
-          "maxTb": null,
-          "perGb": 0.046632
+          "maxGb": null,
+          "perGb": 0.04232
         }
       ],
-      "Cool-LRS": 0.012,
-      "Cool-GRS": 0.024,
-      "Cool-RA-GRS": 0.03,
+      "Cool-LRS": 0.01,
+      "Cool-GRS": 0.02,
+      "Cool-RA-GRS": 0.025,
+      "Cold-LRS": 0.00432,
+      "Cold-GRS": 0.00792,
+      "Cold-RA-GRS": 0.0099,
+      "Archive-LRS": 0.0024,
+      "Archive-GRS": 0.00339,
+      "Archive-RA-GRS": 0.00339
+    },
+    "southeastasia": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0192
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0184
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.04
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0384
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0368
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.05
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.048
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.046
+        }
+      ],
+      "Cool-LRS": 0.011,
+      "Cool-GRS": 0.022,
+      "Cool-RA-GRS": 0.0275,
       "Cold-LRS": 0.0045,
-      "Cold-GRS": 0.0104,
-      "Cold-RA-GRS": 0.0129,
-      "Archive-LRS": 0.0018,
-      "Archive-GRS": 0.00414,
-      "Archive-RA-GRS": 0.00414
+      "Cold-GRS": 0.009,
+      "Cold-RA-GRS": 0.0113,
+      "Archive-LRS": 0.002,
+      "Archive-GRS": 0.004,
+      "Archive-RA-GRS": 0.004
+    },
+    "southindia": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0238
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.022848
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.021896
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0475
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.045696
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.043792
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0595
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.05712
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.05474
+        }
+      ],
+      "Cool-LRS": 0.015,
+      "Cool-GRS": 0.03,
+      "Cool-RA-GRS": 0.0375,
+      "Cold-LRS": 0.00544,
+      "Cold-GRS": 0.00994,
+      "Cold-RA-GRS": 0.0124,
+      "Archive-LRS": 0.003,
+      "Archive-GRS": 0.005,
+      "Archive-RA-GRS": 0.005
+    },
+    "spaincentral": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0184
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.017664
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.016928
+        }
+      ],
+      "Cool-LRS": 0.01,
+      "Cold-LRS": 0.0045,
+      "Archive-LRS": 0.0018
+    },
+    "swedencentral": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0184
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.017664
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.016928
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0392
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.037632
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.036064
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.049
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.04704
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.04508
+        }
+      ],
+      "Cool-LRS": 0.01,
+      "Cool-GRS": 0.02,
+      "Cool-RA-GRS": 0.025,
+      "Cold-LRS": 0.0036,
+      "Cold-GRS": 0.0081,
+      "Cold-RA-GRS": 0.0101,
+      "Archive-LRS": 0.00099,
+      "Archive-GRS": 0.002277,
+      "Archive-RA-GRS": 0.00279
+    },
+    "swedensouth": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0184
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.017664
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.016928
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0392
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.037632
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.036064
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.049
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.04704
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.04508
+        }
+      ],
+      "Cool-LRS": 0.01,
+      "Cool-GRS": 0.02,
+      "Cool-RA-GRS": 0.025,
+      "Cold-LRS": 0.0036,
+      "Cold-GRS": 0.0081,
+      "Cold-RA-GRS": 0.0101,
+      "Archive-LRS": 0.00099,
+      "Archive-GRS": 0.002277,
+      "Archive-RA-GRS": 0.00279
+    },
+    "switzerlandnorth": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02156
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.020734
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.019817
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.04312
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.041469
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.039725
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0539
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.051792
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.049592
+        }
+      ],
+      "Cool-LRS": 0.011,
+      "Cool-GRS": 0.022,
+      "Cool-RA-GRS": 0.0275,
+      "Cold-LRS": 0.00515,
+      "Cold-GRS": 0.0118,
+      "Cold-RA-GRS": 0.0148,
+      "Archive-LRS": 0.00198,
+      "Archive-GRS": 0.003069,
+      "Archive-RA-GRS": 0.003069
+    },
+    "switzerlandwest": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.028074
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.026973
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.025779
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.056148
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.053854
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.051654
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.070033
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.067284
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.064444
+        }
+      ],
+      "Cool-LRS": 0.0143,
+      "Cool-GRS": 0.0286,
+      "Cool-RA-GRS": 0.03575,
+      "Cold-LRS": 0.00669,
+      "Cold-GRS": 0.0118,
+      "Cold-RA-GRS": 0.0148,
+      "Archive-LRS": 0.00351,
+      "Archive-GRS": 0.00702,
+      "Archive-RA-GRS": 0.00878
     },
     "uaecentral": {
       "Hot-LRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.02548
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.024608
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.023442
         }
       ],
       "Hot-GRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.05096
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.049545
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.04748
         }
       ],
       "Hot-RA-GRS": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.0637
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.061931
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.059351
         }
       ],
@@ -2370,165 +2206,479 @@
       "Archive-GRS": 0.00414,
       "Archive-RA-GRS": 0.00414
     },
-    "qatarcentral": {
+    "uaenorth": {
       "Hot-LRS": [
         {
-          "maxTb": 50,
-          "perGb": 0.02
+          "maxGb": 51200,
+          "perGb": 0.020275
         },
         {
-          "maxTb": 500,
-          "perGb": 0.0192
+          "maxGb": 512000,
+          "perGb": 0.019464
         },
         {
-          "maxTb": null,
-          "perGb": 0.0184
+          "maxGb": null,
+          "perGb": 0.018653
         }
       ],
-      "Cool-LRS": 0.01104,
-      "Cold-LRS": 0.0045
-    },
-    "israelcentral": {
-      "Hot-LRS": [
+      "Hot-GRS": [
         {
-          "maxTb": 50,
-          "perGb": 0.02
+          "maxGb": 51200,
+          "perGb": 0.04055
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
+          "perGb": 0.038928
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.037306
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.050688
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.04866
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.046632
+        }
+      ],
+      "Cool-LRS": 0.012,
+      "Cool-GRS": 0.024,
+      "Cool-RA-GRS": 0.03,
+      "Cold-LRS": 0.0045,
+      "Cold-GRS": 0.0104,
+      "Cold-RA-GRS": 0.0129,
+      "Archive-LRS": 0.0018,
+      "Archive-GRS": 0.00414,
+      "Archive-RA-GRS": 0.00414
+    },
+    "uksouth": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
           "perGb": 0.0192
         },
         {
-          "maxTb": null,
+          "maxGb": 512000,
+          "perGb": 0.018432
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.017664
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0384
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.036864
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.035328
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.048
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.04608
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.04416
+        }
+      ],
+      "Cool-LRS": 0.0105,
+      "Cool-GRS": 0.021,
+      "Cool-RA-GRS": 0.02625,
+      "Cold-LRS": 0.0045,
+      "Cold-GRS": 0.00922,
+      "Cold-RA-GRS": 0.0115,
+      "Archive-LRS": 0.0018,
+      "Archive-GRS": 0.0043,
+      "Archive-RA-GRS": 0.0043
+    },
+    "ukwest": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0192
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.018432
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.017664
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0384
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.036864
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.035328
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.048
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.04608
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.04416
+        }
+      ],
+      "Cool-LRS": 0.0105,
+      "Cool-GRS": 0.021,
+      "Cool-RA-GRS": 0.02625,
+      "Cold-LRS": 0.00472,
+      "Cold-GRS": 0.00922,
+      "Cold-RA-GRS": 0.0115,
+      "Archive-LRS": 0.0025,
+      "Archive-GRS": 0.0043,
+      "Archive-RA-GRS": 0.0043
+    },
+    "westcentralus": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0184
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.017664
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.016928
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0368
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.035328
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.033856
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.046
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.04416
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.04232
+        }
+      ],
+      "Cool-LRS": 0.01,
+      "Cool-GRS": 0.02,
+      "Cool-RA-GRS": 0.025,
+      "Cold-LRS": 0.00432,
+      "Cold-GRS": 0.00792,
+      "Cold-RA-GRS": 0.0099,
+      "Archive-LRS": 0.002,
+      "Archive-GRS": 0.00299,
+      "Archive-RA-GRS": 0.00299
+    },
+    "westeurope": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0196
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.018816
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.018032
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0392
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.037632
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.036064
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.049
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.04704
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.04508
+        }
+      ],
+      "Cool-LRS": 0.01,
+      "Cool-GRS": 0.02,
+      "Cool-RA-GRS": 0.025,
+      "Cold-LRS": 0.0045,
+      "Cold-GRS": 0.0081,
+      "Cold-RA-GRS": 0.0101,
+      "Archive-LRS": 0.0018,
+      "Archive-GRS": 0.00279,
+      "Archive-RA-GRS": 0.00279
+    },
+    "westindia": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0192
+        },
+        {
+          "maxGb": null,
           "perGb": 0.0184
         }
       ],
       "Hot-GRS": [
         {
-          "maxTb": 50,
-          "perGb": 0.065494
+          "maxGb": 51200,
+          "perGb": 0.04
         },
         {
-          "maxTb": 500,
-          "perGb": 0.062874
+          "maxGb": 512000,
+          "perGb": 0.0384
         },
         {
-          "maxTb": null,
-          "perGb": 0.060254
+          "maxGb": null,
+          "perGb": 0.0368
         }
       ],
       "Hot-RA-GRS": [
         {
-          "maxTb": 50,
-          "perGb": 0.084227
+          "maxGb": 51200,
+          "perGb": 0.05
         },
         {
-          "maxTb": 500,
-          "perGb": 0.080858
+          "maxGb": 512000,
+          "perGb": 0.048
         },
         {
-          "maxTb": null,
-          "perGb": 0.077489
+          "maxGb": null,
+          "perGb": 0.046
         }
       ],
-      "Cool-LRS": 0.01104,
-      "Cool-GRS": 0.024,
-      "Cool-RA-GRS": 0.03,
+      "Cool-LRS": 0.0152,
+      "Cool-GRS": 0.0304,
+      "Cool-RA-GRS": 0.038,
+      "Cold-LRS": 0.00497,
+      "Cold-GRS": 0.0104,
+      "Cold-RA-GRS": 0.013
+    },
+    "westus": {
+      "Hot-LRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0208
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.019968
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.019136
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0458
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.043968
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.042136
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0478
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.045888
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.043976
+        }
+      ],
+      "Cool-LRS": 0.0115,
+      "Cool-GRS": 0.023,
+      "Cool-RA-GRS": 0.0288,
       "Cold-LRS": 0.0045,
-      "Cold-GRS": 0.011583,
-      "Cold-RA-GRS": 0.014443
+      "Cold-GRS": 0.0081,
+      "Cold-RA-GRS": 0.0101,
+      "Archive-LRS": 0.002,
+      "Archive-GRS": 0.00299,
+      "Archive-RA-GRS": 0.00299
     },
-    "mexicocentral": {
+    "westus2": {
       "Hot-LRS": [
         {
-          "maxTb": 50,
-          "perGb": 0.02288
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.021965
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.02105
-        }
-      ],
-      "Cool-LRS": 0.01672,
-      "Cold-LRS": 0.00396
-    },
-    "chilecentral": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.02576
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.02473
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023699
-        }
-      ],
-      "Cool-LRS": 0.02128,
-      "Cold-LRS": 0.00504
-    },
-    "newzealandnorth": {
-      "Hot-LRS": [
-        {
-          "maxTb": 50,
-          "perGb": 0.02
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0192
-        },
-        {
-          "maxTb": null,
+          "maxGb": 51200,
           "perGb": 0.0184
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.017664
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.016928
         }
       ],
-      "Cool-LRS": 0.01155,
-      "Cold-LRS": 0.004725
-    },
-    "indonesiacentral": {
-      "Hot-LRS": [
+      "Hot-GRS": [
         {
-          "maxTb": 50,
-          "perGb": 0.018
+          "maxGb": 51200,
+          "perGb": 0.0368
         },
         {
-          "maxTb": 500,
-          "perGb": 0.01728
+          "maxGb": 512000,
+          "perGb": 0.035328
         },
         {
-          "maxTb": null,
-          "perGb": 0.01656
+          "maxGb": null,
+          "perGb": 0.033856
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.046
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.04416
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.04232
         }
       ],
       "Cool-LRS": 0.01,
-      "Cold-LRS": 0.00405,
-      "Archive-LRS": 0.0018
+      "Cool-GRS": 0.02,
+      "Cool-RA-GRS": 0.025,
+      "Cold-LRS": 0.0036,
+      "Cold-GRS": 0.00792,
+      "Cold-RA-GRS": 0.0099,
+      "Archive-LRS": 0.00099,
+      "Archive-GRS": 0.00299,
+      "Archive-RA-GRS": 0.00299
     },
-    "malaysiawest": {
+    "westus3": {
       "Hot-LRS": [
         {
-          "maxTb": 50,
-          "perGb": 0.018
+          "maxGb": 51200,
+          "perGb": 0.0184
         },
         {
-          "maxTb": 500,
-          "perGb": 0.01728
+          "maxGb": 512000,
+          "perGb": 0.017664
         },
         {
-          "maxTb": null,
-          "perGb": 0.01656
+          "maxGb": null,
+          "perGb": 0.016928
+        }
+      ],
+      "Hot-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0368
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.035328
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.033856
+        }
+      ],
+      "Hot-RA-GRS": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.046
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.04416
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.04232
         }
       ],
       "Cool-LRS": 0.01,
-      "Cold-LRS": 0.00405,
-      "Archive-LRS": 0.0018
+      "Cool-GRS": 0.02,
+      "Cool-RA-GRS": 0.025,
+      "Cold-LRS": 0.0036,
+      "Cold-GRS": 0.0072,
+      "Cold-RA-GRS": 0.009,
+      "Archive-LRS": 0.00099,
+      "Archive-GRS": 0.00299,
+      "Archive-RA-GRS": 0.00299
     }
   },
   "operations": {

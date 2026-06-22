@@ -1,8 +1,8 @@
-# B2 Savings Analyzer
+# Backblaze B2 Savings Analyzer
 
 Internal tool for Backblaze Solutions Engineering. Upload a customer's cloud storage bill, isolate addressable storage spend, and model the savings from migrating to Backblaze B2.
 
-Produces an interactive dashboard for AE analysis and a customer-facing PDF report.
+Produces an interactive internal dashboard for AE/SE analysis and a customer-facing report/PDF that frames savings in customer-ready language.
 
 ![Dashboard Preview](public/dashboard-preview.png)
 
@@ -10,8 +10,8 @@ Produces an interactive dashboard for AE analysis and a customer-facing PDF repo
 
 1. **Upload** — drag in an AWS or GCP bill (PDF, CSV, or Excel)
 2. **Parse** — deterministic parsers extract storage tiers, egress, transactions, and discounts
-3. **Model** — toggle which tiers to migrate, configure egress, see real-time B2 cost comparison
-4. **Report** — generate a branded PDF report to share with prospects
+3. **Model** — choose migration tiers, configure egress/data growth, test B2 price/term scenarios, and see real-time savings
+4. **Report** — generate a branded customer report that explains what they save, what Backblaze covers, and the assumptions used
 
 ### Supported Bill Formats
 
@@ -25,12 +25,15 @@ Produces an interactive dashboard for AE analysis and a customer-facing PDF repo
 
 ### Key Features
 
-- **Per-tier inventory** with migrate/keep toggles and per-account breakdowns
-- **Transaction cost analysis** — shows every API fee type going to $0 on B2
+- **Tier-grouped storage inventory** — Standard/hot storage is selected by default, cooler tiers are grouped and expandable, and each tier includes region/location detail plus help links
+- **Transaction cost analysis** — groups source transaction line items by B2 transaction class, separates unsupported or non-applicable items into Other, and keeps source line-item detail expandable
 - **Egress modeling** — decision tree for compute location, partner CDN, UDM
-- **Custom pricing detection** — flags EDP, Savings Plans, private rate cards
-- **3-year projections** with configurable growth rates
-- **Deal sizing** (internal) — estimated B2 MRR/ARR and contract value
+- **Data growth modeling** — choose annual percentage growth or fixed TB/month growth for projections and deal sizing
+- **Custom pricing detection** — flags EDP, Savings Plans, private rate cards, and list-price vs. discounted storage rates, ordered by price with clear region names
+- **Centralized pricing data** — AWS/Azure/GCP/R2/B2 prices flow through JSON-backed lookup helpers
+- **1/2/3/5-year cost projections** — modeled current-provider cost, Backblaze B2 cost, cumulative savings, data stored, and break-even timing
+- **Deal sizing** (internal) — editable B2 price/TB, quick discount presets, ARR/TCV summaries at list/current/custom price, contract term slider, growth controls, and copy-ready Salesforce/Slack handoff text
+- **Customer report generation** — customer-facing summary, storage tier comparison, UDM-covered migration egress cost, projection assumptions, and pricing freshness warnings when applicable
 - **Magic link auth** — scoped to `@backblaze.com` email domain
 
 ## Prerequisites
@@ -70,7 +73,10 @@ ALLOWED_EMAIL_DOMAIN=backblaze.com
 RESEND_API_KEY=<your-resend-key>
 
 # App
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+
+# Optional: enables API-backed GCP pricing refreshes
+GCP_CLOUD_BILLING_API_KEY=<your-google-cloud-api-key>
 ```
 
 ```sh
@@ -99,14 +105,41 @@ src/
 ├── components/
 │   ├── dashboard/          # TierInventory, CostBreakdown, TransactionAnalysis, etc.
 │   ├── upload/             # FileUpload, ParseReview
-│   └── shared/             # FormatCurrency, EditableCell
+│   └── shared/             # FormatCurrency, InlineEditText, UserMenu
 ├── lib/
 │   ├── parsers/            # Bill parsers (AWS PDF/CSV, GCP CSV, detection)
 │   ├── engine/             # Cost model, tier inventory, egress, projections
-│   ├── pricing/            # B2/AWS/GCP list prices + custom pricing detection
+│   ├── pricing/            # Provider pricing JSON, lookup gateway, freshness checks, pricing detection
 │   ├── storage/            # B2 S3-compatible persistence layer
+│   ├── storage-tiers.ts    # Tier explanations and docs links
+│   ├── regions.ts          # Provider region/location labels
 │   └── auth/               # Magic link tokens + session management
 └── types/                  # TypeScript interfaces
+```
+
+## Pricing Data
+
+Provider pricing is kept in `src/lib/pricing/*.json` and accessed through `src/lib/pricing/lookup.ts`. Avoid hardcoding cloud rates in components, parsers, or model code.
+
+- `b2.json` contains B2 storage, egress, transaction, Reserve, UDM, and Overdrive assumptions.
+- `aws.json` contains multi-region S3 storage pricing refreshed from AWS Bulk Pricing APIs, including the dedicated S3 Glacier Deep Archive offer.
+- `azure.json` contains multi-region Blob Storage pricing refreshed from the Azure Retail Prices API.
+- `gcp.json` can be refreshed from the Google Cloud Billing Catalog API when `GCP_CLOUD_BILLING_API_KEY` is configured. Without that key, the script leaves GCP pricing unchanged and prints the manual verification links.
+- `r2.json` and `b2.json` are static pricing assumptions because no stable public pricing API is configured for those sources.
+- If a refresh is skipped or errors because an API key is missing, invalid, rate-limited, or otherwise unavailable, the analysis dashboard and customer report show a warning that affected pricing may be stale or inaccurate.
+
+Refresh supported pricing data with:
+
+```sh
+npm run refresh-pricing
+```
+
+You can also target one provider:
+
+```sh
+npm run refresh-pricing -- aws
+npm run refresh-pricing -- azure
+npm run refresh-pricing -- gcp
 ```
 
 ## TODOs
@@ -116,8 +149,8 @@ src/
 - [ ] **Transaction analysis for summary invoices** — Summary invoices (like Azira's) have no per-SKU operations data, so the Transaction Cost Analysis section doesn't appear. Need to either estimate operations from service totals or surface a note prompting the AE to request the detailed bill.
 - [ ] **PDF report — end-to-end testing** — The Playwright-based PDF generation route and 4-page report layout exist but haven't been verified with real data. Need to generate a PDF and confirm all pages render correctly.
 - [ ] **Egress questionnaire → model validation** — The egress decision tree UI is built, but the full flow (compute stays in hyperscaler → new costs appear, partner CDN → egress zeroes out) hasn't been validated against real egress numbers from a bill.
-- [ ] **Projection chart accuracy** — 3-year projection with growth compounding exists but hasn't been cross-checked against a manual spreadsheet calculation with real numbers.
-- [ ] **Inline editing validation** — EditableCell component exists in ParseReview, but editing a parsed value and confirming the downstream model (tier inventory, savings, projections) recalculates correctly hasn't been tested.
+- [ ] **Projection model validation** — Projection growth compounding and fixed TB/month growth exist but should be cross-checked against a manual spreadsheet calculation with real customer numbers.
+- [ ] **Manual line-item editing** — Parse review currently summarizes parsed categories and warnings. Inline editing of parsed line-item values still needs to be added or reintroduced, then verified against downstream recalculation.
 
 ### Testing Against Real Bills
 

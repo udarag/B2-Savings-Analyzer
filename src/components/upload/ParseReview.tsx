@@ -1,7 +1,7 @@
 'use client';
 
 import type { ParsedBill, Category } from '@/types/analysis';
-import { formatCurrency, formatNumber } from '../shared/FormatCurrency';
+import { formatCurrency } from '../shared/FormatCurrency';
 
 interface ParseReviewProps {
   parsed: ParsedBill;
@@ -14,7 +14,7 @@ const CATEGORY_LABELS: Record<Category, string> = {
   'operations': 'API Operations',
   'retrieval': 'Retrieval / Early Deletion',
   'storage-adjacent': 'Storage-adjacent (EBS, EFS, ECR, CloudFront)',
-  'out-of-scope': 'Out of scope',
+  'out-of-scope': 'Out of Scope',
 };
 const CATEGORY_COLORS: Record<Category, string> = {
   'storage': 'bg-red-100 text-red-800',
@@ -45,7 +45,7 @@ export function ParseReview({ parsed }: ParseReviewProps) {
       <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Parse review</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Parse Review</h3>
             <p className="text-sm text-gray-500 mt-1">
               {parsed.lineItems.length} line items parsed. Grand total: {formatCurrency(parsed.grandTotal)}.
               Addressable storage spend: {formatCurrency(addressable)}.
@@ -54,7 +54,7 @@ export function ParseReview({ parsed }: ParseReviewProps) {
           <div className="flex items-center gap-2">
             <div className={`h-3 w-3 rounded-full ${parsed.parseConfidence >= 0.8 ? 'bg-green-500' : parsed.parseConfidence >= 0.6 ? 'bg-yellow-500' : 'bg-red-500'}`} />
             <span className="text-sm text-gray-600">
-              {Math.round(parsed.parseConfidence * 100)}% confidence
+              {Math.round(parsed.parseConfidence * 100)}% Confidence
             </span>
           </div>
         </div>
@@ -77,7 +77,7 @@ export function ParseReview({ parsed }: ParseReviewProps) {
                   <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${CATEGORY_COLORS[cat]}`}>
                     {CATEGORY_LABELS[cat]}
                   </span>
-                  <span className="text-sm text-gray-500 shrink-0">{data.count} items</span>
+                  <span className="text-sm text-gray-500 shrink-0">{data.count} Items</span>
                 </div>
                 <span className="text-sm font-semibold text-gray-900 shrink-0">{formatCurrency(data.total)}</span>
               </div>
@@ -100,7 +100,7 @@ export function ParseReview({ parsed }: ParseReviewProps) {
         {parsed.accounts && parsed.accounts.length > 0 && !parsed.accountServiceBreakdowns && (
           <div className="mt-4 pt-4 border-t">
             <h4 className="text-sm font-medium text-gray-700 mb-2">
-              Linked accounts ({parsed.accounts.length})
+              Linked Accounts ({parsed.accounts.length})
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
               {parsed.accounts.slice(0, 10).map((acct) => (
@@ -111,7 +111,7 @@ export function ParseReview({ parsed }: ParseReviewProps) {
               ))}
               {parsed.accounts.length > 10 && (
                 <p className="text-xs text-gray-400 col-span-2">
-                  +{parsed.accounts.length - 10} more accounts
+                  +{parsed.accounts.length - 10} More Accounts
                 </p>
               )}
             </div>

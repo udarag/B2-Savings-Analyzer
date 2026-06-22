@@ -14,7 +14,7 @@ interface InlineEditTextProps {
 export function InlineEditText({
   value,
   onSave,
-  placeholder = 'Click to edit',
+  placeholder = 'Click to Edit',
   className = '',
   multiline = false,
   maxLength,
@@ -49,7 +49,7 @@ export function InlineEditText({
           setDraft(value);
           setEditing(true);
         }}
-        title="Click to edit"
+        title="Click to Edit"
       >
         {value || <span className="text-gray-400 italic">{placeholder}</span>}
         <svg className="inline-block w-3 h-3 ml-1.5 opacity-0 group-hover:opacity-40 transition-opacity" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
