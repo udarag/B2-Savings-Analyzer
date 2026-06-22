@@ -22,6 +22,10 @@ const AWS_CLASS_MAP: Record<string, string> = {
   'Intelligent-Tiering (Frequent)': 'Intelligent-Tiering-FA',
   'Intelligent-Tiering (Infrequent)': 'Intelligent-Tiering-IA',
   'Intelligent-Tiering (Archive Instant)': 'Intelligent-Tiering-AIA',
+  'Intelligent-Tiering (Archive)': 'Intelligent-Tiering-AA',
+  'Intelligent-Tiering (Deep Archive)': 'Intelligent-Tiering-DAA',
+  'Intelligent-Tiering-AA': 'Intelligent-Tiering-AA',
+  'Intelligent-Tiering-DAA': 'Intelligent-Tiering-DAA',
 };
 
 const GCP_CLASS_MAP: Record<string, string> = {
@@ -49,6 +53,12 @@ const AZURE_CLASS_MAP: Record<string, string> = {
   'Archive (RA-GRS)': 'Archive-RA-GRS',
 };
 
+type PricingTier = {
+  maxGb?: number | null;
+  maxTb?: number | null;
+  perGb: number;
+};
+
 function firstTierRate(tierData: unknown): number | null {
   if (typeof tierData === 'number') return tierData;
   if (Array.isArray(tierData) && tierData.length > 0) {
@@ -57,24 +67,29 @@ function firstTierRate(tierData: unknown): number | null {
   return null;
 }
 
+function tierCapGb(tier: PricingTier): number {
+  if ('maxGb' in tier) return tier.maxGb ?? Infinity;
+  if ('maxTb' in tier) return tier.maxTb !== null && tier.maxTb !== undefined ? tier.maxTb * 1024 : Infinity;
+  return Infinity;
+}
+
 function blendedRate(tierData: unknown, totalGb: number): number | null {
   if (typeof tierData === 'number') return tierData;
   if (!Array.isArray(tierData) || tierData.length === 0) return null;
 
-  const tiers = tierData as { maxTb: number | null; perGb: number }[];
+  const tiers = tierData as PricingTier[];
   let remaining = totalGb;
   let totalCost = 0;
+  let previousCapGb = 0;
 
   for (const tier of tiers) {
     if (remaining <= 0) break;
-    const tierCapGb = tier.maxTb !== null ? tier.maxTb * 1000 : Infinity;
-    const prevCapGb = tiers.indexOf(tier) > 0
-      ? (tiers[tiers.indexOf(tier) - 1].maxTb ?? 0) * 1000
-      : 0;
-    const tierSizeGb = tierCapGb - prevCapGb;
+    const currentCapGb = tierCapGb(tier);
+    const tierSizeGb = currentCapGb - previousCapGb;
     const gbInTier = Math.min(remaining, tierSizeGb);
     totalCost += gbInTier * tier.perGb;
     remaining -= gbInTier;
+    previousCapGb = currentCapGb;
   }
 
   return totalGb > 0 ? totalCost / totalGb : null;
@@ -143,6 +158,18 @@ function getAzureListRate(storageClass: string, region: string): number | null {
   return firstTierRate(rp[key]);
 }
 
+function getAzureBlendedRate(storageClass: string, region: string, totalGb: number): number | null {
+  const regionKey = region || 'eastus';
+  const regionPricing = (azurePricing as Record<string, unknown>).storage as Record<string, Record<string, unknown>> | undefined;
+  if (!regionPricing) return null;
+
+  const rp = regionPricing[regionKey] || regionPricing['eastus'];
+  if (!rp) return null;
+
+  const key = AZURE_CLASS_MAP[storageClass] || storageClass;
+  return blendedRate(rp[key], totalGb);
+}
+
 export function getBlendedListRate(
   provider: string,
   storageClass: string,
@@ -150,6 +177,7 @@ export function getBlendedListRate(
   totalGb: number,
 ): number | null {
   if (provider === 'aws') return getAwsBlendedRate(storageClass, region, totalGb);
+  if (provider === 'azure') return getAzureBlendedRate(storageClass, region, totalGb);
   return getListRate(provider, storageClass, region);
 }
 

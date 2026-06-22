@@ -2,9 +2,12 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import type { Analysis, ParsedBill, ModelConfig, TierInventoryRow, EgressConfig, Provider } from '@/types/analysis';
+import { TIER_SELECTION_VERSION } from '@/types/analysis';
 import type { CostModelResult, ProjectionPoint, PricingDetectionResult } from '@/types/model';
 import { buildTierInventory } from '@/lib/engine/tier-inventory';
+import { applyTierSelectionConfig } from '@/lib/engine/tier-selection';
 import { computeCostModel } from '@/lib/engine/cost-model';
 import { computeProjections } from '@/lib/engine/projections';
 import { detectCustomPricing } from '@/lib/pricing/detection';
@@ -14,13 +17,16 @@ import { EgressQuestionnaire } from '@/components/dashboard/EgressQuestionnaire'
 import { SavingsSummary } from '@/components/dashboard/SavingsSummary';
 import { CostBreakdown } from '@/components/dashboard/CostBreakdown';
 import { ProjectionChart } from '@/components/dashboard/ProjectionChart';
-import { SensitivitySliders } from '@/components/dashboard/SensitivitySliders';
 import { PricingDetection } from '@/components/dashboard/PricingDetection';
+import { PricingFreshnessWarning } from '@/components/dashboard/PricingFreshnessWarning';
 import { DealSizing } from '@/components/dashboard/DealSizing';
 import { TransactionAnalysis } from '@/components/dashboard/TransactionAnalysis';
 import { FileUpload } from '@/components/upload/FileUpload';
 import { InlineEditText } from '@/components/shared/InlineEditText';
+import { getPricingFreshnessWarning } from '@/lib/pricing/freshness';
+import { formatGrowthAssumption } from '@/lib/engine/projections';
 import b2Pricing from '@/lib/pricing/b2.json';
+import { normalizeEgressConfig } from '@/types/analysis';
 
 interface AnalysisData {
   meta: Analysis;
@@ -37,6 +43,15 @@ function formatBillType(billType: string): string {
   }
 }
 
+function formatProviderStorageLabel(provider: Provider): string {
+  switch (provider) {
+    case 'aws': return 'AWS S3';
+    case 'gcp': return 'Google Cloud Storage';
+    case 'azure': return 'Azure Blob Storage';
+    case 'r2': return 'Cloudflare R2';
+  }
+}
+
 export default function AnalysisDashboard() {
   const params = useParams();
   const id = params.id as string;
@@ -50,19 +65,9 @@ export default function AnalysisDashboard() {
   const [showReplaceUpload, setShowReplaceUpload] = useState(false);
 
   const [tiers, setTiers] = useState<TierInventoryRow[]>([]);
-  const [egressConfig, setEgressConfig] = useState<EgressConfig>({
-    computeStaysInHyperscaler: false,
-    computeMovingToPartner: false,
-    gbPerMonthHyperscalerToB2: 0,
-    gbPerMonthServedToUsers: 0,
-    usesPartnerCdn: false,
-    dataGrowthRatePercent: 0,
-    dataGrowthPeriod: 'yearly',
-    udmEnabled: false,
-  });
+  const [egressConfig, setEgressConfig] = useState<EgressConfig>(() => normalizeEgressConfig());
   const [b2PricePerTb, setB2PricePerTb] = useState(b2Pricing.storage.perTbMonth);
-  const [termMonths, setTermMonths] = useState(36);
-  const [growthRate, setGrowthRate] = useState(10);
+  const [termMonths, setTermMonths] = useState(12);
 
   useEffect(() => {
     fetch(`/api/analyses/${id}`)
@@ -73,17 +78,13 @@ export default function AnalysisDashboard() {
       .then((d: AnalysisData) => {
         setData(d);
         if (d.parsed) {
-          const builtTiers = buildTierInventory(d.parsed.lineItems, d.modelConfig?.b2PricePerTb);
-          if (d.modelConfig?.tierToggles) {
-            for (const tier of builtTiers) {
-              if (tier.id in d.modelConfig.tierToggles) {
-                tier.migrateToB2 = d.modelConfig.tierToggles[tier.id];
-              }
-            }
-          }
+          const builtTiers = applyTierSelectionConfig(
+            buildTierInventory(d.parsed.lineItems, d.modelConfig?.b2PricePerTb),
+            d.modelConfig,
+          );
           setTiers(builtTiers);
           if (d.modelConfig) {
-            setEgressConfig(d.modelConfig.egressConfig);
+            setEgressConfig(normalizeEgressConfig(d.modelConfig.egressConfig));
             setB2PricePerTb(d.modelConfig.b2PricePerTb);
             setTermMonths(d.modelConfig.projectionTermMonths);
           }
@@ -102,6 +103,7 @@ export default function AnalysisDashboard() {
         body: JSON.stringify({
           modelConfig: {
             tierToggles: Object.fromEntries(tiers.map((t) => [t.id, t.migrateToB2])),
+            tierSelectionVersion: TIER_SELECTION_VERSION,
             egressConfig,
             b2PricePerTb,
             projectionTermMonths: termMonths,
@@ -121,7 +123,11 @@ export default function AnalysisDashboard() {
   }, []);
 
   const handleEgressChange = useCallback((config: EgressConfig) => {
-    setEgressConfig(config);
+    setEgressConfig(normalizeEgressConfig(config));
+  }, []);
+
+  const handleGrowthChange = useCallback((updates: Partial<Pick<EgressConfig, 'dataGrowthMode' | 'dataGrowthRatePercent' | 'dataGrowthFixedTbPerMonth'>>) => {
+    setEgressConfig((prev) => normalizeEgressConfig({ ...prev, ...updates }));
   }, []);
 
   const patchMeta = useCallback(async (fields: Partial<Analysis>) => {
@@ -146,11 +152,14 @@ export default function AnalysisDashboard() {
     return () => clearTimeout(timer);
   }, [tiers, egressConfig, b2PricePerTb, termMonths, data?.parsed, saveConfig]);
 
+  const parsedLineItems = data?.parsed?.lineItems;
+  const parsedDiscounts = data?.parsed?.discounts;
+
   // Compute model results
   const costModel: CostModelResult | null = useMemo(() => {
-    if (!data?.parsed) return null;
-    return computeCostModel(data.parsed.lineItems, tiers, egressConfig, b2PricePerTb);
-  }, [data?.parsed, tiers, egressConfig, b2PricePerTb]);
+    if (!parsedLineItems) return null;
+    return computeCostModel(parsedLineItems, tiers, egressConfig, b2PricePerTb);
+  }, [parsedLineItems, tiers, egressConfig, b2PricePerTb]);
 
   const projections: ProjectionPoint[] = useMemo(() => {
     if (!costModel) return [];
@@ -158,19 +167,33 @@ export default function AnalysisDashboard() {
       costModel.currentMonthly.egress +
       costModel.currentMonthly.operations +
       costModel.currentMonthly.retrieval;
+    const baseStorageGb = tiers.filter((t) => t.migrateToB2).reduce((s, t) => s + t.gbStored, 0);
     return computeProjections({
       currentMonthlyCost: addressableCurrent,
       b2MonthlyCost: costModel.b2Monthly.total,
       migrationCostTotal: costModel.migrationCost.total,
-      annualGrowthPercent: growthRate,
+      baseStorageGb,
+      growthMode: egressConfig.dataGrowthMode,
+      annualGrowthPercent: egressConfig.dataGrowthRatePercent,
+      fixedGrowthTbPerMonth: egressConfig.dataGrowthFixedTbPerMonth,
       termMonths,
     });
-  }, [costModel, growthRate, termMonths]);
+  }, [costModel, tiers, egressConfig, termMonths]);
+
+  const growthLabel = formatGrowthAssumption({
+    growthMode: egressConfig.dataGrowthMode,
+    annualGrowthPercent: egressConfig.dataGrowthRatePercent,
+    fixedGrowthTbPerMonth: egressConfig.dataGrowthFixedTbPerMonth,
+  });
 
   const pricingDetection: PricingDetectionResult[] = useMemo(() => {
-    if (!data?.parsed) return [];
-    return detectCustomPricing(data.parsed.lineItems, data.parsed.discounts);
-  }, [data?.parsed]);
+    if (!parsedLineItems) return [];
+    return detectCustomPricing(parsedLineItems, parsedDiscounts);
+  }, [parsedLineItems, parsedDiscounts]);
+
+  const pricingFreshnessWarning = data?.meta.provider
+    ? getPricingFreshnessWarning(data.meta.provider)
+    : null;
 
   const migratedStorageGb = useMemo(() => {
     return tiers.filter((t) => t.migrateToB2).reduce((s, t) => s + t.gbStored, 0);
@@ -193,7 +216,7 @@ export default function AnalysisDashboard() {
       <div className="max-w-[1600px] mx-auto px-6 py-12">
         <div className="bg-red-50 rounded-lg p-6">
           <p className="text-red-800">{error || 'Something went wrong'}</p>
-          <a href="/" className="text-sm text-red-600 underline mt-2 inline-block">Back to home</a>
+          <Link href="/" className="text-sm text-red-600 underline mt-2 inline-block">Back to Home</Link>
         </div>
       </div>
     );
@@ -203,7 +226,7 @@ export default function AnalysisDashboard() {
     return (
       <div className="max-w-2xl mx-auto px-6 py-12">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">{data.meta.prospectName}</h1>
-        <p className="text-gray-500 mb-8">Upload a cloud bill to begin analysis</p>
+        <p className="text-gray-500 mb-8">Upload a Cloud Bill to Begin Analysis</p>
         <FileUpload
           analysisId={id}
           onUploadComplete={() => window.location.reload()}
@@ -222,7 +245,7 @@ export default function AnalysisDashboard() {
             <InlineEditText
               value={data.meta.prospectName}
               onSave={(name) => patchMeta({ prospectName: name } as Partial<Analysis>)}
-              placeholder="Prospect name"
+              placeholder="Prospect Name"
               maxLength={100}
             />
           </h1>
@@ -251,10 +274,10 @@ export default function AnalysisDashboard() {
           {data.meta.detectionSignals && data.meta.detectionSignals.length > 0 && (
             <span className="relative group">
               <span className="text-xs text-gray-400 cursor-help underline decoration-dotted">
-                Auto-detected
+                Auto-Detected
               </span>
               <span className="absolute left-0 top-full mt-1 z-10 hidden group-hover:block w-80 bg-bb-navy text-white text-xs rounded-lg p-3 shadow-lg">
-                <span className="font-semibold block mb-1">Detection signals:</span>
+                <span className="font-semibold block mb-1">Detection Signals:</span>
                 {data.meta.detectionSignals.map((s, i) => (
                   <span key={i} className="block py-0.5">• {s}</span>
                 ))}
@@ -267,20 +290,39 @@ export default function AnalysisDashboard() {
           <InlineEditText
             value={data.meta.notes || ''}
             onSave={(notes) => patchMeta({ notes } as Partial<Analysis>)}
-            placeholder="+ Add notes"
+            placeholder="+ Add Notes"
             className="text-sm text-gray-500"
             multiline
             maxLength={500}
           />
         </div>
         {/* Actions */}
-        <div className="flex items-center gap-1.5 mt-3">
+        <div className="flex items-center gap-2 mt-3 flex-wrap">
+          <a
+            href={`/analyses/${id}/report`}
+            target="_blank"
+            className="inline-flex items-center gap-2 rounded-lg bg-bb-red px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-bb-red-dark focus:outline-none focus:ring-2 focus:ring-bb-red focus:ring-offset-2"
+            aria-label="Open customer-facing report"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-6a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 8.25v7.5A2.25 2.25 0 0 0 6.75 18h5.25m4.5-8.25 3 3m0 0-3 3m3-3h-9" /></svg>
+            Customer Report
+          </a>
           <button
             onClick={handleCopyLink}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 rounded-md hover:bg-gray-100 transition-colors"
+            aria-label={linkCopied ? 'Analysis link copied' : 'Copy analysis link'}
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m9.86-2.54a4.5 4.5 0 0 0-1.242-7.244l-4.5-4.5a4.5 4.5 0 0 0-6.364 6.364L5.25 9.879" /></svg>
-            {linkCopied ? 'Copied!' : 'Copy link'}
+            {linkCopied ? (
+              <svg className="h-3.5 w-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+              </svg>
+            ) : (
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.81 15.312a4.5 4.5 0 0 1-1.242-7.244l4.5-4.5a4.5 4.5 0 0 1 6.364 6.364l-1.757 1.757" />
+              </svg>
+            )}
+            {linkCopied ? 'Copied!' : 'Copy Link'}
           </button>
           <button
             onClick={() => setShowReplaceConfirm(true)}
@@ -290,14 +332,6 @@ export default function AnalysisDashboard() {
             Replace
           </button>
           <div className="w-px h-4 bg-gray-200 mx-1" />
-          <a
-            href={`/analyses/${id}/report`}
-            target="_blank"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-bb-red text-white rounded-md hover:bg-bb-red-dark transition-colors"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
-            Report
-          </a>
           <a
             href={`/api/analyses/${id}/pdf`}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 rounded-md hover:bg-gray-100 transition-colors"
@@ -318,11 +352,13 @@ export default function AnalysisDashboard() {
         </div>
       )}
 
+      <PricingFreshnessWarning warning={pricingFreshnessWarning} className="mb-4" />
+
       {/* Replace bill confirmation modal */}
       {showReplaceConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Replace bill?</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Replace Bill?</h3>
             <p className="text-sm text-gray-600 mb-1">
               This will overwrite the current parsed data and reset the model configuration (tier toggles, egress settings, and B2 pricing) to defaults.
             </p>
@@ -350,7 +386,7 @@ export default function AnalysisDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Upload new bill</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Upload New Bill</h3>
               <button
                 onClick={() => setShowReplaceUpload(false)}
                 className="p-1 text-gray-400 hover:text-gray-600 rounded"
@@ -374,44 +410,47 @@ export default function AnalysisDashboard() {
         <div className="min-w-0 space-y-6">
           {costModel && <SavingsSummary result={costModel} />}
           <ParseReview parsed={data.parsed} />
-          <TierInventory tiers={tiers} onToggle={handleToggleTier} accountBreakdowns={data.parsed.accountServiceBreakdowns} />
-          <TransactionAnalysis lineItems={data.parsed.lineItems} />
-          <EgressQuestionnaire config={egressConfig} onChange={handleEgressChange} />
-          {costModel && <CostBreakdown result={costModel} />}
           {projections.length > 0 && (
             <ProjectionChart
               points={projections}
               termMonths={termMonths}
               onTermChange={setTermMonths}
+              growthLabel={growthLabel}
+              providerLabel={formatProviderStorageLabel(data.meta.provider)}
             />
           )}
-          <SensitivitySliders
-            growthRate={growthRate}
-            onGrowthRateChange={setGrowthRate}
-          />
+          <TierInventory tiers={tiers} onToggle={handleToggleTier} accountBreakdowns={data.parsed.accountServiceBreakdowns} />
+          <TransactionAnalysis lineItems={data.parsed.lineItems} />
+          <EgressQuestionnaire config={egressConfig} onChange={handleEgressChange} />
+          {costModel && <CostBreakdown result={costModel} />}
         </div>
 
         {/* Sidebar — internal only */}
         <div className="space-y-6">
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <p className="text-xs font-semibold text-amber-800">Internal only</p>
+            <p className="text-xs font-semibold text-amber-800">Internal Only</p>
             <p className="text-xs text-amber-600 mt-1">
               Sidebar panels are not included in customer-facing reports.
             </p>
           </div>
-          {pricingDetection.length > 0 && <PricingDetection results={pricingDetection} />}
           {costModel && (
             <DealSizing
               b2PricePerTb={b2PricePerTb}
               onB2PriceChange={setB2PricePerTb}
               monthlyB2Revenue={costModel.b2Monthly.total}
               termMonths={termMonths}
+              onTermChange={setTermMonths}
+              growthMode={egressConfig.dataGrowthMode}
+              growthRatePercent={egressConfig.dataGrowthRatePercent}
+              growthFixedTbPerMonth={egressConfig.dataGrowthFixedTbPerMonth}
+              onGrowthChange={handleGrowthChange}
               totalStorageGb={migratedStorageGb}
               udmEnabled={egressConfig.udmEnabled}
               onUdmChange={(enabled) => setEgressConfig((prev) => ({ ...prev, udmEnabled: enabled }))}
               udmCostToBackblaze={costModel.udmCostToBackblaze}
             />
           )}
+          {pricingDetection.length > 0 && <PricingDetection results={pricingDetection} />}
         </div>
       </div>
     </div>

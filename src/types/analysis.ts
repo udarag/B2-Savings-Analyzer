@@ -100,32 +100,50 @@ export interface EgressConfig {
   gbPerMonthHyperscalerToB2: number;
   gbPerMonthServedToUsers: number;
   usesPartnerCdn: boolean;
+  dataGrowthMode: 'percent' | 'fixed-tb';
   dataGrowthRatePercent: number;
+  dataGrowthFixedTbPerMonth: number;
   dataGrowthPeriod: 'monthly' | 'yearly';
   udmEnabled: boolean;
 }
 
 export interface ModelConfig {
   tierToggles: Record<string, boolean>;
+  tierSelectionVersion?: number;
   egressConfig: EgressConfig;
   b2PricePerTb: number;
   projectionTermMonths: number;
 }
 
-const DEFAULT_EGRESS_CONFIG: EgressConfig = {
+export const TIER_SELECTION_VERSION = 2;
+
+export const DEFAULT_EGRESS_CONFIG: EgressConfig = {
   computeStaysInHyperscaler: false,
   computeMovingToPartner: false,
   gbPerMonthHyperscalerToB2: 0,
   gbPerMonthServedToUsers: 0,
   usesPartnerCdn: false,
-  dataGrowthRatePercent: 0,
+  dataGrowthMode: 'percent',
+  dataGrowthRatePercent: 10,
+  dataGrowthFixedTbPerMonth: 0,
   dataGrowthPeriod: 'yearly',
   udmEnabled: false,
 };
 
+export function normalizeEgressConfig(config?: Partial<EgressConfig> | null): EgressConfig {
+  return {
+    ...DEFAULT_EGRESS_CONFIG,
+    ...config,
+    dataGrowthMode: config?.dataGrowthMode ?? DEFAULT_EGRESS_CONFIG.dataGrowthMode,
+    dataGrowthRatePercent: config?.dataGrowthRatePercent ?? DEFAULT_EGRESS_CONFIG.dataGrowthRatePercent,
+    dataGrowthFixedTbPerMonth: config?.dataGrowthFixedTbPerMonth ?? DEFAULT_EGRESS_CONFIG.dataGrowthFixedTbPerMonth,
+  };
+}
+
 export const DEFAULT_MODEL_CONFIG: ModelConfig = {
   tierToggles: {},
+  tierSelectionVersion: TIER_SELECTION_VERSION,
   egressConfig: DEFAULT_EGRESS_CONFIG,
   b2PricePerTb: b2Pricing.storage.perTbMonth,
-  projectionTermMonths: 36,
+  projectionTermMonths: 12,
 };

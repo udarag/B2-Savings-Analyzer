@@ -42,6 +42,7 @@ export interface CostModelResult {
 
 export interface ProjectionPoint {
   month: number;
+  storageGb: number;
   currentCost: number;
   b2Cost: number;
   monthlySavings: number;
@@ -75,5 +76,8 @@ export interface ReportSnapshot {
   migratedTierCount: number;
   b2PricePerTb: number;
   termMonths: number;
+  growthMode: 'percent' | 'fixed-tb';
+  growthRatePercent: number;
+  growthFixedTbPerMonth: number;
   udmEnabled: boolean;
 }

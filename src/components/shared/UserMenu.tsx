@@ -97,12 +97,12 @@ export function UserMenu() {
       {/* Profile setup prompt (first login) */}
       {showSetup && !showPanel && (
         <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-lg shadow-xl border p-4 z-50">
-          <h3 className="text-sm font-semibold text-gray-900 mb-1">Welcome! Set up your profile</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-1">Welcome! Set Up Your Profile</h3>
           <p className="text-xs text-gray-500 mb-3">Your name will appear on customer reports.</p>
           <div className="space-y-2">
             <input
               type="text"
-              placeholder="Full name"
+              placeholder="Full Name"
               value={nameInput}
               onChange={(e) => setNameInput(e.target.value)}
               className="w-full px-3 py-1.5 text-sm border rounded-md focus:ring-2 focus:ring-bb-red focus:border-transparent"
@@ -155,7 +155,7 @@ export function UserMenu() {
                   type="text"
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
-                  placeholder="Full name"
+                  placeholder="Full Name"
                   className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:ring-2 focus:ring-bb-red focus:border-transparent"
                   autoFocus
                 />
@@ -190,14 +190,14 @@ export function UserMenu() {
                 className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
-                Edit profile
+                Edit Profile
               </button>
               <button
                 onClick={handleLogout}
                 className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3-3h-9m9 0l-3-3m3 3l-3 3" /></svg>
-                Sign out
+                Sign Out
               </button>
             </div>
           )}

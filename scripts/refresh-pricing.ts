@@ -9,11 +9,12 @@
  *   npx tsx scripts/refresh-pricing.ts azure    # refresh Azure only
  *   npx tsx scripts/refresh-pricing.ts r2       # refresh R2 only
  *
- * Data sources (all public, no auth required):
- *   AWS:   pricing.us-east-1.amazonaws.com  (Bulk Pricing API)
- *   GCP:   cloud.google.com/storage/pricing (HTML scrape — GCP has no public JSON API)
- *   Azure: prices.azure.com/api/retail/prices (Retail Prices API)
- *   R2:    developers.cloudflare.com/r2/pricing (HTML scrape)
+ * Data sources:
+ *   AWS:   pricing.us-east-1.amazonaws.com (Bulk Pricing API, no auth)
+ *   Azure: prices.azure.com/api/retail/prices (Retail Prices API, no auth)
+ *   GCP:   cloudbilling.googleapis.com/v1 (Cloud Billing Catalog API, requires API key)
+ *   R2:    no stable public pricing API configured; verify manually
+ *   B2:    no stable public pricing API configured; verify manually
  */
 
 import { writeFileSync, readFileSync } from 'fs';
@@ -32,6 +33,32 @@ async function fetchJson(url: string): Promise<unknown> {
   return resp.json();
 }
 
+async function fetchAzureItems<T>(url: string): Promise<T[]> {
+  const items: T[] = [];
+  let nextUrl: string | undefined = url;
+
+  while (nextUrl) {
+    const page = await fetchJson(nextUrl) as {
+      Items?: T[];
+      NextPageLink?: string;
+    };
+    items.push(...(page.Items || []));
+    nextUrl = page.NextPageLink;
+  }
+
+  return items;
+}
+
+function usdFromGcpUnitPrice(unitPrice: { units?: string | number; nanos?: number } | undefined): number {
+  if (!unitPrice) return 0;
+  return Number(unitPrice.units || 0) + (unitPrice.nanos || 0) / 1e9;
+}
+
+function buildUrl(base: string, params: Record<string, string>): string {
+  const urlParams = new URLSearchParams(params);
+  return `${base}?${urlParams.toString()}`;
+}
+
 function writePricingFile(filename: string, data: unknown) {
   const path = join(PRICING_DIR, filename);
   writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
@@ -42,11 +69,37 @@ function readPricingFile(filename: string): Record<string, unknown> {
   return JSON.parse(readFileSync(join(PRICING_DIR, filename), 'utf-8'));
 }
 
+function refreshSuccess(provider: string, message: string) {
+  return {
+    provider,
+    status: 'success',
+    lastAttempt: today,
+    lastSuccess: today,
+    message,
+  };
+}
+
+function refreshWarning(
+  provider: string,
+  status: 'skipped' | 'error',
+  message: string,
+  credentialEnvVar?: string,
+) {
+  return {
+    provider,
+    status,
+    lastAttempt: today,
+    credentialEnvVar,
+    message,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // AWS
 // ---------------------------------------------------------------------------
 
-const AWS_VERSION_URL = 'https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonS3/current/region_index.json';
+const AWS_S3_REGION_INDEX_URL = 'https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonS3/current/region_index.json';
+const AWS_GDA_REGION_INDEX_URL = 'https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonS3GlacierDeepArchive/current/region_index.json';
 
 const AWS_STORAGE_CLASS_MAP: Record<string, string> = {
   'Standard': 'Standard',
@@ -55,9 +108,10 @@ const AWS_STORAGE_CLASS_MAP: Record<string, string> = {
   'Intelligent-Tiering Frequent Access': 'Intelligent-Tiering-FA',
   'Intelligent-Tiering Infrequent Access': 'Intelligent-Tiering-IA',
   'Intelligent-Tiering Archive Instant Access': 'Intelligent-Tiering-AIA',
+  'IntelligentTieringArchiveAccess': 'Intelligent-Tiering-AA',
+  'IntelligentTieringDeepArchiveAccess': 'Intelligent-Tiering-DAA',
   'Glacier Instant Retrieval': 'Glacier Instant Retrieval',
   'Amazon Glacier': 'Glacier Flexible Retrieval',
-  'IntelligentTieringDeepArchiveAccess': 'Glacier Deep Archive',
   'Express One Zone': 'Express One Zone',
   'Reduced Redundancy': 'Reduced Redundancy',
 };
@@ -65,6 +119,7 @@ const AWS_STORAGE_CLASS_MAP: Record<string, string> = {
 const AWS_CLASS_ORDER = [
   'Standard', 'Standard-IA', 'One Zone-IA',
   'Intelligent-Tiering-FA', 'Intelligent-Tiering-IA', 'Intelligent-Tiering-AIA',
+  'Intelligent-Tiering-AA', 'Intelligent-Tiering-DAA',
   'Glacier Instant Retrieval', 'Glacier Flexible Retrieval', 'Glacier Deep Archive',
   'Express One Zone', 'Reduced Redundancy',
 ];
@@ -80,12 +135,19 @@ function isAwsStandardRegion(code: string): boolean {
 
 async function refreshAws() {
   console.log('AWS: Fetching region index...');
-  const index = await fetchJson(AWS_VERSION_URL) as {
+  const index = await fetchJson(AWS_S3_REGION_INDEX_URL) as {
+    publicationDate: string;
+    regions: Record<string, { regionCode: string; currentVersionUrl: string }>;
+  };
+  const gdaIndex = await fetchJson(AWS_GDA_REGION_INDEX_URL) as {
     publicationDate: string;
     regions: Record<string, { regionCode: string; currentVersionUrl: string }>;
   };
 
-  const version = index.publicationDate.slice(0, 10);
+  const version = [index.publicationDate, gdaIndex.publicationDate]
+    .map(d => d.slice(0, 10))
+    .sort()
+    .at(0);
   const regions = Object.keys(index.regions).filter(isAwsStandardRegion).sort();
   console.log(`AWS: Found ${regions.length} regions (published ${version})`);
 
@@ -135,9 +197,34 @@ async function refreshAws() {
         regionData[cls] = tiers[0].price;
       } else {
         regionData[cls] = tiers.map(t => ({
-          maxTb: t.end ? Math.round(t.end / 1024) : null,
+          maxGb: t.end,
           perGb: t.price,
         }));
+      }
+    }
+
+    const gdaRegion = gdaIndex.regions[regionCode];
+    if (gdaRegion) {
+      const gdaUrl = `https://pricing.us-east-1.amazonaws.com${gdaRegion.currentVersionUrl}`;
+      const gdaData = await fetchJson(gdaUrl) as {
+        products: Record<string, { attributes: Record<string, string> }>;
+        terms: { OnDemand: Record<string, Record<string, { priceDimensions: Record<string, { pricePerUnit: { USD: string } }> }>> };
+      };
+
+      for (const [sku, prod] of Object.entries(gdaData.products)) {
+        if (!prod.attributes.usagetype?.endsWith('-TimedStorage-GDA-ByteHrs')) {
+          continue;
+        }
+        const offers = gdaData.terms.OnDemand[sku];
+        if (!offers) continue;
+        const prices = Object.values(offers)
+          .flatMap(offer => Object.values(offer.priceDimensions))
+          .map(dim => parseFloat(dim.pricePerUnit.USD))
+          .filter(price => price > 0);
+        if (prices.length > 0) {
+          regionData['Glacier Deep Archive'] = prices[0];
+          break;
+        }
       }
     }
 
@@ -150,6 +237,7 @@ async function refreshAws() {
     lastVerified: today,
     source: 'AWS Pricing API (pricing.us-east-1.amazonaws.com)',
     provider: 'aws',
+    refresh: refreshSuccess('aws', 'Storage pricing refreshed from AWS Bulk Pricing APIs.'),
     storage,
     requests: existing.requests,
     retrieval: existing.retrieval,
@@ -200,10 +288,10 @@ async function refreshAzure() {
   const filter = "serviceFamily eq 'Storage' and serviceName eq 'Storage' and priceType eq 'Consumption' " +
     "and contains(productName, 'Blob Storage') and unitOfMeasure eq '1 GB/Month' " +
     "and meterName eq 'Hot LRS Data Stored' and tierMinimumUnits eq 0";
-  const discoveryUrl = `${AZURE_API}?$filter=${encodeURIComponent(filter)}&$top=200`;
-  const discovery = await fetchJson(discoveryUrl) as { Items: Array<{ armRegionName: string }> };
+  const discoveryUrl = buildUrl(AZURE_API, { '$filter': filter, '$top': '200' });
+  const discoveryItems = await fetchAzureItems<{ armRegionName: string }>(discoveryUrl);
 
-  const regions = [...new Set(discovery.Items.map(i => i.armRegionName).filter(Boolean))]
+  const regions = [...new Set(discoveryItems.map(i => i.armRegionName).filter(Boolean))]
     .filter(isAzureStandardRegion)
     .sort();
   console.log(`Azure: Found ${regions.length} regions`);
@@ -213,33 +301,34 @@ async function refreshAzure() {
   for (const region of regions) {
     const regionFilter = `serviceFamily eq 'Storage' and serviceName eq 'Storage' and priceType eq 'Consumption' ` +
       `and armRegionName eq '${region}' and contains(productName, 'Blob Storage') and unitOfMeasure eq '1 GB/Month'`;
-    const url = `${AZURE_API}?$filter=${encodeURIComponent(regionFilter)}&$top=100`;
+    const url = buildUrl(AZURE_API, { '$filter': regionFilter, '$top': '100' });
 
     process.stdout.write(`  ${region}...`);
-    const data = await fetchJson(url) as { Items: Array<{ skuName: string; retailPrice: number; tierMinimumUnits: number }> };
+    const items = await fetchAzureItems<{
+      skuName: string;
+      meterName: string;
+      retailPrice: number;
+      tierMinimumUnits: number;
+    }>(url);
 
     const regionData: Record<string, unknown> = {};
-    const tiered: Record<string, Array<{ tierMin: number; price: number }>> = {};
+    const byClass: Record<string, Array<{ tierMin: number; price: number }>> = {};
 
-    for (const item of data.Items) {
+    for (const item of items) {
       const mapped = AZURE_SKU_MAP[item.skuName];
       if (!mapped || item.retailPrice <= 0) continue;
-
-      if (item.skuName.startsWith('Hot') || item.skuName.startsWith('Cool ZRS')) {
-        if (!tiered[mapped]) tiered[mapped] = [];
-        tiered[mapped].push({ tierMin: item.tierMinimumUnits, price: item.retailPrice });
-      } else {
-        regionData[mapped] = item.retailPrice;
-      }
+      if (item.meterName !== `${item.skuName} Data Stored`) continue;
+      if (!byClass[mapped]) byClass[mapped] = [];
+      byClass[mapped].push({ tierMin: item.tierMinimumUnits, price: item.retailPrice });
     }
 
-    for (const [cls, tiers] of Object.entries(tiered)) {
+    for (const [cls, tiers] of Object.entries(byClass)) {
       tiers.sort((a, b) => a.tierMin - b.tierMin);
       if (tiers.length === 1) {
         regionData[cls] = tiers[0].price;
       } else {
         regionData[cls] = tiers.map((t, i) => ({
-          maxTb: i < tiers.length - 1 ? Math.round(tiers[i + 1].tierMin / 1024) : null,
+          maxGb: i < tiers.length - 1 ? tiers[i + 1].tierMin : null,
           perGb: t.price,
         }));
       }
@@ -260,6 +349,7 @@ async function refreshAzure() {
     lastVerified: today,
     source: 'Azure Retail Prices API (prices.azure.com)',
     provider: 'azure',
+    refresh: refreshSuccess('azure', 'Storage pricing refreshed from Azure Retail Prices API.'),
     storage,
     operations: existing.operations,
     retrieval: existing.retrieval,
@@ -275,36 +365,178 @@ async function refreshAzure() {
 }
 
 // ---------------------------------------------------------------------------
-// GCP (no public JSON API — manual verification required)
+// GCP
 // ---------------------------------------------------------------------------
 
-async function refreshGcp() {
-  console.log('GCP: No public JSON pricing API available.');
-  console.log('  GCP pricing must be verified manually at:');
-  console.log('  https://cloud.google.com/storage/pricing');
-  console.log('  https://cloud.google.com/storage/pricing-announce');
-  console.log('');
-  console.log('  GCP uses uniform pricing across all regions within a location type.');
-  console.log('  Check: Regional, Multi-region (US/EU vs Asia), Dual-region pricing.');
+const GCP_CATALOG_API = 'https://cloudbilling.googleapis.com/v1';
+const GCP_STORAGE_CLASSES = ['Standard', 'Nearline', 'Coldline', 'Archive'] as const;
+const GCP_LOCATION_KEYS = ['regional', 'multi-region', 'asia-multi-region', 'dual-region', 'asia-dual-region'] as const;
 
+interface GcpSku {
+  description?: string;
+  category?: { resourceFamily?: string; resourceGroup?: string; usageType?: string };
+  serviceRegions?: string[];
+  pricingInfo?: Array<{
+    pricingExpression?: {
+      usageUnit?: string;
+      baseUnit?: string;
+      tieredRates?: Array<{
+        startUsageAmount?: number;
+        unitPrice?: { units?: string | number; nanos?: number };
+      }>;
+    };
+  }>;
+}
+
+function classifyGcpStorageClass(description: string): typeof GCP_STORAGE_CLASSES[number] | null {
+  const lower = description.toLowerCase();
+  if (!lower.includes('storage')) return null;
+  if (lower.includes('archive')) return 'Archive';
+  if (lower.includes('coldline')) return 'Coldline';
+  if (lower.includes('nearline')) return 'Nearline';
+  if (lower.includes('standard')) return 'Standard';
+  return null;
+}
+
+function classifyGcpLocationKey(description: string): typeof GCP_LOCATION_KEYS[number] | null {
+  const lower = description.toLowerCase();
+  if (lower.includes('dual') && lower.includes('asia')) return 'asia-dual-region';
+  if (lower.includes('dual')) return 'dual-region';
+  if (lower.includes('multi') && lower.includes('asia')) return 'asia-multi-region';
+  if (lower.includes('multi')) return 'multi-region';
+  if (lower.includes('regional') || lower.includes('region')) return 'regional';
+  return null;
+}
+
+async function fetchGcpCatalogPath(path: string, apiKey: string): Promise<unknown> {
+  const separator = path.includes('?') ? '&' : '?';
+  return fetchJson(`${GCP_CATALOG_API}${path}${separator}key=${encodeURIComponent(apiKey)}`);
+}
+
+async function findGcpCloudStorageService(apiKey: string): Promise<string> {
+  let pageToken = '';
+
+  do {
+    const params = new URLSearchParams({ pageSize: '5000' });
+    if (pageToken) params.set('pageToken', pageToken);
+    const data = await fetchGcpCatalogPath(`/services?${params.toString()}`, apiKey) as {
+      services?: Array<{ serviceId: string; displayName: string }>;
+      nextPageToken?: string;
+    };
+    const service = data.services?.find(s => s.displayName === 'Cloud Storage');
+    if (service) return service.serviceId;
+    pageToken = data.nextPageToken || '';
+  } while (pageToken);
+
+  throw new Error('Could not find GCP Cloud Storage service in Cloud Billing Catalog API');
+}
+
+async function fetchGcpStorageSkus(apiKey: string, serviceId: string): Promise<GcpSku[]> {
+  const skus: GcpSku[] = [];
+  let pageToken = '';
+
+  do {
+    const params = new URLSearchParams({ currencyCode: 'USD', pageSize: '5000' });
+    if (pageToken) params.set('pageToken', pageToken);
+    const data = await fetchGcpCatalogPath(`/services/${serviceId}/skus?${params.toString()}`, apiKey) as {
+      skus?: GcpSku[];
+      nextPageToken?: string;
+    };
+    skus.push(...(data.skus || []));
+    pageToken = data.nextPageToken || '';
+  } while (pageToken);
+
+  return skus;
+}
+
+async function refreshGcp() {
   const existing = readPricingFile('gcp.json');
-  existing.lastVerified = today;
-  writePricingFile('gcp.json', existing);
-  console.log('  ✓ Updated lastVerified date (prices unchanged — verify manually)\n');
+  const apiKey = process.env.GCP_CLOUD_BILLING_API_KEY || process.env.GOOGLE_CLOUD_API_KEY;
+
+  if (!apiKey) {
+    console.log('GCP: Skipped API refresh — set GCP_CLOUD_BILLING_API_KEY to use the Cloud Billing Catalog API.');
+    console.log('  Existing prices left unchanged. Manual references:');
+    console.log('  https://cloud.google.com/storage/pricing');
+    console.log('  https://cloud.google.com/storage/pricing-announce\n');
+    writePricingFile('gcp.json', {
+      ...existing,
+      refresh: refreshWarning(
+        'gcp',
+        'skipped',
+        'GCP pricing was not refreshed because no Cloud Billing Catalog API key is configured. Pricing may be stale or inaccurate.',
+        'GCP_CLOUD_BILLING_API_KEY',
+      ),
+    });
+    return;
+  }
+
+  try {
+    console.log('GCP: Fetching Cloud Billing Catalog API...');
+    const serviceId = process.env.GCP_CLOUD_STORAGE_SERVICE_ID || await findGcpCloudStorageService(apiKey);
+    const skus = await fetchGcpStorageSkus(apiKey, serviceId);
+    console.log(`GCP: Found ${skus.length} Cloud Storage SKUs`);
+
+    const storage: Record<string, Record<string, number>> = JSON.parse(JSON.stringify(existing.storage || {}));
+
+    for (const sku of skus) {
+      const description = sku.description || '';
+      const storageClass = classifyGcpStorageClass(description);
+      const locationKey = classifyGcpLocationKey(description);
+      if (!storageClass || !locationKey) continue;
+      if (sku.category?.resourceFamily !== 'Storage') continue;
+
+      const expression = sku.pricingInfo?.[0]?.pricingExpression;
+      const usageUnit = expression?.usageUnit || expression?.baseUnit || '';
+      if (!/by|gib|gb/i.test(usageUnit)) continue;
+
+      const firstRate = expression?.tieredRates?.find(r => (r.startUsageAmount || 0) === 0);
+      const price = usdFromGcpUnitPrice(firstRate?.unitPrice);
+      if (price <= 0) continue;
+
+      storage[locationKey] = storage[locationKey] || {};
+      storage[locationKey][storageClass] = price;
+    }
+
+    for (const locationKey of GCP_LOCATION_KEYS) {
+      for (const storageClass of GCP_STORAGE_CLASSES) {
+        if (typeof storage[locationKey]?.[storageClass] !== 'number') {
+          throw new Error(`GCP API refresh did not produce ${locationKey} ${storageClass} pricing`);
+        }
+      }
+    }
+
+    writePricingFile('gcp.json', {
+      ...existing,
+      lastVerified: today,
+      source: 'Google Cloud Billing Catalog API (cloudbilling.googleapis.com)',
+      refresh: refreshSuccess('gcp', 'Storage pricing refreshed from Google Cloud Billing Catalog API.'),
+      storage,
+    });
+    console.log('GCP: Done\n');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown GCP pricing refresh error';
+    writePricingFile('gcp.json', {
+      ...existing,
+      refresh: refreshWarning(
+        'gcp',
+        'error',
+        `GCP pricing refresh failed: ${message}. Pricing may be stale or inaccurate.`,
+        'GCP_CLOUD_BILLING_API_KEY',
+      ),
+    });
+    throw error;
+  }
 }
 
 // ---------------------------------------------------------------------------
-// R2 (simple — rarely changes)
+// R2
 // ---------------------------------------------------------------------------
 
 async function refreshR2() {
-  console.log('R2: Verify at https://developers.cloudflare.com/r2/pricing/');
-  console.log('  R2 has a single global flat rate — no regions, no tiers.');
-
-  const existing = readPricingFile('r2.json');
-  existing.lastVerified = today;
-  writePricingFile('r2.json', existing);
-  console.log('  ✓ Updated lastVerified date (prices unchanged — verify manually)\n');
+  console.log('R2: No stable public pricing API configured.');
+  console.log('  Existing prices left unchanged. Verify manually at:');
+  console.log('  https://developers.cloudflare.com/r2/pricing/');
+  console.log('  R2 has a single global flat rate — no regions, no tiers.\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -312,8 +544,6 @@ async function refreshR2() {
 // ---------------------------------------------------------------------------
 
 async function refreshB2() {
-  console.log('B2: Verify at https://www.backblaze.com/cloud-storage/pricing');
-
   const existing = readPricingFile('b2.json');
   const current = {
     storage: (existing.storage as Record<string, number>).perTbMonth,
@@ -322,14 +552,12 @@ async function refreshB2() {
   };
 
   console.log(`  Current rates: $${current.storage}/TB storage, $${current.egress}/GB egress overage, ${current.freeMultiplier}× free egress`);
+  console.log('B2: No stable public pricing API configured.');
   console.log('  Key pages to check:');
   console.log('    - https://www.backblaze.com/cloud-storage/pricing');
   console.log('    - https://www.backblaze.com/blog (for pricing announcements)');
   console.log('    - UDM rate, Reserve Capacity, and partner CDN list');
-
-  existing.lastVerified = today;
-  writePricingFile('b2.json', existing);
-  console.log('  ✓ Updated lastVerified date (prices unchanged — verify manually)\n');
+  console.log('  Existing prices left unchanged.\n');
 }
 
 // ---------------------------------------------------------------------------

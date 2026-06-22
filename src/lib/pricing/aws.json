@@ -1,1854 +1,27 @@
 {
-  "lastVerified": "2026-06-21",
+  "lastVerified": "2026-06-22",
   "source": "AWS Pricing API (pricing.us-east-1.amazonaws.com)",
   "provider": "aws",
+  "refresh": {
+    "provider": "aws",
+    "status": "success",
+    "lastAttempt": "2026-06-22",
+    "lastSuccess": "2026-06-22",
+    "message": "Storage pricing refreshed from AWS Bulk Pricing APIs."
+  },
   "storage": {
-    "us-east-1": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.023
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.022
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.021
-        }
-      ],
-      "Standard-IA": 0.0125,
-      "One Zone-IA": 0.01,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.023
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.022
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.021
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0125,
-      "Intelligent-Tiering-AIA": 0.004,
-      "Glacier Instant Retrieval": 0.004,
-      "Glacier Flexible Retrieval": 0.0036,
-      "Glacier Deep Archive": 0.00099,
-      "Express One Zone": 0.11,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0236
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0232
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0228
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0224
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.022
-        }
-      ]
-    },
-    "us-east-2": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.023
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.022
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.021
-        }
-      ],
-      "Standard-IA": 0.0125,
-      "One Zone-IA": 0.01,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.023
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.022
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.021
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0125,
-      "Intelligent-Tiering-AIA": 0.004,
-      "Glacier Instant Retrieval": 0.004,
-      "Glacier Flexible Retrieval": 0.0036,
-      "Glacier Deep Archive": 0.00099,
-      "Express One Zone": 0.11,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0236
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0232
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0228
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0224
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.022
-        }
-      ]
-    },
-    "us-west-1": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.026
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.024
-        }
-      ],
-      "Standard-IA": 0.0144,
-      "One Zone-IA": 0.0115,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.026
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.024
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0144,
-      "Intelligent-Tiering-AIA": 0.005,
-      "Glacier Instant Retrieval": 0.005,
-      "Glacier Flexible Retrieval": 0.0045,
-      "Glacier Deep Archive": 0.002,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.0264
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0259
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0255
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0246
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0242
-        }
-      ]
-    },
-    "us-west-2": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.023
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.022
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.021
-        }
-      ],
-      "Standard-IA": 0.0125,
-      "One Zone-IA": 0.01,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.023
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.022
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.021
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0125,
-      "Intelligent-Tiering-AIA": 0.004,
-      "Glacier Instant Retrieval": 0.004,
-      "Glacier Flexible Retrieval": 0.0036,
-      "Glacier Deep Archive": 0.00099,
-      "Express One Zone": 0.11,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0236
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0232
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0228
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0224
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.022
-        }
-      ]
-    },
-    "ca-central-1": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Standard-IA": 0.0138,
-      "One Zone-IA": 0.01104,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0138,
-      "Intelligent-Tiering-AIA": 0.005,
-      "Glacier Instant Retrieval": 0.005,
-      "Glacier Flexible Retrieval": 0.00405,
-      "Glacier Deep Archive": 0.0018,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.0264
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.026
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0255
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0251
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0246
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0242
-        }
-      ]
-    },
-    "ca-west-1": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Standard-IA": 0.0138,
-      "One Zone-IA": 0.01104,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0138,
-      "Intelligent-Tiering-AIA": 0.005,
-      "Glacier Instant Retrieval": 0.005,
-      "Glacier Flexible Retrieval": 0.00405,
-      "Glacier Deep Archive": 0.0018,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.0264
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.026
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0255
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0251
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0246
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0242
-        }
-      ]
-    },
-    "eu-west-1": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.023
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.022
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.021
-        }
-      ],
-      "Standard-IA": 0.0125,
-      "One Zone-IA": 0.01,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.023
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.022
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.021
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0125,
-      "Intelligent-Tiering-AIA": 0.004,
-      "Glacier Instant Retrieval": 0.004,
-      "Glacier Flexible Retrieval": 0.0036,
-      "Glacier Deep Archive": 0.00099,
-      "Express One Zone": 0.11,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0236
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0232
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0228
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0224
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.022
-        }
-      ]
-    },
-    "eu-west-2": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.023
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.022
-        }
-      ],
-      "Standard-IA": 0.0131,
-      "One Zone-IA": 0.01048,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.023
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.022
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0131,
-      "Intelligent-Tiering-AIA": 0.005,
-      "Glacier Instant Retrieval": 0.005,
-      "Glacier Flexible Retrieval": 0.00405,
-      "Glacier Deep Archive": 0.0018,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.0252
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0248
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0244
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0239
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0235
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0231
-        }
-      ]
-    },
-    "eu-west-3": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.023
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.022
-        }
-      ],
-      "Standard-IA": 0.0131,
-      "One Zone-IA": 0.01048,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.023
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.022
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0131,
-      "Intelligent-Tiering-AIA": 0.005,
-      "Glacier Instant Retrieval": 0.005,
-      "Glacier Flexible Retrieval": 0.00405,
-      "Glacier Deep Archive": 0.0018,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.0252
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0248
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0244
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0239
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0235
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0231
-        }
-      ]
-    },
-    "eu-central-1": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0245
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0235
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0225
-        }
-      ],
-      "Standard-IA": 0.0135,
-      "One Zone-IA": 0.0108,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0245
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0235
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0225
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0135,
-      "Intelligent-Tiering-AIA": 0.005,
-      "Glacier Instant Retrieval": 0.005,
-      "Glacier Flexible Retrieval": 0.00405,
-      "Glacier Deep Archive": 0.0018,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.026
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0255
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0251
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0247
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0242
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0238
-        }
-      ]
-    },
-    "eu-central-2": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.02695
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.02585
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.02475
-        }
-      ],
-      "Standard-IA": 0.01485,
-      "One Zone-IA": 0.01188,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.02695
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.02585
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.02475
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.01485,
-      "Intelligent-Tiering-AIA": 0.0055,
-      "Glacier Instant Retrieval": 0.0055,
-      "Glacier Flexible Retrieval": 0.004455,
-      "Glacier Deep Archive": 0.00198,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.0286
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.02805
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.02761
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.02717
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.02662
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.02618
-        }
-      ]
-    },
-    "eu-north-1": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.023
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.022
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.021
-        }
-      ],
-      "Standard-IA": 0.0125,
-      "One Zone-IA": 0.01,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.023
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.022
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.021
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0125,
-      "Intelligent-Tiering-AIA": 0.004,
-      "Glacier Instant Retrieval": 0.004,
-      "Glacier Flexible Retrieval": 0.0036,
-      "Glacier Deep Archive": 0.00099,
-      "Express One Zone": 0.11,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0236
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0232
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0228
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0224
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.022
-        }
-      ]
-    },
-    "eu-south-1": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.023
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.022
-        }
-      ],
-      "Standard-IA": 0.0131,
-      "One Zone-IA": 0.0105,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.023
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.022
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0131,
-      "Intelligent-Tiering-AIA": 0.005,
-      "Glacier Instant Retrieval": 0.005,
-      "Glacier Flexible Retrieval": 0.00405,
-      "Glacier Deep Archive": 0.0018,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0236
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0232
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0228
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0224
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.022
-        }
-      ]
-    },
-    "eu-south-2": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.023
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.022
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.021
-        }
-      ],
-      "Standard-IA": 0.0125,
-      "One Zone-IA": 0.01,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.023
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.022
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.021
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0125,
-      "Intelligent-Tiering-AIA": 0.005,
-      "Glacier Instant Retrieval": 0.005,
-      "Glacier Flexible Retrieval": 0.00405,
-      "Glacier Deep Archive": 0.0018,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0236
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0232
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0228
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0224
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.022
-        }
-      ]
-    },
-    "ap-northeast-1": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Standard-IA": 0.0138,
-      "One Zone-IA": 0.011,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0138,
-      "Intelligent-Tiering-AIA": 0.005,
-      "Glacier Instant Retrieval": 0.005,
-      "Glacier Flexible Retrieval": 0.0045,
-      "Glacier Deep Archive": 0.002,
-      "Express One Zone": 0.124,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.0264
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0259
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0255
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0246
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0242
-        }
-      ]
-    },
-    "ap-northeast-2": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Standard-IA": 0.0138,
-      "One Zone-IA": 0.011,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0138,
-      "Intelligent-Tiering-AIA": 0.005,
-      "Glacier Instant Retrieval": 0.005,
-      "Glacier Flexible Retrieval": 0.0045,
-      "Glacier Deep Archive": 0.002,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.0251
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0246
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0242
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0238
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0234
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ]
-    },
-    "ap-northeast-3": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Standard-IA": 0.0138,
-      "One Zone-IA": 0.011,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0138,
-      "Intelligent-Tiering-AIA": 0.005,
-      "Glacier Instant Retrieval": 0.005,
-      "Glacier Flexible Retrieval": 0.0045,
-      "Glacier Deep Archive": 0.002,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.0264
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0259
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0255
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0246
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0242
-        }
-      ]
-    },
-    "ap-southeast-1": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Standard-IA": 0.0138,
-      "One Zone-IA": 0.011,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0138,
-      "Intelligent-Tiering-AIA": 0.005,
-      "Glacier Instant Retrieval": 0.005,
-      "Glacier Flexible Retrieval": 0.0045,
-      "Glacier Deep Archive": 0.002,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0236
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0232
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0228
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0224
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.022
-        }
-      ]
-    },
-    "ap-southeast-2": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Standard-IA": 0.0138,
-      "One Zone-IA": 0.011,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0138,
-      "Intelligent-Tiering-AIA": 0.005,
-      "Glacier Instant Retrieval": 0.005,
-      "Glacier Flexible Retrieval": 0.0045,
-      "Glacier Deep Archive": 0.002,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.0264
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0259
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0255
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0246
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0242
-        }
-      ]
-    },
-    "ap-southeast-3": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Standard-IA": 0.0138,
-      "One Zone-IA": 0.011,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0138,
-      "Intelligent-Tiering-AIA": 0.005,
-      "Glacier Instant Retrieval": 0.005,
-      "Glacier Flexible Retrieval": 0.0045,
-      "Glacier Deep Archive": 0.002,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0236
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0232
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0228
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0224
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.022
-        }
-      ]
-    },
-    "ap-southeast-4": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Standard-IA": 0.0138,
-      "One Zone-IA": 0.011,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0138,
-      "Intelligent-Tiering-AIA": 0.005,
-      "Glacier Instant Retrieval": 0.005,
-      "Glacier Flexible Retrieval": 0.0045,
-      "Glacier Deep Archive": 0.002,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.0264
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0259
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0255
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0246
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0242
-        }
-      ]
-    },
-    "ap-southeast-5": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0225
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0216
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0207
-        }
-      ],
-      "Standard-IA": 0.01242,
-      "One Zone-IA": 0.0099,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0225
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0216
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0207
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.01242,
-      "Intelligent-Tiering-AIA": 0.0045,
-      "Glacier Instant Retrieval": 0.0045,
-      "Glacier Flexible Retrieval": 0.00405,
-      "Glacier Deep Archive": 0.0018,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.0216
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.02124
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.02088
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.02052
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.02016
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0198
-        }
-      ]
-    },
-    "ap-southeast-6": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.02625
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0252
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.02415
-        }
-      ],
-      "Standard-IA": 0.01449,
-      "One Zone-IA": 0.01155,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.02625
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0252
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.02415
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.01449,
-      "Intelligent-Tiering-AIA": 0.00525,
-      "Glacier Instant Retrieval": 0.00525,
-      "Glacier Flexible Retrieval": 0.004725,
-      "Glacier Deep Archive": 0.0021,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.02772
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.027195
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.026775
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.02625
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.02583
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.02541
-        }
-      ]
-    },
-    "ap-southeast-7": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0225
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0216
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0207
-        }
-      ],
-      "Standard-IA": 0.01242,
-      "One Zone-IA": 0.0099,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0225
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0216
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0207
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.01242,
-      "Intelligent-Tiering-AIA": 0.0045,
-      "Glacier Instant Retrieval": 0.0045,
-      "Glacier Flexible Retrieval": 0.00405,
-      "Glacier Deep Archive": 0.0018,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.0216
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.02124
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.02088
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.02052
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.02016
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0198
-        }
-      ]
-    },
-    "ap-east-1": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Standard-IA": 0.0138,
-      "One Zone-IA": 0.011,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0138,
-      "Intelligent-Tiering-AIA": 0.005,
-      "Glacier Instant Retrieval": 0.005,
-      "Glacier Flexible Retrieval": 0.0045,
-      "Glacier Deep Archive": 0.002,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0236
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0232
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0228
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0224
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.022
-        }
-      ]
-    },
-    "ap-east-2": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0225
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0216
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0207
-        }
-      ],
-      "Standard-IA": 0.01242,
-      "One Zone-IA": 0.0099,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0225
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0216
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0207
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.01242,
-      "Intelligent-Tiering-AIA": 0.005,
-      "Glacier Instant Retrieval": 0.005,
-      "Glacier Flexible Retrieval": 0.0045,
-      "Glacier Deep Archive": 0.002,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.02376
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.02331
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.02295
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0225
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.02214
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.02178
-        }
-      ]
-    },
-    "ap-south-1": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Standard-IA": 0.0138,
-      "One Zone-IA": 0.011,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0138,
-      "Intelligent-Tiering-AIA": 0.005,
-      "Glacier Instant Retrieval": 0.005,
-      "Glacier Flexible Retrieval": 0.0045,
-      "Glacier Deep Archive": 0.002,
-      "Express One Zone": 0.124,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0236
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0232
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0228
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0224
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.022
-        }
-      ]
-    },
-    "ap-south-2": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Standard-IA": 0.0138,
-      "One Zone-IA": 0.011,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.025
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.023
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0138,
-      "Intelligent-Tiering-AIA": 0.005,
-      "Glacier Instant Retrieval": 0.005,
-      "Glacier Flexible Retrieval": 0.0045,
-      "Glacier Deep Archive": 0.002,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.024
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.0236
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0232
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0228
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0224
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.022
-        }
-      ]
-    },
-    "sa-east-1": {
-      "Standard": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0405
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.039
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.037
-        }
-      ],
-      "Standard-IA": 0.0221,
-      "One Zone-IA": 0.0177,
-      "Intelligent-Tiering-FA": [
-        {
-          "maxTb": 50,
-          "perGb": 0.0405
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.039
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.037
-        }
-      ],
-      "Intelligent-Tiering-IA": 0.0221,
-      "Intelligent-Tiering-AIA": 0.0083,
-      "Glacier Instant Retrieval": 0.0083,
-      "Glacier Flexible Retrieval": 0.00765,
-      "Glacier Deep Archive": 0.0032,
-      "Reduced Redundancy": [
-        {
-          "maxTb": 1,
-          "perGb": 0.0326
-        },
-        {
-          "maxTb": 50,
-          "perGb": 0.032
-        },
-        {
-          "maxTb": 500,
-          "perGb": 0.0315
-        },
-        {
-          "maxTb": 1000,
-          "perGb": 0.0309
-        },
-        {
-          "maxTb": 5000,
-          "perGb": 0.0304
-        },
-        {
-          "maxTb": null,
-          "perGb": 0.0299
-        }
-      ]
-    },
     "af-south-1": {
       "Standard": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.0274
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0262
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.025
         }
       ],
@@ -1856,62 +29,976 @@
       "One Zone-IA": 0.0119,
       "Intelligent-Tiering-FA": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.0274
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0262
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.025
         }
       ],
       "Intelligent-Tiering-IA": 0.0149,
       "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.00405,
+      "Intelligent-Tiering-DAA": 0.0018,
       "Glacier Instant Retrieval": 0.005,
       "Glacier Flexible Retrieval": 0.00405,
-      "Glacier Deep Archive": 0.0018,
       "Reduced Redundancy": [
         {
-          "maxTb": 1,
+          "maxGb": 1024,
           "perGb": 0.024
         },
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.0236
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0232
         },
         {
-          "maxTb": 1000,
+          "maxGb": 1024000,
           "perGb": 0.0228
         },
         {
-          "maxTb": 5000,
+          "maxGb": 5120000,
           "perGb": 0.0224
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.022
         }
-      ]
+      ],
+      "Glacier Deep Archive": 0.0018
     },
-    "me-south-1": {
+    "ap-east-1": {
       "Standard": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.025
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.024
         },
         {
-          "maxTb": null,
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Standard-IA": 0.0138,
+      "One Zone-IA": 0.011,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0138,
+      "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.0045,
+      "Intelligent-Tiering-DAA": 0.002,
+      "Glacier Instant Retrieval": 0.005,
+      "Glacier Flexible Retrieval": 0.0045,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0236
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0232
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0228
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0224
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.022
+        }
+      ],
+      "Glacier Deep Archive": 0.002
+    },
+    "ap-east-2": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0225
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0216
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0207
+        }
+      ],
+      "Standard-IA": 0.01242,
+      "One Zone-IA": 0.0099,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0225
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0216
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0207
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.01242,
+      "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.0045,
+      "Intelligent-Tiering-DAA": 0.002,
+      "Glacier Instant Retrieval": 0.005,
+      "Glacier Flexible Retrieval": 0.0045,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.02376
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.02331
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.02295
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0225
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.02214
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.02178
+        }
+      ],
+      "Glacier Deep Archive": 0.002
+    },
+    "ap-northeast-1": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Standard-IA": 0.0138,
+      "One Zone-IA": 0.011,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0138,
+      "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.0045,
+      "Intelligent-Tiering-DAA": 0.002,
+      "Glacier Instant Retrieval": 0.005,
+      "Glacier Flexible Retrieval": 0.0045,
+      "Express One Zone": 0.124,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.0264
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0259
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0255
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0246
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0242
+        }
+      ],
+      "Glacier Deep Archive": 0.002
+    },
+    "ap-northeast-2": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Standard-IA": 0.0138,
+      "One Zone-IA": 0.011,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0138,
+      "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.0045,
+      "Intelligent-Tiering-DAA": 0.002,
+      "Glacier Instant Retrieval": 0.005,
+      "Glacier Flexible Retrieval": 0.0045,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.0251
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0246
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0242
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0238
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0234
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Glacier Deep Archive": 0.002
+    },
+    "ap-northeast-3": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Standard-IA": 0.0138,
+      "One Zone-IA": 0.011,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0138,
+      "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.0045,
+      "Intelligent-Tiering-DAA": 0.002,
+      "Glacier Instant Retrieval": 0.005,
+      "Glacier Flexible Retrieval": 0.0045,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.0264
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0259
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0255
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0246
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0242
+        }
+      ],
+      "Glacier Deep Archive": 0.002
+    },
+    "ap-south-1": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Standard-IA": 0.0138,
+      "One Zone-IA": 0.011,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0138,
+      "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.0045,
+      "Intelligent-Tiering-DAA": 0.002,
+      "Glacier Instant Retrieval": 0.005,
+      "Glacier Flexible Retrieval": 0.0045,
+      "Express One Zone": 0.124,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0236
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0232
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0228
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0224
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.022
+        }
+      ],
+      "Glacier Deep Archive": 0.002
+    },
+    "ap-south-2": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Standard-IA": 0.0138,
+      "One Zone-IA": 0.011,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0138,
+      "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.0045,
+      "Intelligent-Tiering-DAA": 0.002,
+      "Glacier Instant Retrieval": 0.005,
+      "Glacier Flexible Retrieval": 0.0045,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0236
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0232
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0228
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0224
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.022
+        }
+      ],
+      "Glacier Deep Archive": 0.002
+    },
+    "ap-southeast-1": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Standard-IA": 0.0138,
+      "One Zone-IA": 0.011,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0138,
+      "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.0045,
+      "Intelligent-Tiering-DAA": 0.002,
+      "Glacier Instant Retrieval": 0.005,
+      "Glacier Flexible Retrieval": 0.0045,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0236
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0232
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0228
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0224
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.022
+        }
+      ],
+      "Glacier Deep Archive": 0.002
+    },
+    "ap-southeast-2": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Standard-IA": 0.0138,
+      "One Zone-IA": 0.011,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0138,
+      "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.0045,
+      "Intelligent-Tiering-DAA": 0.002,
+      "Glacier Instant Retrieval": 0.005,
+      "Glacier Flexible Retrieval": 0.0045,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.0264
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0259
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0255
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0246
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0242
+        }
+      ],
+      "Glacier Deep Archive": 0.002
+    },
+    "ap-southeast-3": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Standard-IA": 0.0138,
+      "One Zone-IA": 0.011,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0138,
+      "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.0045,
+      "Intelligent-Tiering-DAA": 0.002,
+      "Glacier Instant Retrieval": 0.005,
+      "Glacier Flexible Retrieval": 0.0045,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0236
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0232
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0228
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0224
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.022
+        }
+      ],
+      "Glacier Deep Archive": 0.002
+    },
+    "ap-southeast-4": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Standard-IA": 0.0138,
+      "One Zone-IA": 0.011,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0138,
+      "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.0045,
+      "Intelligent-Tiering-DAA": 0.002,
+      "Glacier Instant Retrieval": 0.005,
+      "Glacier Flexible Retrieval": 0.0045,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.0264
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0259
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0255
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0246
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0242
+        }
+      ],
+      "Glacier Deep Archive": 0.002
+    },
+    "ap-southeast-5": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0225
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0216
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0207
+        }
+      ],
+      "Standard-IA": 0.01242,
+      "One Zone-IA": 0.0099,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0225
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0216
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0207
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.01242,
+      "Intelligent-Tiering-AIA": 0.0045,
+      "Intelligent-Tiering-AA": 0.00405,
+      "Intelligent-Tiering-DAA": 0.0018,
+      "Glacier Instant Retrieval": 0.0045,
+      "Glacier Flexible Retrieval": 0.00405,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.0216
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.02124
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.02088
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.02052
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.02016
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0198
+        }
+      ],
+      "Glacier Deep Archive": 0.0018
+    },
+    "ap-southeast-6": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02625
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0252
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.02415
+        }
+      ],
+      "Standard-IA": 0.01449,
+      "One Zone-IA": 0.01155,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02625
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0252
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.02415
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.01449,
+      "Intelligent-Tiering-AIA": 0.00525,
+      "Intelligent-Tiering-AA": 0.004725,
+      "Intelligent-Tiering-DAA": 0.0021,
+      "Glacier Instant Retrieval": 0.00525,
+      "Glacier Flexible Retrieval": 0.004725,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.02772
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.027195
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.026775
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.02625
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.02583
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.02541
+        }
+      ],
+      "Glacier Deep Archive": 0.0021
+    },
+    "ap-southeast-7": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0225
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0216
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0207
+        }
+      ],
+      "Standard-IA": 0.01242,
+      "One Zone-IA": 0.0099,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0225
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0216
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0207
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.01242,
+      "Intelligent-Tiering-AIA": 0.0045,
+      "Intelligent-Tiering-AA": 0.00405,
+      "Intelligent-Tiering-DAA": 0.0018,
+      "Glacier Instant Retrieval": 0.0045,
+      "Glacier Flexible Retrieval": 0.00405,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.0216
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.02124
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.02088
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.02052
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.02016
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0198
+        }
+      ],
+      "Glacier Deep Archive": 0.0018
+    },
+    "ca-central-1": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
           "perGb": 0.023
         }
       ],
@@ -1919,62 +1006,64 @@
       "One Zone-IA": 0.01104,
       "Intelligent-Tiering-FA": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.025
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.024
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.023
         }
       ],
       "Intelligent-Tiering-IA": 0.0138,
       "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.00405,
+      "Intelligent-Tiering-DAA": 0.0018,
       "Glacier Instant Retrieval": 0.005,
       "Glacier Flexible Retrieval": 0.00405,
-      "Glacier Deep Archive": 0.0018,
       "Reduced Redundancy": [
         {
-          "maxTb": 1,
+          "maxGb": 1024,
           "perGb": 0.0264
         },
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.026
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0255
         },
         {
-          "maxTb": 1000,
+          "maxGb": 1024000,
           "perGb": 0.0251
         },
         {
-          "maxTb": 5000,
+          "maxGb": 5120000,
           "perGb": 0.0246
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.0242
         }
-      ]
+      ],
+      "Glacier Deep Archive": 0.0018
     },
-    "me-central-1": {
+    "ca-west-1": {
       "Standard": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.025
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.024
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.023
         }
       ],
@@ -1982,62 +1071,586 @@
       "One Zone-IA": 0.01104,
       "Intelligent-Tiering-FA": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.025
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.024
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.023
         }
       ],
       "Intelligent-Tiering-IA": 0.0138,
       "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.00405,
+      "Intelligent-Tiering-DAA": 0.0018,
       "Glacier Instant Retrieval": 0.005,
       "Glacier Flexible Retrieval": 0.00405,
-      "Glacier Deep Archive": 0.0018,
       "Reduced Redundancy": [
         {
-          "maxTb": 1,
+          "maxGb": 1024,
           "perGb": 0.0264
         },
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.026
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0255
         },
         {
-          "maxTb": 1000,
+          "maxGb": 1024000,
           "perGb": 0.0251
         },
         {
-          "maxTb": 5000,
+          "maxGb": 5120000,
           "perGb": 0.0246
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.0242
         }
-      ]
+      ],
+      "Glacier Deep Archive": 0.0018
+    },
+    "eu-central-1": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0245
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0235
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0225
+        }
+      ],
+      "Standard-IA": 0.0135,
+      "One Zone-IA": 0.0108,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0245
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0235
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0225
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0135,
+      "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.00405,
+      "Intelligent-Tiering-DAA": 0.0018,
+      "Glacier Instant Retrieval": 0.005,
+      "Glacier Flexible Retrieval": 0.00405,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.026
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0255
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0251
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0247
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0242
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0238
+        }
+      ],
+      "Glacier Deep Archive": 0.0018
+    },
+    "eu-central-2": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02695
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.02585
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.02475
+        }
+      ],
+      "Standard-IA": 0.01485,
+      "One Zone-IA": 0.01188,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.02695
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.02585
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.02475
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.01485,
+      "Intelligent-Tiering-AIA": 0.0055,
+      "Intelligent-Tiering-AA": 0.004455,
+      "Intelligent-Tiering-DAA": 0.00198,
+      "Glacier Instant Retrieval": 0.0055,
+      "Glacier Flexible Retrieval": 0.004455,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.0286
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.02805
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.02761
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.02717
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.02662
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.02618
+        }
+      ],
+      "Glacier Deep Archive": 0.00198
+    },
+    "eu-north-1": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.023
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.022
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.021
+        }
+      ],
+      "Standard-IA": 0.0125,
+      "One Zone-IA": 0.01,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.023
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.022
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.021
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0125,
+      "Intelligent-Tiering-AIA": 0.004,
+      "Intelligent-Tiering-AA": 0.0036,
+      "Intelligent-Tiering-DAA": 0.00099,
+      "Glacier Instant Retrieval": 0.004,
+      "Glacier Flexible Retrieval": 0.0036,
+      "Express One Zone": 0.11,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0236
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0232
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0228
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0224
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.022
+        }
+      ],
+      "Glacier Deep Archive": 0.00099
+    },
+    "eu-south-1": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.023
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.022
+        }
+      ],
+      "Standard-IA": 0.0131,
+      "One Zone-IA": 0.0105,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.023
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.022
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0131,
+      "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.00405,
+      "Intelligent-Tiering-DAA": 0.0018,
+      "Glacier Instant Retrieval": 0.005,
+      "Glacier Flexible Retrieval": 0.00405,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0236
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0232
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0228
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0224
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.022
+        }
+      ],
+      "Glacier Deep Archive": 0.0018
+    },
+    "eu-south-2": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.023
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.022
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.021
+        }
+      ],
+      "Standard-IA": 0.0125,
+      "One Zone-IA": 0.01,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.023
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.022
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.021
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0125,
+      "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.00405,
+      "Intelligent-Tiering-DAA": 0.0018,
+      "Glacier Instant Retrieval": 0.005,
+      "Glacier Flexible Retrieval": 0.00405,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0236
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0232
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0228
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0224
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.022
+        }
+      ],
+      "Glacier Deep Archive": 0.0018
+    },
+    "eu-west-1": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.023
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.022
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.021
+        }
+      ],
+      "Standard-IA": 0.0125,
+      "One Zone-IA": 0.01,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.023
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.022
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.021
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0125,
+      "Intelligent-Tiering-AIA": 0.004,
+      "Intelligent-Tiering-AA": 0.0036,
+      "Intelligent-Tiering-DAA": 0.00099,
+      "Glacier Instant Retrieval": 0.004,
+      "Glacier Flexible Retrieval": 0.0036,
+      "Express One Zone": 0.11,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0236
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0232
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0228
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0224
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.022
+        }
+      ],
+      "Glacier Deep Archive": 0.00099
+    },
+    "eu-west-2": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.023
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.022
+        }
+      ],
+      "Standard-IA": 0.0131,
+      "One Zone-IA": 0.01048,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.023
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.022
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0131,
+      "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.00405,
+      "Intelligent-Tiering-DAA": 0.0018,
+      "Glacier Instant Retrieval": 0.005,
+      "Glacier Flexible Retrieval": 0.00405,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.0252
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0248
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0244
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0239
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0235
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0231
+        }
+      ],
+      "Glacier Deep Archive": 0.0018
+    },
+    "eu-west-3": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.023
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.022
+        }
+      ],
+      "Standard-IA": 0.0131,
+      "One Zone-IA": 0.01048,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.023
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.022
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0131,
+      "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.00405,
+      "Intelligent-Tiering-DAA": 0.0018,
+      "Glacier Instant Retrieval": 0.005,
+      "Glacier Flexible Retrieval": 0.00405,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.0252
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0248
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0244
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0239
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0235
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0231
+        }
+      ],
+      "Glacier Deep Archive": 0.0018
     },
     "il-central-1": {
       "Standard": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.025
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.024
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.023
         }
       ],
@@ -2045,62 +1658,194 @@
       "One Zone-IA": 0.01104,
       "Intelligent-Tiering-FA": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.025
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.024
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.023
         }
       ],
       "Intelligent-Tiering-IA": 0.0138,
       "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.00405,
+      "Intelligent-Tiering-DAA": 0.0018,
       "Glacier Instant Retrieval": 0.005,
       "Glacier Flexible Retrieval": 0.00405,
-      "Glacier Deep Archive": 0.0018,
       "Reduced Redundancy": [
         {
-          "maxTb": 1,
+          "maxGb": 1024,
           "perGb": 0.0264
         },
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.026
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0255
         },
         {
-          "maxTb": 1000,
+          "maxGb": 1024000,
           "perGb": 0.0251
         },
         {
-          "maxTb": 5000,
+          "maxGb": 5120000,
           "perGb": 0.0246
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.0242
         }
-      ]
+      ],
+      "Glacier Deep Archive": 0.0018
+    },
+    "me-central-1": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Standard-IA": 0.0138,
+      "One Zone-IA": 0.01104,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0138,
+      "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.00405,
+      "Intelligent-Tiering-DAA": 0.0018,
+      "Glacier Instant Retrieval": 0.005,
+      "Glacier Flexible Retrieval": 0.00405,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.0264
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.026
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0255
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0251
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0246
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0242
+        }
+      ],
+      "Glacier Deep Archive": 0.0018
+    },
+    "me-south-1": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Standard-IA": 0.0138,
+      "One Zone-IA": 0.01104,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.023
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0138,
+      "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.00405,
+      "Intelligent-Tiering-DAA": 0.0018,
+      "Glacier Instant Retrieval": 0.005,
+      "Glacier Flexible Retrieval": 0.00405,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.0264
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.026
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0255
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0251
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0246
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0242
+        }
+      ],
+      "Glacier Deep Archive": 0.0018
     },
     "mx-central-1": {
       "Standard": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.02415
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0231
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.02205
         }
       ],
@@ -2108,49 +1853,378 @@
       "One Zone-IA": 0.0105,
       "Intelligent-Tiering-FA": [
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.02415
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.0231
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.02205
         }
       ],
       "Intelligent-Tiering-IA": 0.013125,
       "Intelligent-Tiering-AIA": 0.0042,
+      "Intelligent-Tiering-AA": 0.00378,
+      "Intelligent-Tiering-DAA": 0.002,
       "Glacier Instant Retrieval": 0.0042,
       "Glacier Flexible Retrieval": 0.00378,
-      "Glacier Deep Archive": 0.002,
       "Reduced Redundancy": [
         {
-          "maxTb": 1,
+          "maxGb": 1024,
           "perGb": 0.0252
         },
         {
-          "maxTb": 50,
+          "maxGb": 51200,
           "perGb": 0.02478
         },
         {
-          "maxTb": 500,
+          "maxGb": 512000,
           "perGb": 0.02436
         },
         {
-          "maxTb": 1000,
+          "maxGb": 1024000,
           "perGb": 0.02394
         },
         {
-          "maxTb": 5000,
+          "maxGb": 5120000,
           "perGb": 0.02352
         },
         {
-          "maxTb": null,
+          "maxGb": null,
           "perGb": 0.0231
         }
+      ],
+      "Glacier Deep Archive": 0.002
+    },
+    "sa-east-1": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0405
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.039
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.037
+        }
+      ],
+      "Standard-IA": 0.0221,
+      "One Zone-IA": 0.0177,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.0405
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.039
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.037
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0221,
+      "Intelligent-Tiering-AIA": 0.0083,
+      "Intelligent-Tiering-AA": 0.00765,
+      "Intelligent-Tiering-DAA": 0.0032,
+      "Glacier Instant Retrieval": 0.0083,
+      "Glacier Flexible Retrieval": 0.00765,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.0326
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.032
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0315
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0309
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0304
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0299
+        }
+      ],
+      "Glacier Deep Archive": 0.0032
+    },
+    "us-east-1": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.023
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.022
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.021
+        }
+      ],
+      "Standard-IA": 0.0125,
+      "One Zone-IA": 0.01,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.023
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.022
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.021
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0125,
+      "Intelligent-Tiering-AIA": 0.004,
+      "Intelligent-Tiering-AA": 0.0036,
+      "Intelligent-Tiering-DAA": 0.00099,
+      "Glacier Instant Retrieval": 0.004,
+      "Glacier Flexible Retrieval": 0.0036,
+      "Express One Zone": 0.11,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0236
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0232
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0228
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0224
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.022
+        }
       ]
+    },
+    "us-east-2": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.023
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.022
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.021
+        }
+      ],
+      "Standard-IA": 0.0125,
+      "One Zone-IA": 0.01,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.023
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.022
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.021
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0125,
+      "Intelligent-Tiering-AIA": 0.004,
+      "Intelligent-Tiering-AA": 0.0036,
+      "Intelligent-Tiering-DAA": 0.00099,
+      "Glacier Instant Retrieval": 0.004,
+      "Glacier Flexible Retrieval": 0.0036,
+      "Express One Zone": 0.11,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0236
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0232
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0228
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0224
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.022
+        }
+      ],
+      "Glacier Deep Archive": 0.00099
+    },
+    "us-west-1": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.026
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.024
+        }
+      ],
+      "Standard-IA": 0.0144,
+      "One Zone-IA": 0.0115,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.026
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.024
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0144,
+      "Intelligent-Tiering-AIA": 0.005,
+      "Intelligent-Tiering-AA": 0.0045,
+      "Intelligent-Tiering-DAA": 0.002,
+      "Glacier Instant Retrieval": 0.005,
+      "Glacier Flexible Retrieval": 0.0045,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.0264
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0259
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0255
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.025
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0246
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.0242
+        }
+      ],
+      "Glacier Deep Archive": 0.002
+    },
+    "us-west-2": {
+      "Standard": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.023
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.022
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.021
+        }
+      ],
+      "Standard-IA": 0.0125,
+      "One Zone-IA": 0.01,
+      "Intelligent-Tiering-FA": [
+        {
+          "maxGb": 51200,
+          "perGb": 0.023
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.022
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.021
+        }
+      ],
+      "Intelligent-Tiering-IA": 0.0125,
+      "Intelligent-Tiering-AIA": 0.004,
+      "Intelligent-Tiering-AA": 0.0036,
+      "Intelligent-Tiering-DAA": 0.00099,
+      "Glacier Instant Retrieval": 0.004,
+      "Glacier Flexible Retrieval": 0.0036,
+      "Express One Zone": 0.11,
+      "Reduced Redundancy": [
+        {
+          "maxGb": 1024,
+          "perGb": 0.024
+        },
+        {
+          "maxGb": 51200,
+          "perGb": 0.0236
+        },
+        {
+          "maxGb": 512000,
+          "perGb": 0.0232
+        },
+        {
+          "maxGb": 1024000,
+          "perGb": 0.0228
+        },
+        {
+          "maxGb": 5120000,
+          "perGb": 0.0224
+        },
+        {
+          "maxGb": null,
+          "perGb": 0.022
+        }
+      ],
+      "Glacier Deep Archive": 0.00099
     }
   },
   "requests": {

@@ -68,6 +68,8 @@ export const AWS_SKU_STORAGE_CLASS: Record<string, string> = {
   'TimedStorage-INT-FA-ByteHrs': 'Intelligent-Tiering-FA',
   'TimedStorage-INT-IA-ByteHrs': 'Intelligent-Tiering-IA',
   'TimedStorage-INT-AIA-ByteHrs': 'Intelligent-Tiering-AIA',
+  'TimedStorage-INT-AA-ByteHrs': 'Intelligent-Tiering-AA',
+  'TimedStorage-INT-DAA-ByteHrs': 'Intelligent-Tiering-DAA',
   'TimedStorage-GIR-ByteHrs': 'Glacier Instant Retrieval',
   'TimedStorage-GIR-SmObjects': 'Glacier Instant Retrieval',
   'TimedStorage-GlacierByteHrs': 'Glacier Flexible Retrieval',

@@ -4,8 +4,8 @@
   "provider": "gcp",
   "storage": {
     "regional": {
-      "Standard": 0.020,
-      "Nearline": 0.010,
+      "Standard": 0.02,
+      "Nearline": 0.01,
       "Coldline": 0.004,
       "Archive": 0.0012
     },
@@ -35,10 +35,22 @@
     }
   },
   "operations": {
-    "Standard": { "classAPer10k": 0.05, "classBPer10k": 0.004 },
-    "Nearline": { "classAPer10k": 0.10, "classBPer10k": 0.01 },
-    "Coldline": { "classAPer10k": 0.20, "classBPer10k": 0.10 },
-    "Archive": { "classAPer10k": 0.50, "classBPer10k": 0.50 }
+    "Standard": {
+      "classAPer10k": 0.05,
+      "classBPer10k": 0.004
+    },
+    "Nearline": {
+      "classAPer10k": 0.1,
+      "classBPer10k": 0.01
+    },
+    "Coldline": {
+      "classAPer10k": 0.2,
+      "classBPer10k": 0.1
+    },
+    "Archive": {
+      "classAPer10k": 0.5,
+      "classBPer10k": 0.5
+    }
   },
   "retrieval": {
     "Nearline": 0.01,
@@ -46,9 +58,18 @@
     "Archive": 0.05
   },
   "dataTransferOut": [
-    { "maxTb": 1, "perGb": 0.12 },
-    { "maxTb": 10, "perGb": 0.11 },
-    { "maxTb": null, "perGb": 0.08 }
+    {
+      "maxTb": 1,
+      "perGb": 0.12
+    },
+    {
+      "maxTb": 10,
+      "perGb": 0.11
+    },
+    {
+      "maxTb": null,
+      "perGb": 0.08
+    }
   ],
   "interRegion": {
     "northAmericaPerGb": 0.02,
@@ -62,5 +83,12 @@
     "Coldline": 90,
     "Archive": 365
   },
-  "autoClassMonitoring": 0.0025
+  "autoClassMonitoring": 0.0025,
+  "refresh": {
+    "provider": "gcp",
+    "status": "skipped",
+    "lastAttempt": "2026-06-22",
+    "credentialEnvVar": "GCP_CLOUD_BILLING_API_KEY",
+    "message": "GCP pricing was not refreshed because no Cloud Billing Catalog API key is configured. Pricing may be stale or inaccurate."
+  }
 }

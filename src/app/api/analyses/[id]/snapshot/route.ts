@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid';
 import { saveReportSnapshot, listReportSnapshots } from '@/lib/storage/storage';
 import { requireUser } from '@/lib/auth/session';
 import type { ReportSnapshot } from '@/types/model';
+import { DEFAULT_EGRESS_CONFIG } from '@/types/analysis';
 import b2Pricing from '@/lib/pricing/b2.json';
 
 export async function POST(
@@ -12,6 +13,8 @@ export async function POST(
   const userEmail = await requireUser();
   const { id } = await params;
   const body = await req.json();
+  const growthRatePercent = readNumber(body.growthRatePercent, DEFAULT_EGRESS_CONFIG.dataGrowthRatePercent);
+  const growthFixedTbPerMonth = readNumber(body.growthFixedTbPerMonth, DEFAULT_EGRESS_CONFIG.dataGrowthFixedTbPerMonth);
 
   const snapshot: ReportSnapshot = {
     id: uuid(),
@@ -24,7 +27,10 @@ export async function POST(
     totalStorageGb: body.totalStorageGb ?? 0,
     migratedTierCount: body.migratedTierCount ?? 0,
     b2PricePerTb: body.b2PricePerTb ?? b2Pricing.storage.perTbMonth,
-    termMonths: body.termMonths ?? 36,
+    termMonths: body.termMonths ?? 12,
+    growthMode: body.growthMode === 'fixed-tb' ? 'fixed-tb' : DEFAULT_EGRESS_CONFIG.dataGrowthMode,
+    growthRatePercent,
+    growthFixedTbPerMonth,
     udmEnabled: body.udmEnabled ?? false,
   };
 
@@ -40,4 +46,9 @@ export async function GET(
   const { id } = await params;
   const snapshots = await listReportSnapshots(userEmail, id);
   return NextResponse.json(snapshots);
+}
+
+function readNumber(value: unknown, fallback: number): number {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
 }

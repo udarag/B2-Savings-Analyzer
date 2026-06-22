@@ -29,7 +29,7 @@ export function FileUpload({ analysisId, onUploadComplete, onError }: FileUpload
     }
 
     setUploading(true);
-    setProgress('Uploading and parsing bill...');
+    setProgress('Uploading and Parsing Bill...');
 
     try {
       const formData = new FormData();
@@ -96,10 +96,10 @@ export function FileUpload({ analysisId, onUploadComplete, onError }: FileUpload
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
           </svg>
           <p className="text-lg font-medium text-gray-700 mb-1">
-            Drop a cloud bill here
+            Drop a Cloud Bill Here
           </p>
           <p className="text-sm text-gray-500">
-            PDF, CSV, or Excel — AWS or GCP billing export
+            PDF, CSV, or Excel — AWS or GCP Billing Export
           </p>
         </div>
       )}

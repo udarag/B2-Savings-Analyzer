@@ -1,15 +1,7 @@
-import type { ParsedLineItem, TierInventoryRow } from '@/types/analysis';
-import { v4 as uuid } from 'uuid';
 import b2Pricing from '../pricing/b2.json';
 import { getListRate } from '../pricing/lookup';
-
-const COLD_TIERS = new Set([
-  'Glacier Instant Retrieval',
-  'Glacier Flexible Retrieval',
-  'Glacier Deep Archive',
-  'Archive',
-  'Coldline',
-]);
+import type { ParsedLineItem, TierInventoryRow } from '@/types/analysis';
+import { getDefaultTierMigration, makeTierInventoryId } from './tier-selection';
 
 const EXCLUDED_TIERS = new Set([
   'Glacier Staging',
@@ -17,6 +9,9 @@ const EXCLUDED_TIERS = new Set([
   'Reduced Redundancy',
   'Express One Zone',
 ]);
+
+const MIN_DISPLAYABLE_COST_USD = 0.005;
+const MIN_DISPLAYABLE_GB = 0.005;
 
 export function buildTierInventory(
   lineItems: ParsedLineItem[],
@@ -112,14 +107,20 @@ export function buildTierInventory(
       : 0;
     const totalTrueCost = tier.monthlyStorageCost + tier.retrievalFees +
       tier.earlyDeletionFees + tier.monitoringFees + tier.operationsFees;
+    if (Math.abs(tier.monthlyStorageCost) < MIN_DISPLAYABLE_COST_USD && Math.abs(totalTrueCost) < MIN_DISPLAYABLE_COST_USD) {
+      continue;
+    }
+    if (tier.gbStored < MIN_DISPLAYABLE_GB && Math.abs(totalTrueCost) < MIN_DISPLAYABLE_COST_USD) {
+      continue;
+    }
+
     const modeledB2Cost = tier.gbStored * (b2PricePerTb / 1000);
     const delta = totalTrueCost - modeledB2Cost;
 
-    const isCold = COLD_TIERS.has(tier.storageClass);
-    const defaultToggle = !isCold && effectivePerTb > b2PricePerTb;
+    const defaultToggle = getDefaultTierMigration(tier.storageClass, effectivePerTb, b2PricePerTb);
 
     rows.push({
-      id: uuid(),
+      id: makeTierInventoryId(tier.provider, tier.storageClass, tier.region),
       storageClass: tier.storageClass,
       provider: tier.provider,
       region: tier.region,
