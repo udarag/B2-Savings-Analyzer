@@ -4,6 +4,7 @@ import { createMagicLinkToken } from './tokens';
 import { getAppBaseUrl } from '@/lib/app-base-url';
 
 const BACKBLAZE_LOGO_CONTENT_ID = 'backblaze-logo-white';
+const BACKBLAZE_EMAIL_LOGO_FILENAME = 'backblaze-logo-white-email.png';
 
 export async function sendMagicLink(email: string): Promise<void> {
   const token = await createMagicLinkToken(email);
@@ -71,7 +72,7 @@ function buildMagicLinkHtml(url: string): string {
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                   <tr>
                     <td style="background:#0e0a2a; padding:28px 32px;">
-                      <img src="cid:${BACKBLAZE_LOGO_CONTENT_ID}" width="176" alt="Backblaze" style="display:block; width:176px; max-width:100%; height:auto; border:0; margin:0 0 22px;">
+                      <img src="cid:${BACKBLAZE_LOGO_CONTENT_ID}" width="160" alt="Backblaze" style="display:block; width:160px; max-width:100%; height:auto; border:0; margin:0 0 24px;">
                       <div style="font-size:12px; line-height:16px; color:#ffb4b7; font-weight:700; letter-spacing:.08em; text-transform:uppercase;">Secure sign-in</div>
                       <h1 style="margin:8px 0 0; font-size:26px; line-height:32px; color:#ffffff; font-weight:800;">Open B2 Savings Analyzer</h1>
                     </td>
@@ -128,10 +129,10 @@ function buildMagicLinkText(url: string): string {
 }
 
 async function getBackblazeLogoAttachment() {
-  const content = await readFile(join(process.cwd(), 'public', 'backblaze-logo-white.png'));
+  const content = await readFile(join(process.cwd(), 'public', BACKBLAZE_EMAIL_LOGO_FILENAME));
 
   return {
-    filename: 'backblaze-logo-white.png',
+    filename: BACKBLAZE_EMAIL_LOGO_FILENAME,
     content,
     contentType: 'image/png',
     contentId: BACKBLAZE_LOGO_CONTENT_ID,
