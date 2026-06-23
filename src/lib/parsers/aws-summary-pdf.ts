@@ -7,6 +7,8 @@ import type { ParsedLineItem, AccountBreakdown, AccountServiceBreakdown, Categor
 import type { ParseResult } from './types';
 import { parseFormattedNumber } from './normalize';
 import { getListRate } from '@/lib/pricing/lookup';
+import { buildAwsComputeSignals } from './aws-compute-signals';
+import { buildEgressProfileSuggestion } from '@/lib/analysis/egress-profile-suggestion';
 
 function extractText(pdfBuffer: Buffer): string {
   const tmpPath = join(tmpdir(), `bill-${Date.now()}.pdf`);
@@ -92,7 +94,6 @@ function parseServiceEntries(text: string): ServiceEntry[] {
 
   let currentEntry: ServiceEntry | null = null;
   let inConsolidatedBill = false;
-  let inLinkedAccountSection = false;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -104,7 +105,6 @@ function parseServiceEntries(text: string): ServiceEntry[] {
 
     // Stop at linked account sections — we only want the consolidated view
     if (line.includes('LINKED ACCOUNT ALLOCATION') || line.includes('Activity By Account')) {
-      inLinkedAccountSection = true;
       break;
     }
 
@@ -311,6 +311,11 @@ export function parseAwsSummaryPdf(pdfBuffer: Buffer): ParseResult {
   const serviceEntries = parseServiceEntries(text);
   const accounts = parseLinkedAccounts(text);
   const accountServiceBreakdowns = parseAccountServiceBreakdowns(text, accounts);
+  const computeSignals = buildAwsComputeSignals(serviceEntries.map((entry) => ({
+    name: entry.name,
+    amountUsd: entry.netTotal,
+    evidence: [`${entry.name}: $${entry.netTotal.toLocaleString()}`],
+  })));
 
   const lineItems: ParsedLineItem[] = [];
   const discounts: NamedDiscount[] = [];
@@ -417,6 +422,7 @@ export function parseAwsSummaryPdf(pdfBuffer: Buffer): ParseResult {
   }
 
   const parsedTotal = lineItems.reduce((sum, item) => sum + item.costUsd, 0);
+  const egressProfileSuggestion = buildEgressProfileSuggestion(lineItems, computeSignals);
 
   return {
     provider: 'aws',
@@ -428,6 +434,8 @@ export function parseAwsSummaryPdf(pdfBuffer: Buffer): ParseResult {
       lineItems,
       accounts: accounts.length > 0 ? accounts : undefined,
       accountServiceBreakdowns: accountServiceBreakdowns.length > 0 ? accountServiceBreakdowns : undefined,
+      computeSignals: computeSignals.length > 0 ? computeSignals : undefined,
+      egressProfileSuggestion,
       grandTotal: grandTotal || parsedTotal,
       parseConfidence: 0.5,
       warnings,

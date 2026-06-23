@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FileUpload } from '@/components/upload/FileUpload';
+import { useDocumentTitle } from '@/components/shared/useDocumentTitle';
 
 export default function NewAnalysisPage() {
   const router = useRouter();
@@ -11,6 +12,7 @@ export default function NewAnalysisPage() {
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  useDocumentTitle(analysisId ? `${prospectName} Upload` : 'New Opportunity');
 
   async function handleCreate() {
     if (!prospectName.trim()) {
@@ -46,7 +48,7 @@ export default function NewAnalysisPage() {
         <div className="bg-white rounded-lg shadow p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Prospect / Customer Name
+              Opportunity Name
             </label>
             <input
               type="text"
@@ -56,6 +58,9 @@ export default function NewAnalysisPage() {
               className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-bb-red focus:border-transparent"
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
             />
+            <p className="mt-1 text-xs text-gray-500">
+              Used as the customer company name by default; you can edit the company name later on the analysis page.
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

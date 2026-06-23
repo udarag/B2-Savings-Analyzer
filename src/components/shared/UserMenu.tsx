@@ -15,6 +15,11 @@ interface UserProfile {
   title?: string;
 }
 
+interface ProfileResponse {
+  profile?: UserProfile | null;
+  profileUnavailable?: boolean;
+}
+
 export function UserMenu() {
   const [email, setEmail] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -33,14 +38,14 @@ export function UserMenu() {
     Promise.all([
       fetch('/api/auth/me').then((r) => r.json()),
       fetch('/api/auth/profile').then((r) => r.json()),
-    ]).then(([me, prof]) => {
+    ]).then(([me, prof]: [{ user?: { email?: string } | null }, ProfileResponse]) => {
       const userEmail = me.user?.email ?? null;
       setEmail(userEmail);
       if (prof.profile) {
         setProfile(prof.profile);
         setNameInput(prof.profile.displayName);
         setTitleInput(prof.profile.title || '');
-      } else if (userEmail) {
+      } else if (userEmail && !prof.profileUnavailable) {
         setShowSetup(true);
         setNameInput(emailToDisplayName(userEmail));
       }
@@ -95,6 +100,7 @@ export function UserMenu() {
           title: titleInput.trim() || undefined,
         }),
       });
+      if (!res.ok) throw new Error('Failed to save profile');
       const { profile: updated } = await res.json();
       setProfile(updated);
       setEditing(false);

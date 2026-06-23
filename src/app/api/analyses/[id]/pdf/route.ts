@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { v4 as uuid } from 'uuid';
 import {
   getAnalysisMeta,
   getParsedBill,
@@ -8,11 +7,8 @@ import {
   getUserProfile,
 } from '@/lib/storage/storage';
 import { requireUser } from '@/lib/auth/session';
-import { buildTierInventory } from '@/lib/engine/tier-inventory';
-import { applyTierSelectionConfig } from '@/lib/engine/tier-selection';
-import { computeCostModel } from '@/lib/engine/cost-model';
-import { normalizeEgressConfig } from '@/types/analysis';
-import type { ReportSnapshot } from '@/types/model';
+import { buildAnalysisSnapshot } from '@/lib/analysis/rerun';
+import { buildReportFilename } from '@/lib/report-filename';
 
 export async function GET(
   req: Request,
@@ -35,33 +31,12 @@ export async function GET(
   // Save a snapshot of the current analysis state
   if (parsed && modelConfig) {
     try {
-      const tiers = applyTierSelectionConfig(
-        buildTierInventory(parsed.lineItems, modelConfig.b2PricePerTb),
-        modelConfig,
-      );
-      const egressConfig = normalizeEgressConfig(modelConfig.egressConfig);
-      const costModel = computeCostModel(
-        parsed.lineItems, tiers, egressConfig, modelConfig.b2PricePerTb,
-      );
-      const migratedTiers = tiers.filter((t) => t.migrateToB2);
-
-      const snapshot: ReportSnapshot = {
-        id: uuid(),
+      const { snapshot } = buildAnalysisSnapshot({
         analysisId: id,
-        createdAt: new Date().toISOString(),
+        parsed,
+        modelConfig,
         trigger: 'pdf-download',
-        monthlySavings: costModel.monthlySavings,
-        annualSavings: costModel.annualSavings,
-        savingsPercent: costModel.savingsPercent,
-        totalStorageGb: migratedTiers.reduce((s, t) => s + t.gbStored, 0),
-        migratedTierCount: migratedTiers.length,
-        b2PricePerTb: modelConfig.b2PricePerTb,
-        termMonths: modelConfig.projectionTermMonths,
-        growthMode: egressConfig.dataGrowthMode,
-        growthRatePercent: egressConfig.dataGrowthRatePercent,
-        growthFixedTbPerMonth: egressConfig.dataGrowthFixedTbPerMonth,
-        udmEnabled: egressConfig.udmEnabled,
-      };
+      });
       await saveReportSnapshot(userEmail, id, snapshot);
     } catch {
       // Non-critical — don't fail PDF generation if snapshot fails
@@ -96,13 +71,14 @@ export async function GET(
     const pdf = await page.pdf({
       format: 'Letter',
       printBackground: true,
+      scale: 0.94,
       margin: { top: '0.5in', bottom: '0.5in', left: '0.65in', right: '0.65in' },
     });
 
     await context.close();
     await browser.close();
 
-    const filename = `${meta.prospectName.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '-')}-B2-Analysis.pdf`;
+    const filename = buildReportFilename(meta);
 
     return new NextResponse(new Uint8Array(pdf), {
       headers: {

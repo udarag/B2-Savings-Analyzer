@@ -148,7 +148,9 @@ export function assessReadiness(
   const hasDetailRequestWarning = parsed.warnings.some((warning) =>
     /summary invoice|per-SKU detail|detailed billing|Cost & Usage/i.test(warning)
   );
-  const hasListPriceSignal = parsed.warnings.some((warning) => /list price/i.test(warning));
+  const hasListPriceSignal =
+    parsed.warnings.some((warning) => /list price/i.test(warning)) ||
+    (parsed.commercialSignals || []).some((signal) => /list price/i.test(signal));
   const pricingResults = detectCustomPricing(parsed.lineItems, parsed.discounts);
   const tierPricingResults = pricingResults.filter((result) => result.category !== 'discount-program');
   const hasPublishedRateComparison = tierPricingResults.length > 0;

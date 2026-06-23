@@ -25,6 +25,7 @@ function classifySku(skuDesc: string): {
   storageClass?: string;
 } {
   const lower = skuDesc.toLowerCase();
+  const coldStorageClass = getColdStorageClass(lower);
 
   // Storage
   if (lower.includes('storage') && !lower.includes('transfer') && !lower.includes('operation')) {
@@ -52,12 +53,12 @@ function classifySku(skuDesc: string): {
   }
 
   // Retrieval
+  if (lower.includes('early delete') || lower.includes('early deletion') || lower.includes('minimum storage duration')) {
+    return { category: 'retrieval', subcategory: 'Early Deletion', storageClass: coldStorageClass };
+  }
+
   if (lower.includes('data retrieval') || lower.includes('retrieval')) {
-    let storageClass: string | undefined;
-    if (lower.includes('archive')) storageClass = 'Archive';
-    else if (lower.includes('coldline')) storageClass = 'Coldline';
-    else if (lower.includes('nearline')) storageClass = 'Nearline';
-    return { category: 'retrieval', storageClass };
+    return { category: 'retrieval', storageClass: coldStorageClass };
   }
 
   // Egress - internet downloads
@@ -93,6 +94,13 @@ function classifySku(skuDesc: string): {
   return { category: 'out-of-scope' };
 }
 
+function getColdStorageClass(lowerSkuDesc: string): string | undefined {
+  if (lowerSkuDesc.includes('archive')) return 'Archive';
+  if (lowerSkuDesc.includes('coldline')) return 'Coldline';
+  if (lowerSkuDesc.includes('nearline')) return 'Nearline';
+  return undefined;
+}
+
 function extractRegion(skuDesc: string): string {
   for (const [locationKey] of Object.entries(GCP_LOCATION_TYPES)) {
     if (skuDesc.includes(locationKey)) return locationKey;
@@ -119,6 +127,7 @@ export function parseGcpCsv(content: string): ParseResult {
   let grandTotal = 0;
   let totalSavingsPrograms = 0;
   const warnings: string[] = [];
+  const commercialSignals: string[] = [];
 
   for (const row of parsed.data) {
     // Skip subtotal/filtered total rows
@@ -160,7 +169,7 @@ export function parseGcpCsv(content: string): ParseResult {
   }
 
   if (totalSavingsPrograms === 0 && lineItems.length > 0) {
-    warnings.push('All Savings programs values are $0 — customer appears to be paying list price.');
+    commercialSignals.push('All Savings programs values are $0 — customer appears to be paying list price.');
   }
 
   // Validate total
@@ -186,6 +195,7 @@ export function parseGcpCsv(content: string): ParseResult {
       grandTotal: Math.round(grandTotal * 100) / 100,
       parseConfidence: warnings.length === 0 ? 0.95 : 0.8,
       warnings,
+      commercialSignals: commercialSignals.length > 0 ? commercialSignals : undefined,
     },
   };
 }

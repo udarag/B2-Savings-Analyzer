@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { v4 as uuid } from 'uuid';
-import { listAnalyses, saveAnalysisMeta, getParsedBill, getLatestSnapshot } from '@/lib/storage/storage';
-import { requireUser } from '@/lib/auth/session';
+import {
+  listAnalyses,
+  saveAnalysisMeta,
+  hasParsedBill,
+  getLatestSnapshot,
+  getStorageErrorDetails,
+} from '@/lib/storage/storage';
+import { getSessionUser } from '@/lib/auth/session';
 import type { Analysis } from '@/types/analysis';
 
 export interface AnalysisSummary extends Analysis {
@@ -16,18 +22,34 @@ export interface AnalysisSummary extends Analysis {
 }
 
 export async function GET() {
-  const userEmail = await requireUser();
-  const analyses = await listAnalyses(userEmail);
+  const userEmail = await getSessionUser();
+  if (!userEmail) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
-  const summaries: AnalysisSummary[] = await Promise.all(
-    analyses.map(async (a) => {
+  let analyses: Analysis[];
+  try {
+    analyses = await listAnalyses(userEmail);
+  } catch (error) {
+    console.error('Failed to list analyses:', error);
+    const details = getStorageErrorDetails(error);
+    return NextResponse.json(
+      { error: details.message, code: details.code },
+      { status: details.status },
+    );
+  }
+
+  const summaries: AnalysisSummary[] = await mapWithConcurrency(
+    analyses,
+    8,
+    async (a) => {
       const [parsed, snapshot] = await Promise.all([
-        getParsedBill(userEmail, a.id),
-        getLatestSnapshot(userEmail, a.id),
+        hasParsedBill(userEmail, a.id).catch(() => false),
+        getLatestSnapshot(userEmail, a.id).catch(() => null),
       ]);
       return {
         ...a,
-        hasBill: parsed !== null,
+        hasBill: parsed,
         latestSnapshot: snapshot
           ? {
               createdAt: snapshot.createdAt,
@@ -38,14 +60,18 @@ export async function GET() {
             }
           : null,
       };
-    }),
+    },
   );
 
   return NextResponse.json(summaries);
 }
 
 export async function POST(req: Request) {
-  const userEmail = await requireUser();
+  const userEmail = await getSessionUser();
+  if (!userEmail) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const body = await req.json();
   const id = uuid();
   const now = new Date().toISOString();
@@ -53,6 +79,7 @@ export async function POST(req: Request) {
   const meta: Analysis = {
     id,
     prospectName: body.prospectName || 'Untitled',
+    companyName: body.companyName || body.prospectName || 'Untitled',
     notes: body.notes,
     provider: body.provider || 'aws',
     billType: body.billType || 'detailed-statement',
@@ -60,6 +87,38 @@ export async function POST(req: Request) {
     updatedAt: now,
   };
 
-  await saveAnalysisMeta(userEmail, id, meta);
+  try {
+    await saveAnalysisMeta(userEmail, id, meta);
+  } catch (error) {
+    console.error('Failed to create analysis:', error);
+    const details = getStorageErrorDetails(error);
+    return NextResponse.json(
+      { error: details.message, code: details.code },
+      { status: details.status },
+    );
+  }
+
   return NextResponse.json(meta, { status: 201 });
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  mapper: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(limit, items.length);
+
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (nextIndex < items.length) {
+        const currentIndex = nextIndex;
+        nextIndex += 1;
+        results[currentIndex] = await mapper(items[currentIndex]);
+      }
+    }),
+  );
+
+  return results;
 }

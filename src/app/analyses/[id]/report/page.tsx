@@ -1,20 +1,30 @@
 'use client';
 
 import { Suspense, useEffect, useState, useMemo } from 'react';
+import Image from 'next/image';
 import { useParams, useSearchParams } from 'next/navigation';
 import type { Analysis, ParsedBill, ModelConfig, TierInventoryRow } from '@/types/analysis';
 import { normalizeEgressConfig } from '@/types/analysis';
 import type { CostModelResult, ProjectionPoint, PricingDetectionResult } from '@/types/model';
 import { buildTierInventory } from '@/lib/engine/tier-inventory';
 import { applyTierSelectionConfig } from '@/lib/engine/tier-selection';
-import { computeCostModel } from '@/lib/engine/cost-model';
+import {
+  computeCostModel,
+  getStorageScopeCurrentMonthly,
+  getStorageScopeReplacementMonthly,
+} from '@/lib/engine/cost-model';
+import {
+  getOperationActionCostSummary,
+  type ActionCostDetail,
+  type OperationActionCostSummary,
+} from '@/lib/analysis/action-costs';
 import { computeProjections, formatGrowthAssumption } from '@/lib/engine/projections';
 import { detectCustomPricing } from '@/lib/pricing/detection';
-import { getPricingFreshnessWarning } from '@/lib/pricing/freshness';
 import { getRegionLocation } from '@/lib/regions';
 import { formatStorageTierName } from '@/lib/storage-tiers';
-import { PricingFreshnessWarning } from '@/components/dashboard/PricingFreshnessWarning';
+import { buildReportFilename, getFilenameFromContentDisposition } from '@/lib/report-filename';
 import { formatCurrency, formatNumber, formatPercent } from '@/components/shared/FormatCurrency';
+import { useDocumentTitle } from '@/components/shared/useDocumentTitle';
 import b2Pricing from '@/lib/pricing/b2.json';
 
 interface AEInfo {
@@ -40,6 +50,14 @@ function formatEffectiveRate(perTb: number): string {
   return `${formatCurrency(perTb)}/TB`;
 }
 
+function formatPhraseList(items: Array<string | null>): string {
+  const phrases = items.filter((item): item is string => Boolean(item));
+  if (phrases.length === 0) return '';
+  if (phrases.length === 1) return phrases[0];
+  if (phrases.length === 2) return `${phrases[0]} and ${phrases[1]}`;
+  return `${phrases.slice(0, -1).join(', ')}, and ${phrases[phrases.length - 1]}`;
+}
+
 function formatProviderName(provider: Analysis['provider']): string {
   switch (provider) {
     case 'aws': return 'AWS';
@@ -53,6 +71,20 @@ function formatTermLabel(months: number): string {
   const years = months / 12;
   if (Number.isInteger(years)) return `${years} Year${years === 1 ? '' : 's'}`;
   return `${months} Months`;
+}
+
+function BackblazeLogo({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className="flex shrink-0 items-center" aria-label="Backblaze">
+      <Image
+        src="/backblaze-logo.png"
+        alt="Backblaze"
+        width={800}
+        height={286}
+        className={`${compact ? 'h-7' : 'h-9'} w-auto object-contain`}
+      />
+    </div>
+  );
 }
 
 export default function ReportPage() {
@@ -73,6 +105,9 @@ function ReportPageContent() {
   const [modelConfig, setModelConfig] = useState<ModelConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileAeInfo, setProfileAeInfo] = useState<AEInfo | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const reportTitleName = meta?.companyName || meta?.prospectName;
+  useDocumentTitle(reportTitleName ? `${reportTitleName} Customer Report` : 'Customer Report');
 
   const aeInfoFromParams = useMemo<AEInfo | null>(() => {
     const aeEmail = searchParams.get('ae');
@@ -91,15 +126,15 @@ function ReportPageContent() {
     if (aeInfoFromParams) return;
 
     Promise.all([
-      fetch('/api/auth/me').then((r) => r.json()),
-      fetch('/api/auth/profile').then((r) => r.json()),
+      fetch('/api/auth/me').then((r) => r.ok ? r.json() : null),
+      fetch('/api/auth/profile').then((r) => r.ok ? r.json() : null),
     ]).then(([me, prof]) => {
-      const email = me.user?.email;
+      const email = me?.user?.email;
       if (email) {
         setProfileAeInfo({
-          name: prof.profile?.displayName || emailToDisplayName(email),
+          name: prof?.profile?.displayName || emailToDisplayName(email),
           email,
-          title: prof.profile?.title || undefined,
+          title: prof?.profile?.title || undefined,
         });
       }
     }).catch(() => {});
@@ -136,14 +171,10 @@ function ReportPageContent() {
 
   const projections: ProjectionPoint[] = useMemo(() => {
     if (!costModel || !modelConfig || !egressConfig) return [];
-    const addressable = costModel.currentMonthly.storage +
-      costModel.currentMonthly.egress +
-      costModel.currentMonthly.operations +
-      costModel.currentMonthly.retrieval;
     const baseStorageGb = tiers.filter((t) => t.migrateToB2).reduce((s, t) => s + t.gbStored, 0);
     return computeProjections({
-      currentMonthlyCost: addressable,
-      b2MonthlyCost: costModel.b2Monthly.total,
+      currentMonthlyCost: getStorageScopeCurrentMonthly(costModel),
+      b2MonthlyCost: getStorageScopeReplacementMonthly(costModel),
       migrationCostTotal: costModel.migrationCost.total,
       baseStorageGb,
       growthMode: egressConfig.dataGrowthMode,
@@ -158,31 +189,13 @@ function ReportPageContent() {
     return detectCustomPricing(parsed.lineItems, parsed.discounts);
   }, [parsed]);
 
-  const pricingFreshnessWarning = meta?.provider
-    ? getPricingFreshnessWarning(meta.provider)
-    : null;
-
   // Save a snapshot when the report is viewed
   useEffect(() => {
     if (!costModel || !modelConfig || !egressConfig || !tiers.length) return;
-    const migratedTiers = tiers.filter((t) => t.migrateToB2);
     fetch(`/api/analyses/${id}/snapshot`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        trigger: 'report-view',
-        monthlySavings: costModel.monthlySavings,
-        annualSavings: costModel.annualSavings,
-        savingsPercent: costModel.savingsPercent,
-        totalStorageGb: migratedTiers.reduce((s, t) => s + t.gbStored, 0),
-        migratedTierCount: migratedTiers.length,
-        b2PricePerTb: modelConfig.b2PricePerTb,
-        termMonths: modelConfig.projectionTermMonths,
-        growthMode: egressConfig.dataGrowthMode,
-        growthRatePercent: egressConfig.dataGrowthRatePercent,
-        growthFixedTbPerMonth: egressConfig.dataGrowthFixedTbPerMonth,
-        udmEnabled: egressConfig.udmEnabled,
-      }),
+      body: JSON.stringify({ trigger: 'report-view' }),
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!costModel]);
@@ -201,9 +214,8 @@ function ReportPageContent() {
 
   const migratedTiers = tiers.filter((t) => t.migrateToB2);
   const migratedStorageGb = migratedTiers.reduce((s, t) => s + t.gbStored, 0);
-  const newCostTotal = costModel.newCosts.reduce((s, c) => s + c.amountUsd, 0);
-  const modeledB2Monthly = costModel.b2Monthly.total + newCostTotal;
-  const modeledCurrentMonthly = modeledB2Monthly + costModel.monthlySavings;
+  const modeledB2Monthly = getStorageScopeReplacementMonthly(costModel);
+  const modeledCurrentMonthly = getStorageScopeCurrentMonthly(costModel);
   const customerMigrationCost = costModel.migrationCost.total;
   const migrationCostCovered = costModel.migrationCost.egressCost + costModel.migrationCost.restoreCost;
   const totalSavings = projections.length > 0 ? projections[projections.length - 1].cumulativeSavings : 0;
@@ -214,15 +226,64 @@ function ReportPageContent() {
     annualGrowthPercent: egressConfig.dataGrowthRatePercent,
     fixedGrowthTbPerMonth: egressConfig.dataGrowthFixedTbPerMonth,
   });
-  const breakEvenLabel = customerMigrationCost <= 0
-    ? 'Immediate'
-    : costModel.breakEvenMonth
+  const hasCustomerMigrationPayback = customerMigrationCost > 0;
+  const savingsTimingLabel = hasCustomerMigrationPayback ? 'Break-Even' : 'Savings Start';
+  const savingsTimingSummaryLabel = hasCustomerMigrationPayback ? 'Break-Even Timing' : 'Savings Start';
+  const savingsTimingValue = hasCustomerMigrationPayback
+    ? costModel.breakEvenMonth
       ? `Month ${costModel.breakEvenMonth}`
-      : 'Review required';
+      : 'Review required'
+    : 'Day 1';
+  const providerLabel = formatProviderName(meta.provider);
+  const reportCompanyName = meta.companyName || meta.prospectName;
+  const b2StorageRateLabel = `${formatCurrency(modelConfig.b2PricePerTb)}/TB/month`;
+  const actionCostSummary = getOperationActionCostSummary(parsed.lineItems);
+  const coldTierAccess = actionCostSummary.coldTierAccess;
+  const actionFeePhrases = formatPhraseList([
+    actionCostSummary.putRelated.currentCost > 0
+      ? `${formatCurrency(actionCostSummary.putRelated.currentCost)}/month in PUT/write-class request charges`
+      : null,
+    actionCostSummary.getRelated.currentCost > 0
+      ? `${formatCurrency(actionCostSummary.getRelated.currentCost)}/month in GET/read-class request charges`
+      : null,
+    coldTierAccess.totalCost > 0
+      ? `${formatCurrency(coldTierAccess.totalCost)}/month in cold-tier access, restore, tiering, or early-deletion charges`
+      : null,
+  ]);
 
   return (
-    <div className="report-container max-w-4xl mx-auto bg-white print:max-w-none">
+    <div className="report-container report-compact max-w-4xl mx-auto bg-white print:max-w-none">
       <style>{`
+        .report-compact .text-xs { font-size: 0.68rem !important; line-height: 1.35; }
+        .report-compact .text-sm { font-size: 0.8rem !important; line-height: 1.4; }
+        .report-compact .text-base { font-size: 0.9rem !important; line-height: 1.35; }
+        .report-compact .text-lg { font-size: 1rem !important; line-height: 1.25; }
+        .report-compact .text-xl { font-size: 1.12rem !important; line-height: 1.2; }
+        .report-compact .text-2xl { font-size: 1.25rem !important; line-height: 1.15; }
+        .report-compact .text-4xl { font-size: 2rem !important; line-height: 1.08; }
+        .report-compact .p-8 { padding: 1.5rem !important; }
+        .report-compact .px-8 { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
+        .report-compact .py-5 { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+        .report-compact .pt-6 { padding-top: 1.25rem !important; }
+        .report-compact .pb-8 { padding-bottom: 1.5rem !important; }
+        .report-compact .p-6 { padding: 1.15rem !important; }
+        .report-compact .p-4 { padding: 0.875rem !important; }
+        .report-compact .p-3 { padding: 0.65rem !important; }
+        .report-compact .px-4 { padding-left: 0.875rem !important; padding-right: 0.875rem !important; }
+        .report-compact .py-3 { padding-top: 0.65rem !important; padding-bottom: 0.65rem !important; }
+        .report-compact .px-3 { padding-left: 0.65rem !important; padding-right: 0.65rem !important; }
+        .report-compact .py-2 { padding-top: 0.45rem !important; padding-bottom: 0.45rem !important; }
+        .report-compact .mb-6 { margin-bottom: 1.15rem !important; }
+        .report-compact .mb-5 { margin-bottom: 1rem !important; }
+        .report-compact .mb-4 { margin-bottom: 0.9rem !important; }
+        .report-compact .mb-3 { margin-bottom: 0.7rem !important; }
+        .report-compact .mt-8 { margin-top: 1.5rem !important; }
+        .report-compact .mt-5 { margin-top: 1rem !important; }
+        .report-compact .mt-4 { margin-top: 0.9rem !important; }
+        .report-compact .gap-5 { gap: 1rem !important; }
+        .report-compact .gap-4 { gap: 0.875rem !important; }
+        .report-compact .gap-3 { gap: 0.65rem !important; }
+        .report-compact table { font-size: 10.5px; }
         @media print {
           @page { size: letter; margin: 0.5in 0.65in; }
           body {
@@ -233,112 +294,162 @@ function ReportPageContent() {
           main { background: white !important; }
           .no-print { display: none !important; }
           .report-container { max-width: none; }
-          .report-header-flush { margin: 0 -0.65in; }
+          .report-header-flush { margin: 0; }
           table { break-inside: avoid; }
           .keep-together { break-inside: avoid; }
+          .report-narrative-section {
+            break-before: page;
+            page-break-before: always;
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+          .report-action-fees-header {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.6fr) minmax(0, 0.8fr) minmax(0, 0.65fr);
+          }
+          .report-action-fees-row {
+            grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.6fr) minmax(0, 0.8fr) minmax(0, 0.65fr) !important;
+            align-items: start;
+          }
+          .report-action-fees-right {
+            text-align: right !important;
+          }
+          .report-action-fees-mobile-label {
+            display: none !important;
+          }
+          .report-action-fees-detail-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+          .print-page-break { break-before: page; }
         }
       `}</style>
 
       {/* Download PDF button */}
-      <div className="no-print p-4 text-center bg-gray-100">
+      <div className="no-print flex items-center justify-end border-b border-gray-200 bg-white px-8 py-3">
         <button
-          onClick={() => {
-            const btn = document.getElementById('pdf-btn') as HTMLButtonElement;
-            btn.disabled = true;
-            btn.textContent = 'Generating PDF...';
-            fetch(`/api/analyses/${id}/pdf`)
-              .then(r => {
-                if (!r.ok) throw new Error('PDF generation failed');
-                return r.blob();
-              })
-              .then(blob => {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'report.pdf';
-                a.click();
-                URL.revokeObjectURL(url);
-              })
-              .catch(() => alert('PDF generation failed. Make sure Playwright is installed.'))
-              .finally(() => { btn.disabled = false; btn.textContent = 'Download PDF'; });
+          type="button"
+          onClick={async () => {
+            setDownloadingPdf(true);
+            try {
+              const r = await fetch(`/api/analyses/${id}/pdf`);
+              if (!r.ok) throw new Error('PDF generation failed');
+              const filename = getFilenameFromContentDisposition(r.headers.get('Content-Disposition')) || buildReportFilename(meta);
+              const blob = await r.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = filename;
+              a.click();
+              URL.revokeObjectURL(url);
+            } catch {
+              alert('PDF generation failed. Make sure Playwright is installed.');
+            } finally {
+              setDownloadingPdf(false);
+            }
           }}
           id="pdf-btn"
-          className="px-6 py-2 bg-bb-red text-white rounded-lg hover:bg-bb-red-dark disabled:opacity-50"
+          disabled={downloadingPdf}
+          className="inline-flex items-center gap-2 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-bb-red-dark shadow-sm transition-colors hover:bg-bb-red-light disabled:cursor-wait disabled:opacity-60"
         >
-          Download PDF
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17" />
+          </svg>
+          {downloadingPdf ? 'Generating PDF' : 'Download PDF'}
         </button>
       </div>
 
       {/* Page 1: Executive Summary */}
       <div>
-        <div className="h-1.5 bg-bb-red report-header-flush" />
-        <div className="bg-bb-navy px-8 py-5 flex items-center gap-4 report-header-flush">
-          <img src="/backblaze-webclip.png" alt="Backblaze" className="w-10 h-10" />
-          <div>
-            <h1 className="text-xl font-bold text-white">B2 Cloud Storage Savings Report</h1>
-            <p className="text-sm text-gray-400">Prepared for {meta.prospectName}</p>
+        <div className="border-t-[6px] border-bb-red bg-white px-8 py-5 flex items-center justify-between gap-5 border-b border-gray-200 report-header-flush">
+          <BackblazeLogo />
+          <div className="min-w-0 flex-1 text-right">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400">Customer Report</p>
+            <h1 className="mt-1 text-base font-semibold leading-tight text-bb-navy">B2 Cloud Storage Savings</h1>
+            <p className="mt-0.5 text-xs text-gray-500">Prepared for {reportCompanyName}</p>
           </div>
         </div>
 
         <div className="px-8 pt-6 pb-8">
-          {meta.provider !== 'aws' && (
-            <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 print:hidden">
-              <span className="mt-0.5 shrink-0 rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold uppercase text-white leading-none">Beta</span>
-              <p className="text-sm text-amber-800">
-                This report was generated from a {meta.provider === 'gcp' ? 'GCP' : meta.provider === 'azure' ? 'Azure' : 'Cloudflare R2'} bill
-                using beta parsing. Please review the values with your Backblaze team.
-              </p>
+          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-[1.25fr_1fr]">
+            <div className="rounded-lg bg-bb-navy p-6 text-white">
+              <p className="text-sm text-gray-300">Projected Savings Over {termYears} Year{termYears === 1 ? '' : 's'}</p>
+              <p className="mt-1 text-4xl font-bold leading-tight">{formatCurrency(totalSavings)}</p>
+              <p className="mt-2 text-xs text-gray-400">Includes {growthLabel} and the modeled migration economics below.</p>
+              <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-gray-400">Monthly Savings</p>
+                  <p className="mt-0.5 text-lg font-semibold text-green-200">{formatCurrency(costModel.monthlySavings)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Annual Savings</p>
+                  <p className="mt-0.5 text-lg font-semibold text-green-200">{formatCurrency(costModel.annualSavings)}</p>
+                </div>
+              </div>
             </div>
-          )}
-          <PricingFreshnessWarning warning={pricingFreshnessWarning} className="mb-4 no-print" />
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <div className="bg-green-50 rounded-lg p-5 text-center">
-              <p className="text-sm text-gray-600 mb-1">Your Monthly Savings</p>
-              <p className="text-2xl font-bold text-green-700">{formatCurrency(costModel.monthlySavings)}</p>
-            </div>
-            <div className="bg-green-50 rounded-lg p-5 text-center">
-              <p className="text-sm text-gray-600 mb-1">Your Annual Savings</p>
-              <p className="text-2xl font-bold text-green-700">{formatCurrency(costModel.annualSavings)}</p>
-            </div>
-            <div className="bg-green-50 rounded-lg p-5 text-center">
-              <p className="text-sm text-gray-600 mb-1">Cost Reduction</p>
-              <p className="text-2xl font-bold text-green-700">{formatPercent(costModel.savingsPercent)}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <OutcomeMetric label="Cost Reduction" value={formatPercent(costModel.savingsPercent)} tone="green" />
+              <OutcomeMetric label={savingsTimingLabel} value={savingsTimingValue} tone={!hasCustomerMigrationPayback ? 'green' : undefined} />
+              <OutcomeMetric label="Modeled Storage" value={formatReportStorage(migratedStorageGb)} />
+              <OutcomeMetric
+                label={costModel.udmEnabled ? 'Migration Covered' : 'Migration Cost'}
+                value={costModel.udmEnabled ? formatCurrency(migrationCostCovered) : formatCurrency(customerMigrationCost)}
+                tone={costModel.udmEnabled || customerMigrationCost <= 0 ? 'green' : undefined}
+              />
             </div>
           </div>
-          <div className="bg-bb-navy rounded-lg p-6 text-center mb-8">
-            <p className="text-sm text-gray-300 mb-1">You Could Save Over {termYears} Year{termYears === 1 ? '' : 's'}</p>
-            <p className="text-3xl font-bold text-white">{formatCurrency(totalSavings)}</p>
-            <p className="text-xs text-gray-400 mt-1">Includes {growthLabel}</p>
+
+          <div className="mb-6 rounded-lg border border-red-200 bg-bb-red-light p-4 keep-together">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-bb-red-dark">Your Backblaze B2 Storage Price</p>
+                <p className="mt-1 text-xs text-gray-700">
+                  This is the per-TB storage price used for the migrated storage scope and the estimated B2 monthly cost in this report.
+                </p>
+              </div>
+              <div className="shrink-0 rounded-lg bg-white px-4 py-3 text-right ring-1 ring-red-100">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Provided Rate</p>
+                <p className="text-2xl font-bold leading-tight text-bb-red-dark">{b2StorageRateLabel}</p>
+              </div>
+            </div>
           </div>
 
           <div className="mb-6 rounded-lg border border-gray-200 overflow-hidden print:break-inside-avoid">
             <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
               <h2 className="text-base font-semibold text-gray-900">Decision Summary</h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                This estimate models the storage tiers selected for migration from {formatProviderName(meta.provider)} to Backblaze B2.
+                This estimate models the storage tiers selected for migration from {providerLabel} to Backblaze B2 for {reportCompanyName}.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-px bg-gray-200 text-sm">
               <DecisionMetric label="Your Current Modeled Cost" value={`${formatCurrency(modeledCurrentMonthly)}/mo`} />
               <DecisionMetric label="Estimated B2 Cost" value={`${formatCurrency(modeledB2Monthly)}/mo`} emphasis="red" />
+              <DecisionMetric label="Your B2 Storage Price" value={b2StorageRateLabel} emphasis="red" />
               <DecisionMetric label="Modeled Storage Scope" value={`${formatReportStorage(migratedStorageGb)} across ${migratedTiers.length} tier${migratedTiers.length === 1 ? '' : 's'}`} />
               <DecisionMetric label="Migration Cost to You" value={formatCurrency(customerMigrationCost)} emphasis={customerMigrationCost <= 0 ? 'green' : undefined} />
-              <DecisionMetric label="Break-Even Timing" value={breakEvenLabel} />
+              <DecisionMetric label={savingsTimingSummaryLabel} value={savingsTimingValue} emphasis={!hasCustomerMigrationPayback ? 'green' : undefined} />
               <DecisionMetric label="Projection Assumption" value={`${formatTermLabel(modelConfig.projectionTermMonths)} with ${growthLabel}`} />
+              <DecisionMetric label="B2 Included Egress" value="3x stored data free" />
             </div>
           </div>
 
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold mb-3 border-l-4 border-bb-red pl-3">What This Means for You</h2>
+          <div className="mb-6 report-narrative-section">
+            <h2 className="text-lg font-semibold mb-3 border-l-4 border-bb-red pl-3">What Does This Mean for {reportCompanyName}?</h2>
             <p className="text-sm text-gray-700 leading-relaxed">
-              Based on the billing data provided, you can reduce the modeled storage and data-access costs from {formatCurrency(modeledCurrentMonthly)}/month
+              Based on the billing data provided, {reportCompanyName} can reduce modeled storage and data-access costs from {formatCurrency(modeledCurrentMonthly)}/month
               to {formatCurrency(modeledB2Monthly)}/month by moving {formatReportStorage(migratedStorageGb)} to Backblaze B2 Cloud Storage.
+              This model uses your Backblaze B2 storage price of {b2StorageRateLabel}.
               That is an estimated savings of {formatCurrency(costModel.monthlySavings)}/month, {formatCurrency(costModel.annualSavings)}/year,
               and {formatCurrency(totalSavings)} over {formatTermLabel(modelConfig.projectionTermMonths)}.
               {costModel.udmEnabled
                 ? ` Backblaze covers the estimated ${formatCurrency(migrationCostCovered)} migration cost through the Universal Data Migration program, so your modeled migration cost is $0.`
                 : costModel.breakEvenMonth ? ` Your modeled migration cost of ${formatCurrency(customerMigrationCost)} is recovered within ${costModel.breakEvenMonth} month${costModel.breakEvenMonth !== 1 ? 's' : ''}.` : ''}
             </p>
+            {actionCostSummary.distinctCurrentCost > 0 && (
+              <p className="mt-3 text-sm text-gray-700 leading-relaxed">
+                The source bill also shows {formatCurrency(actionCostSummary.distinctCurrentCost)}/month in action-based fees tied to using the data, including {actionFeePhrases}.
+                Because B2 standard transactions are free and B2 has no retrieval or restore fees, moving this data to B2 helps remove a cost center around actively using the data, not just storing it.
+              </p>
+            )}
             {costModel.partnerComputeScenario && (
               <p className="mt-3 text-sm text-gray-700 leading-relaxed">
                 If the processed-data write path later moves to a B2 bandwidth alliance compute partner, this model avoids another {formatCurrency(costModel.partnerComputeScenario.monthlyEgressAvoided)}/month in hyperscaler egress and increases savings to {formatCurrency(costModel.partnerComputeScenario.monthlySavings)}/month.
@@ -351,14 +462,24 @@ function ReportPageContent() {
               </div>
               <div className="rounded-lg bg-gray-50 p-3">
                 <p className="font-semibold text-gray-900 mb-1">Fewer Variable Fees</p>
-                <p className="text-gray-600">B2 removes modeled request charges and retrieval fees included in the migrated storage scope.</p>
+                <p className="text-gray-600">B2 removes modeled PUT/write-class and GET/read-class request charges, cold-tier access fees, and retrieval fees so usage does not become a separate cost center.</p>
               </div>
               <div className="rounded-lg bg-gray-50 p-3">
                 <p className="font-semibold text-gray-900 mb-1">Clear Migration Economics</p>
-                <p className="text-gray-600">The report shows one-time migration cost, break-even timing, and projected savings with growth.</p>
+                <p className="text-gray-600">The report shows one-time migration cost, savings timing, and projected savings with growth.</p>
               </div>
             </div>
           </div>
+
+          <ActionCostSignalSection actionCostSummary={actionCostSummary} providerLabel={providerLabel} />
+
+          <SavingsDrivers
+            costModel={costModel}
+            modeledCurrentMonthly={modeledCurrentMonthly}
+            modeledB2Monthly={modeledB2Monthly}
+          />
+
+          <PartnerScenarioComparison costModel={costModel} />
 
           {(() => {
             const programs = pricingDetection.filter(r => r.category === 'discount-program');
@@ -530,10 +651,21 @@ function ReportPageContent() {
 
       {/* Projections */}
       <div className="p-8">
-        <h2 className="text-lg font-semibold mb-4 border-l-4 border-bb-red pl-3">Cost Projections ({termYears}-Year)</h2>
-        <p className="text-sm text-gray-600 mb-6">
-          Based on current pricing with {growthLabel}. Projected storage starts at {formatReportStorage(migratedStorageGb)} and reaches {formatReportStorage(endingProjectedStorageGb)} by the end of the term.
-        </p>
+        <div className="keep-together">
+          <h2 className="text-lg font-semibold mb-4 border-l-4 border-bb-red pl-3">Cost Projections ({termYears}-Year)</h2>
+          <p className="text-sm text-gray-600 mb-6">
+            Based on current pricing with {growthLabel}. Projected storage starts at {formatReportStorage(migratedStorageGb)} and reaches {formatReportStorage(endingProjectedStorageGb)} by the end of the term.
+          </p>
+
+          <ProjectionGraph
+            points={projections}
+            providerLabel={providerLabel}
+            termMonths={modelConfig.projectionTermMonths}
+            savingsTimingLabel={savingsTimingLabel}
+            savingsTimingValue={savingsTimingValue}
+            hasCustomerMigrationPayback={hasCustomerMigrationPayback}
+          />
+        </div>
 
         <table className="w-full text-xs">
           <thead className="bg-bb-navy text-white">
@@ -568,8 +700,19 @@ function ReportPageContent() {
       </div>
 
       {/* Assumptions */}
-      <div className="p-8">
+      <div className="p-8 print-page-break">
         <h2 className="text-lg font-semibold mb-4 border-l-4 border-bb-red pl-3">Assumptions & Sources</h2>
+        <AssumptionSnapshot
+          providerLabel={providerLabel}
+          meta={meta}
+          modelConfig={modelConfig}
+          b2StorageRateLabel={b2StorageRateLabel}
+          growthLabel={growthLabel}
+          migratedStorageGb={migratedStorageGb}
+          migratedTierCount={migratedTiers.length}
+          customerMigrationCost={customerMigrationCost}
+          udmEnabled={costModel.udmEnabled}
+        />
         <table className="w-full text-sm">
           <tbody className="divide-y">
             <tr>
@@ -577,13 +720,35 @@ function ReportPageContent() {
               <td className="py-2">{meta.provider.toUpperCase()} {meta.billType} — {meta.billingPeriod || 'N/A'}</td>
             </tr>
             <tr>
-              <td className="py-2 font-medium text-gray-600">B2 Storage Price</td>
-              <td className="py-2">${modelConfig?.b2PricePerTb || b2Pricing.storage.perTbMonth}/TB/month (List: ${b2Pricing.storage.perTbMonth})</td>
+              <td className="py-2 font-medium text-gray-600">Your B2 Storage Price</td>
+              <td className="py-2">{b2StorageRateLabel} (List: {formatCurrency(b2Pricing.storage.perTbMonth)}/TB/month)</td>
             </tr>
             <tr>
               <td className="py-2 font-medium text-gray-600">B2 Transactions</td>
-              <td className="py-2">Free (All Standard API Classes)</td>
+              <td className="py-2">Free for standard API classes, including PUT/write-class and GET/read-class request charges</td>
             </tr>
+            {actionCostSummary.putRelated.currentCost > 0 && (
+              <tr>
+                <td className="py-2 font-medium text-gray-600">PUT / Write-Class Charges</td>
+                <td className="py-2">
+                  {formatCurrency(actionCostSummary.putRelated.currentCost)}/mo identified across {formatActionSignal(actionCostSummary.putRelated)}; modeled B2 standard transaction cost is $0.00
+                </td>
+              </tr>
+            )}
+            {actionCostSummary.getRelated.currentCost > 0 && (
+              <tr>
+                <td className="py-2 font-medium text-gray-600">GET / Read-Class Charges</td>
+                <td className="py-2">
+                  {formatCurrency(actionCostSummary.getRelated.currentCost)}/mo identified across {formatActionSignal(actionCostSummary.getRelated)}; modeled B2 standard transaction cost is $0.00
+                </td>
+              </tr>
+            )}
+            {coldTierAccess.totalCost > 0 && (
+              <tr>
+                <td className="py-2 font-medium text-gray-600">Cold-Tier Access Charges</td>
+                <td className="py-2">{formatCurrency(coldTierAccess.totalCost)}/mo identified in AWS S3 or GCS retrieval, restore, tiering, early deletion, or cold-tier operation rows; B2 has no retrieval or restore fees</td>
+              </tr>
+            )}
             <tr>
               <td className="py-2 font-medium text-gray-600">B2 Egress</td>
               <td className="py-2">3x stored data free, $0.01/GB overage</td>
@@ -621,14 +786,538 @@ function ReportPageContent() {
           </p>
         </div>
 
-        <div className="mt-8 pt-4 border-t-2 border-bb-red text-center text-sm text-gray-400">
-          <p>
-            Prepared by {aeInfo
-              ? `${aeInfo.name}${aeInfo.title ? `, ${aeInfo.title}` : ''} (${aeInfo.email}) — `
-              : ''}Backblaze | {new Date().toLocaleDateString()}
+        <div className="mt-8 pt-4 border-t-2 border-bb-red flex items-center justify-between gap-4 text-sm text-gray-400">
+          <BackblazeLogo compact />
+          <p className="min-w-0 flex-1 text-right leading-snug">
+            <span className="block">
+              Prepared by {aeInfo
+                ? `${aeInfo.name}${aeInfo.title ? `, ${aeInfo.title}` : ''} (${aeInfo.email})`
+                : 'Backblaze'}
+            </span>
+            <span className="block">Backblaze | {new Date().toLocaleDateString()}</span>
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function OutcomeMetric({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: 'green';
+}) {
+  const valueColor = tone === 'green' ? 'text-green-700' : 'text-gray-900';
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+      <p className="text-xs font-medium text-gray-500">{label}</p>
+      <p className={`mt-1 text-lg font-bold leading-tight ${valueColor}`}>{value}</p>
+    </div>
+  );
+}
+
+function ActionCostSignalSection({
+  actionCostSummary,
+  providerLabel,
+}: {
+  actionCostSummary: OperationActionCostSummary;
+  providerLabel: string;
+}) {
+  const rows: Array<{
+    id: 'put' | 'get' | 'cold';
+    label: string;
+    description: string;
+    currentCost: number;
+    b2Label: string;
+    b2Detail: string;
+    signal: string;
+    tone: 'red' | 'sky' | 'orange';
+  }> = [];
+
+  if (actionCostSummary.putRelated.currentCost > 0) {
+    rows.push({
+      id: 'put',
+      label: 'PUT / Write-Class Requests',
+      description: 'Source bill rows for PUT, upload, write, copy, post, delete, or Class A style operations.',
+      currentCost: actionCostSummary.putRelated.currentCost,
+      b2Label: '$0.00',
+      b2Detail: 'Free standard B2 transactions',
+      signal: formatActionSignal(actionCostSummary.putRelated),
+      tone: 'red',
+    });
+  }
+
+  if (actionCostSummary.getRelated.currentCost > 0) {
+    rows.push({
+      id: 'get',
+      label: 'GET / Read-Class Requests',
+      description: 'Source bill rows for GET, download, read, select, head, or Class B style operations.',
+      currentCost: actionCostSummary.getRelated.currentCost,
+      b2Label: '$0.00',
+      b2Detail: 'Free standard B2 transactions',
+      signal: formatActionSignal(actionCostSummary.getRelated),
+      tone: 'sky',
+    });
+  }
+
+  if (actionCostSummary.coldTierAccess.totalCost > 0) {
+    rows.push({
+      id: 'cold',
+      label: 'Cold-Tier Access, Tiering, and Restore Fees',
+      description: 'Source bill rows for retrieval, restore, lifecycle/tiering, early deletion, minimum-duration, or cold-tier operation fees.',
+      currentCost: actionCostSummary.coldTierAccess.totalCost,
+      b2Label: 'No retrieval or restore fees',
+      b2Detail: 'No cold-access exposure on B2',
+      signal: formatLineUsageSignal(
+        actionCostSummary.coldTierAccess.lineCount,
+        actionCostSummary.coldTierAccess.usageQuantity,
+        actionCostSummary.coldTierAccess.usageUnit,
+      ),
+      tone: 'orange',
+    });
+  }
+
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 keep-together">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-green-900">Action Fees B2 Removes</p>
+          <p className="mt-1 text-xs leading-relaxed text-green-800">
+            The {providerLabel} bill includes action-based charges that are either free standard operations on B2 or avoided cold-tier access exposure.
+          </p>
+        </div>
+        <div className="shrink-0 rounded-lg bg-white px-4 py-3 text-right ring-1 ring-green-200">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-green-700">Identified Today</p>
+          <p className="text-xl font-bold leading-tight text-green-900">{formatCurrency(actionCostSummary.distinctCurrentCost)}/mo</p>
+          <p className="mt-0.5 text-[10px] text-green-700">{actionCostSummary.distinctLineCount} bill line{actionCostSummary.distinctLineCount === 1 ? '' : 's'}</p>
+        </div>
+      </div>
+
+      <div className="mt-3 overflow-hidden rounded-lg border border-green-200 bg-white">
+        <div className="report-action-fees-header hidden grid-cols-[minmax(0,1.35fr)_0.6fr_0.8fr_0.65fr] gap-3 bg-green-900 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-white md:grid">
+          <span>Action Charge</span>
+          <span className="text-right">Current Cost</span>
+          <span className="text-right">B2 Cost</span>
+          <span className="text-right">Signal</span>
+        </div>
+        <div className="divide-y divide-green-100">
+          {rows.map((row) => {
+            const toneClasses = getActionSignalToneClasses(row.tone);
+            return (
+              <div key={row.id} className="report-action-fees-row grid grid-cols-1 gap-3 px-3 py-3 text-xs md:grid-cols-[minmax(0,1.35fr)_0.6fr_0.8fr_0.65fr] md:items-start">
+                <div className="min-w-0">
+                  <p className={`font-semibold ${toneClasses.title}`}>{row.label}</p>
+                  <p className="mt-1 leading-relaxed text-gray-600">{row.description}</p>
+                  {row.id === 'cold' && actionCostSummary.coldTierAccess.groups.length > 0 && (
+                    <div className="report-action-fees-detail-grid mt-2 grid gap-1.5 md:grid-cols-2">
+                      {actionCostSummary.coldTierAccess.groups.slice(0, 4).map((group) => (
+                        <div key={group.id} className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 ring-1 ${toneClasses.detail}`}>
+                          <span className="min-w-0 truncate text-[10px] font-medium">{group.label}</span>
+                          <span className="shrink-0 text-[10px] font-semibold">{formatCurrency(group.cost)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="report-action-fees-right min-w-0 md:text-right">
+                  <p className="report-action-fees-mobile-label text-[10px] font-semibold uppercase tracking-wide text-gray-500 md:hidden">Current Cost</p>
+                  <p className={`font-bold ${toneClasses.title}`}>{formatCurrency(row.currentCost)}/mo</p>
+                </div>
+                <div className="report-action-fees-right min-w-0 md:text-right">
+                  <p className="report-action-fees-mobile-label text-[10px] font-semibold uppercase tracking-wide text-gray-500 md:hidden">B2 Cost</p>
+                  <p className="font-bold text-green-700">{row.b2Label}</p>
+                  <p className="mt-0.5 text-[10px] leading-snug text-green-700">{row.b2Detail}</p>
+                </div>
+                <div className="report-action-fees-right min-w-0 md:text-right">
+                  <p className="report-action-fees-mobile-label text-[10px] font-semibold uppercase tracking-wide text-gray-500 md:hidden">Signal</p>
+                  <p className="font-medium text-gray-700">{row.signal}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function getActionSignalToneClasses(tone: 'red' | 'sky' | 'orange'): {
+  title: string;
+  detail: string;
+} {
+  switch (tone) {
+    case 'red':
+      return {
+        title: 'text-red-900',
+        detail: 'bg-red-50 text-red-900 ring-red-100',
+      };
+    case 'sky':
+      return {
+        title: 'text-sky-900',
+        detail: 'bg-sky-50 text-sky-900 ring-sky-100',
+      };
+    case 'orange':
+      return {
+        title: 'text-orange-900',
+        detail: 'bg-orange-50 text-orange-900 ring-orange-100',
+      };
+  }
+}
+
+function formatActionSignal(detail: ActionCostDetail): string {
+  return formatLineUsageSignal(detail.lineCount, detail.usageQuantity, detail.usageUnit);
+}
+
+function formatLineUsageSignal(lineCount: number, usageQuantity: number, usageUnit?: string): string {
+  const lineLabel = `${lineCount} line${lineCount === 1 ? '' : 's'}`;
+  if (usageQuantity <= 0) return lineLabel;
+  return `${lineLabel} - ${formatNumber(usageQuantity, 0)}${usageUnit ? ` ${usageUnit}` : ''}`;
+}
+
+function SavingsDrivers({
+  costModel,
+  modeledCurrentMonthly,
+  modeledB2Monthly,
+}: {
+  costModel: CostModelResult;
+  modeledCurrentMonthly: number;
+  modeledB2Monthly: number;
+}) {
+  const replacementCosts = [
+    { description: 'Backblaze B2 replacement cost', amountUsd: costModel.b2Monthly.total },
+    ...costModel.newCosts,
+  ].filter((row) => row.amountUsd > 0);
+  const maxAmount = Math.max(
+    1,
+    ...costModel.eliminatedFees.map((fee) => fee.amountUsd),
+    ...replacementCosts.map((cost) => cost.amountUsd),
+  );
+
+  return (
+    <div className="mb-6 rounded-lg border border-gray-200 p-4 keep-together">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold text-gray-900">Where the Savings Come From</h2>
+          <p className="mt-1 text-xs text-gray-500">
+            Monthly fees removed from the modeled scope compared with the recurring B2 replacement cost.
+          </p>
+        </div>
+        <div className="shrink-0 border-l border-gray-200 pl-4 text-right">
+          <p className="text-xs text-gray-600">Net Monthly Savings</p>
+          <p className="text-xl font-bold text-green-700">{formatCurrency(costModel.monthlySavings)}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-4">
+        <div>
+          <div className="mb-2 flex justify-between text-xs font-semibold text-gray-600">
+            <span>Current fees removed</span>
+            <span>{formatCurrency(modeledCurrentMonthly)}</span>
+          </div>
+          <div className="space-y-2">
+            {costModel.eliminatedFees.map((fee) => (
+              <SavingsDriverRow
+                key={`${fee.category}-${fee.description}`}
+                label={fee.description}
+                amount={fee.amountUsd}
+                maxAmount={maxAmount}
+                tone="savings"
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="w-px bg-gray-200" />
+
+        <div>
+          <div className="mb-2 flex justify-between text-xs font-semibold text-gray-600">
+            <span>B2 replacement costs</span>
+            <span>{formatCurrency(modeledB2Monthly)}</span>
+          </div>
+          <div className="space-y-2">
+            {replacementCosts.map((cost) => (
+              <SavingsDriverRow
+                key={cost.description}
+                label={cost.description}
+                amount={cost.amountUsd}
+                maxAmount={maxAmount}
+                tone="cost"
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SavingsDriverRow({
+  label,
+  amount,
+  maxAmount,
+  tone,
+}: {
+  label: string;
+  amount: number;
+  maxAmount: number;
+  tone: 'savings' | 'cost';
+}) {
+  const width = `${Math.max(5, Math.min(100, (amount / maxAmount) * 100))}%`;
+  const barColor = tone === 'savings' ? 'bg-green-600' : 'bg-bb-red';
+  const amountColor = tone === 'savings' ? 'text-green-700' : 'text-bb-red-dark';
+
+  return (
+    <div>
+      <div className="mb-1 flex items-baseline justify-between gap-3 text-xs">
+        <span className="text-gray-600">{label}</span>
+        <span className={`font-semibold ${amountColor}`}>{formatCurrency(amount)}</span>
+      </div>
+      <div className="h-2 rounded-full bg-gray-100">
+        <div className={`h-2 rounded-full ${barColor}`} style={{ width }} />
+      </div>
+    </div>
+  );
+}
+
+function PartnerScenarioComparison({ costModel }: { costModel: CostModelResult }) {
+  if (!costModel.partnerComputeScenario) return null;
+
+  const scenario = costModel.partnerComputeScenario;
+  const addedMonthlyValue = scenario.monthlySavings - costModel.monthlySavings;
+
+  return (
+    <div className="mb-6 rounded-lg border border-sky-200 bg-sky-50 p-4 keep-together">
+      <h2 className="text-base font-semibold text-gray-900">Optional Partner Compute Scenario</h2>
+      <p className="mt-1 text-xs text-sky-800">
+        If the processed-data write path moves to a B2 bandwidth alliance compute partner, this model avoids additional hyperscaler egress.
+      </p>
+      <div className="mt-4 grid grid-cols-3 gap-3">
+        <ScenarioMetric label="Primary Monthly Savings" value={formatCurrency(costModel.monthlySavings)} />
+        <ScenarioMetric label="Partner Compute Savings" value={formatCurrency(scenario.monthlySavings)} tone="green" />
+        <ScenarioMetric label="Added Monthly Value" value={formatCurrency(addedMonthlyValue)} tone="green" />
+      </div>
+    </div>
+  );
+}
+
+function ScenarioMetric({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: 'green';
+}) {
+  return (
+    <div className="border-l border-sky-200 pl-3">
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className={`mt-1 text-lg font-bold ${tone === 'green' ? 'text-green-700' : 'text-gray-900'}`}>{value}</p>
+    </div>
+  );
+}
+
+function ProjectionGraph({
+  points,
+  providerLabel,
+  termMonths,
+  savingsTimingLabel,
+  savingsTimingValue,
+  hasCustomerMigrationPayback,
+}: {
+  points: ProjectionPoint[];
+  providerLabel: string;
+  termMonths: number;
+  savingsTimingLabel: string;
+  savingsTimingValue: string;
+  hasCustomerMigrationPayback: boolean;
+}) {
+  if (points.length === 0) return null;
+
+  const width = 760;
+  const height = 310;
+  const left = 68;
+  const right = 30;
+  const top = 24;
+  const bottom = 44;
+  const chartWidth = width - left - right;
+  const chartHeight = height - top - bottom;
+  const maxCost = getNiceChartMax(Math.max(...points.map((p) => Math.max(p.currentCost, p.b2Cost)), 1));
+  const currentCoords = points.map((point) => ({
+    x: xForMonth(point.month, termMonths, left, chartWidth),
+    y: yForValue(point.currentCost, maxCost, top, chartHeight),
+  }));
+  const b2Coords = points.map((point) => ({
+    x: xForMonth(point.month, termMonths, left, chartWidth),
+    y: yForValue(point.b2Cost, maxCost, top, chartHeight),
+  }));
+  const currentPath = buildLinePath(currentCoords);
+  const b2Path = buildLinePath(b2Coords);
+  const gapPath = buildAreaPath(currentCoords, b2Coords);
+  const ticks = getProjectionTicks(termMonths);
+  const yTicks = [0, maxCost / 2, maxCost];
+  const timingPoint = hasCustomerMigrationPayback
+    ? points.find((point) => point.cumulativeSavings >= 0)
+    : points[0];
+  const timingMonthLabel = timingPoint ? `Month ${timingPoint.month}` : savingsTimingValue;
+  const timingMarkerLabel = timingPoint
+    ? `${savingsTimingLabel}: ${timingMonthLabel}`
+    : savingsTimingLabel;
+  const timingX = timingPoint ? xForMonth(timingPoint.month, termMonths, left, chartWidth) : 0;
+  const timingLineX = Math.max(left + 2, Math.min(left + chartWidth - 2, timingX));
+  const timingLabelWidth = hasCustomerMigrationPayback ? 134 : 146;
+  const timingLabelX = Math.min(
+    left + chartWidth - timingLabelWidth - 8,
+    Math.max(left + 8, timingX + 8),
+  );
+  const finalPoint = points[points.length - 1];
+
+  return (
+    <div className="mb-6 rounded-lg border border-gray-200 p-4 keep-together">
+      <div className="mb-3 flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-base font-semibold text-gray-900">Projected Monthly Cost Curve</h3>
+          <p className="mt-1 text-xs text-gray-500">
+            The shaded gap is the modeled monthly savings between {providerLabel} and Backblaze B2.
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-xs text-gray-500">{savingsTimingLabel}</p>
+          <p className="text-base font-bold text-gray-900">{savingsTimingValue}</p>
+        </div>
+      </div>
+      <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-gray-600">
+        <GraphLegend colorClass="bg-slate-500" label={providerLabel} />
+        <GraphLegend colorClass="bg-bb-red" label="Backblaze B2" />
+        <GraphLegend colorClass="bg-green-600" label="Monthly Savings Gap" />
+      </div>
+      <svg className="h-auto w-full" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Projected monthly cost comparison">
+        <rect x={left} y={top} width={chartWidth} height={chartHeight} fill="#f8fafc" rx="6" />
+        {yTicks.map((tick) => {
+          const y = yForValue(tick, maxCost, top, chartHeight);
+          return (
+            <g key={tick}>
+              <line x1={left} y1={y} x2={left + chartWidth} y2={y} stroke="#e5e7eb" strokeWidth="1" />
+              <text x={left - 10} y={y + 4} textAnchor="end" fontSize="11" fill="#6b7280">
+                {formatCompactCurrency(tick)}
+              </text>
+            </g>
+          );
+        })}
+        {ticks.map((tick) => {
+          const x = xForMonth(tick, termMonths, left, chartWidth);
+          return (
+            <g key={tick}>
+              <line x1={x} y1={top} x2={x} y2={top + chartHeight} stroke="#edf2f7" strokeWidth="1" />
+              <text x={x} y={height - 16} textAnchor="middle" fontSize="11" fill="#6b7280">
+                {formatProjectionMonthTick(tick)}
+              </text>
+            </g>
+          );
+        })}
+        <path d={gapPath} fill="#16a34a" opacity="0.14" />
+        <path d={currentPath} fill="none" stroke="#64748b" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={b2Path} fill="none" stroke="#D1232A" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+        {timingPoint && (
+          <g>
+            <line
+              x1={timingLineX}
+              y1={top}
+              x2={timingLineX}
+              y2={top + chartHeight}
+              stroke={hasCustomerMigrationPayback ? '#111827' : '#047857'}
+              strokeDasharray="5 5"
+              strokeWidth="1.2"
+            />
+            <rect
+              x={timingLabelX}
+              y={top + 8}
+              width={timingLabelWidth}
+              height="22"
+              rx="5"
+              fill={hasCustomerMigrationPayback ? '#111827' : '#047857'}
+            />
+            <text
+              x={timingLabelX + timingLabelWidth / 2}
+              y={top + 23}
+              textAnchor="middle"
+              fontSize="11"
+              fill="#ffffff"
+            >
+              {timingMarkerLabel}
+            </text>
+          </g>
+        )}
+        <text x={left + chartWidth - 4} y={currentCoords[currentCoords.length - 1].y - 8} textAnchor="end" fontSize="11" fill="#475569">
+          {formatCompactCurrency(finalPoint.currentCost)}/mo
+        </text>
+        <text x={left + chartWidth - 4} y={b2Coords[b2Coords.length - 1].y + 16} textAnchor="end" fontSize="11" fill="#991b1b">
+          {formatCompactCurrency(finalPoint.b2Cost)}/mo
+        </text>
+        <line x1={left} y1={top + chartHeight} x2={left + chartWidth} y2={top + chartHeight} stroke="#cbd5e1" strokeWidth="1" />
+        <line x1={left} y1={top} x2={left} y2={top + chartHeight} stroke="#cbd5e1" strokeWidth="1" />
+      </svg>
+    </div>
+  );
+}
+
+function GraphLegend({ colorClass, label }: { colorClass: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className={`h-2.5 w-2.5 rounded-full ${colorClass}`} />
+      {label}
+    </span>
+  );
+}
+
+function AssumptionSnapshot({
+  providerLabel,
+  meta,
+  modelConfig,
+  b2StorageRateLabel,
+  growthLabel,
+  migratedStorageGb,
+  migratedTierCount,
+  customerMigrationCost,
+  udmEnabled,
+}: {
+  providerLabel: string;
+  meta: Analysis;
+  modelConfig: ModelConfig;
+  b2StorageRateLabel: string;
+  growthLabel: string;
+  migratedStorageGb: number;
+  migratedTierCount: number;
+  customerMigrationCost: number;
+  udmEnabled: boolean;
+}) {
+  return (
+    <div className="mb-5 grid grid-cols-2 gap-3 text-xs keep-together">
+      <AssumptionItem label="Source Bill" value={`${providerLabel} ${meta.billType}${meta.billingPeriod ? `, ${meta.billingPeriod}` : ''}`} />
+      <AssumptionItem label="Modeled Scope" value={`${formatReportStorage(migratedStorageGb)} across ${migratedTierCount} tier${migratedTierCount === 1 ? '' : 's'}`} />
+      <AssumptionItem label="Projection" value={`${formatTermLabel(modelConfig.projectionTermMonths)} with ${growthLabel}`} />
+      <AssumptionItem label="Your B2 Storage Price" value={b2StorageRateLabel} />
+      <AssumptionItem label="B2 Egress" value="3x stored data free, then $0.01/GB" />
+      <AssumptionItem
+        label="Migration Cost to You"
+        value={udmEnabled ? '$0 through Universal Data Migration' : formatCurrency(customerMigrationCost)}
+      />
+    </div>
+  );
+}
+
+function AssumptionItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+      <p className="font-medium text-gray-500">{label}</p>
+      <p className="mt-1 font-semibold text-gray-900">{value}</p>
     </div>
   );
 }
@@ -654,6 +1343,75 @@ function DecisionMetric({
       <p className={`mt-1 text-base font-bold ${valueColor}`}>{value}</p>
     </div>
   );
+}
+
+function getProjectionTicks(termMonths: number): number[] {
+  if (termMonths <= 12) return [1, 3, 6, 9, 12].filter((month) => month <= termMonths);
+  if (termMonths <= 24) return [1, 6, 12, 18, 24].filter((month) => month <= termMonths);
+  if (termMonths <= 36) return [1, 6, 12, 18, 24, 30, 36].filter((month) => month <= termMonths);
+  return [1, 12, 24, 36, 48, 60].filter((month) => month <= termMonths);
+}
+
+function formatProjectionMonthTick(value: number): string {
+  if (value > 0 && value % 12 === 0) return `${value / 12}Y`;
+  return `M${value}`;
+}
+
+function formatCompactCurrency(value: number): string {
+  const sign = value < 0 ? '-' : '';
+  const abs = Math.abs(value);
+
+  if (abs >= 1_000_000) {
+    const decimals = abs >= 10_000_000 ? 0 : 1;
+    return `${sign}$${(abs / 1_000_000).toFixed(decimals)}M`;
+  }
+
+  if (abs >= 1_000) {
+    const decimals = abs >= 100_000 ? 0 : 1;
+    return `${sign}$${(abs / 1_000).toFixed(decimals)}k`;
+  }
+
+  return formatCurrency(value, 0);
+}
+
+function getNiceChartMax(value: number): number {
+  const safeValue = Math.max(value, 1);
+  const magnitude = Math.pow(10, Math.floor(Math.log10(safeValue)));
+  const normalized = safeValue / magnitude;
+  const niceNormalized = normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  return niceNormalized * magnitude;
+}
+
+function xForMonth(month: number, termMonths: number, left: number, chartWidth: number): number {
+  if (termMonths <= 1) return left;
+  return left + ((month - 1) / (termMonths - 1)) * chartWidth;
+}
+
+function yForValue(value: number, maxValue: number, top: number, chartHeight: number): number {
+  return top + (1 - value / maxValue) * chartHeight;
+}
+
+function buildLinePath(coords: { x: number; y: number }[]): string {
+  return coords
+    .map((coord, index) => `${index === 0 ? 'M' : 'L'} ${formatSvgNumber(coord.x)} ${formatSvgNumber(coord.y)}`)
+    .join(' ');
+}
+
+function buildAreaPath(topCoords: { x: number; y: number }[], bottomCoords: { x: number; y: number }[]): string {
+  if (topCoords.length === 0 || bottomCoords.length === 0) return '';
+
+  const upper = topCoords
+    .map((coord, index) => `${index === 0 ? 'M' : 'L'} ${formatSvgNumber(coord.x)} ${formatSvgNumber(coord.y)}`)
+    .join(' ');
+  const lower = [...bottomCoords]
+    .reverse()
+    .map((coord) => `L ${formatSvgNumber(coord.x)} ${formatSvgNumber(coord.y)}`)
+    .join(' ');
+  return `${upper} ${lower} Z`;
+}
+
+function formatSvgNumber(value: number): string {
+  return value.toFixed(1);
 }
 
 function ReportLoading() {
