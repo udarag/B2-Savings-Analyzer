@@ -56,7 +56,16 @@ function LoginForm() {
             alt="Backblaze"
             width={800}
             height={286}
-            className="mx-auto mb-5 h-auto w-48 max-w-full"
+            className="mx-auto mb-5 h-auto w-48 max-w-full dark:hidden"
+            priority
+          />
+          <Image
+            src="/backblaze-logo-white.png"
+            alt="Backblaze"
+            width={800}
+            height={286}
+            className="mx-auto mb-5 hidden h-auto w-48 max-w-full dark:block"
+            priority
           />
           <h1 className="text-2xl font-bold text-gray-900">Savings Analyzer</h1>
           <p className="text-gray-500 mt-1">Sign In with Your Backblaze Email</p>
