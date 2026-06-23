@@ -25,6 +25,18 @@ Do not use raw ALB public IPs as GlobalProtect route targets because ALB IPs are
 - `.env.local` populated with the current B2, auth, and Resend values.
 - Backblaze/NetEng confirmation that the ingress CIDRs and GlobalProtect routing plan are acceptable.
 
+Run preflight before provisioning:
+
+```bash
+npm run aws:preflight -- --region us-west-2
+```
+
+If your default `terraform` binary is older than 1.6, install a newer Terraform or pass it explicitly:
+
+```bash
+TERRAFORM_BIN=/path/to/terraform npm run aws:preflight -- --region us-west-2
+```
+
 ## First Deploy
 
 1. Copy the Terraform example:

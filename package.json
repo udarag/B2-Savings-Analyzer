@@ -9,6 +9,7 @@
     "lint": "eslint",
     "db:migrate": "node scripts/db-migrate.mjs",
     "db:backfill": "node scripts/db-backfill-from-b2.mjs",
+    "aws:preflight": "node scripts/aws-preflight.mjs",
     "aws:secrets": "node scripts/aws-put-runtime-secrets.mjs",
     "aws:migrate": "node scripts/aws-run-db-migration.mjs",
     "aws:image": "scripts/aws-build-and-push-image.sh",
