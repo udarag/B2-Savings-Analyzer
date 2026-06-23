@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { verifyMagicLinkToken, createSessionToken } from '@/lib/auth/tokens';
+import { verifyMagicLinkToken, createSessionToken, SESSION_MAX_AGE_SECONDS } from '@/lib/auth/tokens';
 import { getAppBaseUrl } from '@/lib/app-base-url';
 
 const COOKIE_NAME = 'b2sa_session';
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60,
+      maxAge: SESSION_MAX_AGE_SECONDS,
       path: '/',
     });
 

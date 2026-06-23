@@ -1,5 +1,8 @@
 import { SignJWT, jwtVerify } from 'jose';
 
+export const SESSION_MAX_AGE_SECONDS = 365 * 24 * 60 * 60;
+const SESSION_TOKEN_TTL = '365d';
+
 function getSecret() {
   const secret = process.env.AUTH_SECRET;
   if (!secret) throw new Error('AUTH_SECRET environment variable is required');
@@ -24,7 +27,7 @@ export async function createSessionToken(email: string): Promise<string> {
   return new SignJWT({ email, purpose: 'session' })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('30d')
+    .setExpirationTime(SESSION_TOKEN_TTL)
     .sign(getSecret());
 }
 
