@@ -2,6 +2,7 @@ import { spawnSync } from 'child_process';
 
 const args = parseArgs(process.argv.slice(2));
 const terraformDir = args.terraformDir || process.env.TERRAFORM_DIR || 'infra/aws';
+const terraformBin = args.terraformBin || process.env.TERRAFORM_BIN || 'terraform';
 const region = args.region || process.env.AWS_REGION || 'us-west-2';
 const profile = args.profile || process.env.AWS_PROFILE;
 
@@ -90,7 +91,7 @@ if (exitCode !== 0) {
 console.log('Migration completed successfully.');
 
 function terraformOutput(dir) {
-  const result = spawnSync('terraform', [`-chdir=${dir}`, 'output', '-json'], {
+  const result = spawnSync(terraformBin, [`-chdir=${dir}`, 'output', '-json'], {
     encoding: 'utf8',
   });
 
@@ -141,6 +142,9 @@ function parseArgs(argv) {
 
     if (arg === '--terraform-dir' && next) {
       parsed.terraformDir = next;
+      index += 1;
+    } else if (arg === '--terraform-bin' && next) {
+      parsed.terraformBin = next;
       index += 1;
     } else if (arg === '--region' && next) {
       parsed.region = next;
