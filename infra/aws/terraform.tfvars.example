@@ -1,0 +1,32 @@
+aws_region   = "us-west-2"
+project_name = "bsa-v2"
+environment  = "dev"
+
+# Use your final HTTPS URL here. Magic links and PDF rendering depend on this.
+app_base_url = "https://bsa.example.internal"
+
+# Required for a usable production login flow. The production auth cookie is secure-only.
+enable_https    = true
+certificate_arn = "arn:aws:acm:us-west-2:123456789012:certificate/replace-me"
+
+# Initial apply should stay at zero until the ECR image and app secrets are populated.
+desired_count = 0
+
+# Backblaze-owned aggregate public prefixes from internal network docs.
+# GlobalProtect split tunneling still needs NetEng routing for the AWS destination.
+allowed_ingress_cidrs = [
+  "104.153.232.0/21",
+  "149.137.128.0/20",
+  "206.190.208.0/21",
+  "45.11.36.0/22",
+]
+
+database_instance_class          = "db.t4g.micro"
+database_allocated_storage_gb    = 20
+database_backup_retention_days   = 7
+database_deletion_protection     = false
+database_skip_final_snapshot     = true
+container_image_tag              = "latest"
+cpu_architecture                 = "ARM64"
+allowed_email_domain             = "backblaze.com"
+email_from                       = "B2 Savings Analyzer <onboarding@resend.dev>"

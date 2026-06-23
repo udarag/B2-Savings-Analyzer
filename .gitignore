@@ -41,6 +41,13 @@ yarn-error.log*
 # local project context and generated outputs
 /tmp/
 
+# terraform local state and variables
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+
 # local test scripts
 test-parsers.ts
 

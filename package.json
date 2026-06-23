@@ -9,6 +9,9 @@
     "lint": "eslint",
     "db:migrate": "node scripts/db-migrate.mjs",
     "db:backfill": "node scripts/db-backfill-from-b2.mjs",
+    "aws:secrets": "node scripts/aws-put-runtime-secrets.mjs",
+    "aws:migrate": "node scripts/aws-run-db-migration.mjs",
+    "aws:image": "scripts/aws-build-and-push-image.sh",
     "refresh-pricing": "tsx scripts/refresh-pricing.ts"
   },
   "dependencies": {
@@ -18,6 +21,7 @@
     "next": "16.2.9",
     "papaparse": "^5.5.3",
     "pg": "^8.22.0",
+    "playwright": "^1.61.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.8.1",
@@ -34,7 +38,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
-    "playwright": "^1.61.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
