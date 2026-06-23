@@ -1,5 +1,5 @@
 import nextEnv from '@next/env';
-import { promises as fs } from 'fs';
+import { promises as fs, readFileSync } from 'fs';
 import path from 'path';
 import { Pool } from 'pg';
 
@@ -79,7 +79,13 @@ function getSslConfig() {
   const flag = process.env.DATABASE_SSL?.trim().toLowerCase();
   if (!flag || flag === 'false' || flag === '0' || flag === 'off') return undefined;
 
-  return {
+  const sslConfig = {
     rejectUnauthorized: process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== 'false',
   };
+
+  if (process.env.DATABASE_SSL_CA_FILE) {
+    sslConfig.ca = readFileSync(process.env.DATABASE_SSL_CA_FILE, 'utf8');
+  }
+
+  return sslConfig;
 }

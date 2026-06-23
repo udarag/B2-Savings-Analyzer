@@ -9,6 +9,7 @@ import {
 import { requireUser } from '@/lib/auth/session';
 import { buildAnalysisSnapshot } from '@/lib/analysis/rerun';
 import { buildReportFilename } from '@/lib/report-filename';
+import { getAppBaseUrl } from '@/lib/app-base-url';
 
 export async function GET(
   req: Request,
@@ -46,7 +47,7 @@ export async function GET(
   try {
     const { chromium } = await import('playwright');
     const browser = await chromium.launch({ headless: true });
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = getAppBaseUrl();
     const url = new URL(baseUrl);
 
     const sessionCookies = cookieHeader.split(';').map(c => c.trim()).filter(Boolean).map(c => {

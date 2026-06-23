@@ -1,8 +1,9 @@
 import { createMagicLinkToken } from './tokens';
+import { getAppBaseUrl } from '@/lib/app-base-url';
 
 export async function sendMagicLink(email: string): Promise<void> {
   const token = await createMagicLinkToken(email);
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  const baseUrl = getAppBaseUrl();
   const url = `${baseUrl}/api/auth/verify?token=${token}`;
 
   if (process.env.RESEND_API_KEY) {
