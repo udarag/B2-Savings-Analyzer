@@ -72,6 +72,7 @@ ALLOWED_EMAIL_DOMAIN=backblaze.com
 
 # Email (Resend)
 RESEND_API_KEY=<your-resend-key>
+EMAIL_FROM="B2 Savings Analyzer <sign-in@your-verified-resend-domain>"
 
 # App
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
@@ -138,6 +139,8 @@ NEXT_PUBLIC_BASE_URL=https://savings.backblazedemos.xyz
 ```
 
 `APP_BASE_URL` is used by server-side flows such as magic-link generation, auth verification redirects, and PDF generation. `NEXT_PUBLIC_BASE_URL` remains available to client-side code. Keeping both set to the same hostname prevents internal bind addresses like `0.0.0.0:3000` from leaking into user-visible links.
+
+Production magic-link email requires `EMAIL_FROM` to use a sender address on a verified Resend domain. Resend's default `onboarding@resend.dev` test sender can only send to the Resend account owner's email address and will reject other Backblaze recipients.
 
 Run database migrations before serving traffic:
 

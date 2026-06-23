@@ -9,8 +9,8 @@ export async function sendMagicLink(email: string): Promise<void> {
   if (process.env.RESEND_API_KEY) {
     const { Resend } = await import('resend');
     const resend = new Resend(process.env.RESEND_API_KEY);
-    await resend.emails.send({
-      from: process.env.EMAIL_FROM || 'B2 Savings Analyzer <onboarding@resend.dev>',
+    const { data, error } = await resend.emails.send({
+      from: getEmailSender(),
       to: email,
       subject: 'Sign in to B2 Savings Analyzer',
       html: `
@@ -28,6 +28,12 @@ export async function sendMagicLink(email: string): Promise<void> {
         </div>
       `,
     });
+
+    if (error) {
+      throw new Error(`Resend failed to send magic link: ${error.message}`);
+    }
+
+    console.info('Magic link email queued by Resend', { id: data?.id });
   } else {
     console.log('\n========================================');
     console.log('  MAGIC LINK (no RESEND_API_KEY set)');
@@ -36,4 +42,15 @@ export async function sendMagicLink(email: string): Promise<void> {
     console.log(`  Link:  ${url}`);
     console.log('========================================\n');
   }
+}
+
+function getEmailSender(): string {
+  const configuredSender = process.env.EMAIL_FROM?.trim();
+  if (configuredSender) return configuredSender;
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('EMAIL_FROM is required in production and must use a verified Resend domain.');
+  }
+
+  return 'B2 Savings Analyzer <onboarding@resend.dev>';
 }

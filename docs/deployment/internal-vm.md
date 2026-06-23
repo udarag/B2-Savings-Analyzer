@@ -24,6 +24,7 @@ B2_BUCKET_NAME=<bucket>
 AUTH_SECRET=<random-32-char-string>
 ALLOWED_EMAIL_DOMAIN=backblaze.com
 RESEND_API_KEY=<resend-key>
+EMAIL_FROM="B2 Savings Analyzer <sign-in@your-verified-resend-domain>"
 
 APP_BASE_URL=https://savings.backblazedemos.xyz
 NEXT_PUBLIC_BASE_URL=https://savings.backblazedemos.xyz
@@ -76,6 +77,8 @@ After deployment and DNS/proxy remapping:
 4. Confirm the post-verification redirect stays on `https://savings.backblazedemos.xyz`.
 
 If a link or redirect points at `0.0.0.0:3000`, check `APP_BASE_URL` first.
+
+If the UI says the email was sent but the recipient never receives it, check service logs for Resend errors and confirm `EMAIL_FROM` is set to a sender address on a verified Resend domain. The Resend test sender `onboarding@resend.dev` can only send to the Resend account owner's email address.
 
 ## Network Notes
 
