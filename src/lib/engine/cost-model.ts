@@ -10,7 +10,6 @@ export function computeCostModel(
   b2PricePerTb: number,
 ): CostModelResult {
   const migratedTiers = tiers.filter((t) => t.migrateToB2);
-  const remainingTiers = tiers.filter((t) => !t.migrateToB2);
   const totalStorageGb = migratedTiers.reduce((s, t) => s + t.gbStored, 0);
 
   // Current monthly costs from the bill
@@ -46,7 +45,7 @@ export function computeCostModel(
     currentMonthly.operations + currentMonthly.retrieval + currentMonthly.otherFees;
 
   // Egress model
-  const egress = computeEgressModel(lineItems, tiers, egressConfig, b2PricePerTb);
+  const egress = computeEgressModel(lineItems, tiers, egressConfig);
 
   // B2 costs for migrated tiers
   const b2StorageCost = migratedTiers.reduce(
@@ -60,12 +59,6 @@ export function computeCostModel(
     transactions: 0, // All standard B2 transactions are free
     total: round2(b2StorageCost + egress.b2EgressCost),
   };
-
-  // Remaining hyperscaler costs (unmigrated tiers + non-storage)
-  const remainingHyperscalerStorage = remainingTiers.reduce(
-    (sum, t) => sum + t.totalTrueCost,
-    0,
-  );
 
   // Eliminated fees
   const eliminatedFees: EliminatedFee[] = [];
@@ -180,6 +173,16 @@ export function computeCostModel(
     savingsPercent: round2(savingsPercent),
     breakEvenMonth,
   };
+}
+
+export function getStorageScopeCurrentMonthly(result: Pick<CostModelResult, 'eliminatedFees'>): number {
+  return round2(result.eliminatedFees.reduce((sum, fee) => sum + fee.amountUsd, 0));
+}
+
+export function getStorageScopeReplacementMonthly(result: Pick<CostModelResult, 'b2Monthly' | 'newCosts'>): number {
+  return round2(
+    result.b2Monthly.total + result.newCosts.reduce((sum, cost) => sum + cost.amountUsd, 0),
+  );
 }
 
 function round2(n: number): number {

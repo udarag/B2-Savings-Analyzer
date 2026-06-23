@@ -52,8 +52,48 @@ function classifySku(sku: string): {
     return { category: 'operations', subcategory: 'GET/SELECT' };
   }
 
+  if (suffix.startsWith('Requests-SIA')) {
+    return { category: 'operations', subcategory: 'Standard-IA Requests', storageClass: 'Standard-IA' };
+  }
+
+  if (suffix.startsWith('Requests-ZIA')) {
+    return { category: 'operations', subcategory: 'One Zone-IA Requests', storageClass: 'One Zone-IA' };
+  }
+
+  if (suffix.startsWith('Requests-GDA')) {
+    return { category: 'operations', subcategory: 'Glacier Deep Archive Requests', storageClass: 'Glacier Deep Archive' };
+  }
+
+  if (suffix.startsWith('Requests-GIR')) {
+    return { category: 'operations', subcategory: 'Glacier IR Requests', storageClass: 'Glacier Instant Retrieval' };
+  }
+
   if (suffix.startsWith('Requests-Tier4')) {
     return { category: 'operations', subcategory: 'Lifecycle Transitions' };
+  }
+
+  if (suffix.includes('Retrieval-SIA')) {
+    return { category: 'retrieval', storageClass: 'Standard-IA' };
+  }
+
+  if (suffix.includes('Retrieval-ZIA')) {
+    return { category: 'retrieval', storageClass: 'One Zone-IA' };
+  }
+
+  if (suffix.includes('Retrieval-GIR')) {
+    return { category: 'retrieval', storageClass: 'Glacier Instant Retrieval' };
+  }
+
+  if (suffix.includes('EarlyDelete')) {
+    const storageClass = suffix.includes('ZIA') ? 'One Zone-IA' :
+      suffix.includes('SIA') ? 'Standard-IA' :
+        suffix.includes('GDA') ? 'Glacier Deep Archive' :
+          suffix.includes('GIR') ? 'Glacier Instant Retrieval' : undefined;
+    return { category: 'retrieval', subcategory: 'Early Deletion', storageClass };
+  }
+
+  if (suffix.includes('Restore') || suffix.includes('Transition')) {
+    return { category: 'operations', subcategory: 'Lifecycle/Copy' };
   }
 
   if (suffix.startsWith('Requests-')) {
@@ -125,7 +165,6 @@ export function parseAwsCostCsv(text: string): ParseResult {
   );
 
   const latestMonth = monthRows.length > 0 ? monthRows[monthRows.length - 1] : totalsRow;
-  const monthCount = monthRows.length || 1;
 
   let billingPeriod = '';
   if (monthRows.length > 0) {
@@ -178,7 +217,6 @@ export function parseAwsCostCsv(text: string): ParseResult {
   }
 
   const parsedMonthlyTotal = lineItems.reduce((s, i) => s + i.costUsd, 0);
-  const avgMonthlyTotal = grandTotal / monthCount;
 
   if (monthRows.length > 1) {
     warnings.push(

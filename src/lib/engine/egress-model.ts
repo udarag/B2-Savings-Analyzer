@@ -22,7 +22,6 @@ export function computeEgressModel(
   lineItems: ParsedLineItem[],
   tiers: TierInventoryRow[],
   config: EgressConfig,
-  b2PricePerTb: number
 ): EgressModelResult {
   const migratedTiers = tiers.filter((t) => t.migrateToB2);
   const totalStorageGb = migratedTiers.reduce((s, t) => s + t.gbStored, 0);

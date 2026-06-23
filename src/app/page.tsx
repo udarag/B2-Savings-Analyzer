@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import type { AnalysisSummary } from './api/analyses/route';
+import { useDocumentTitle } from '@/components/shared/useDocumentTitle';
 
 const PROVIDER_LABELS: Record<string, string> = {
   aws: 'AWS',
@@ -11,6 +12,16 @@ const PROVIDER_LABELS: Record<string, string> = {
   r2: 'R2',
 };
 
+interface RerunAllResponse {
+  total: number;
+  rerun: number;
+  skipped: number;
+  failed: number;
+  results: Array<{
+    parsedUpdated?: boolean;
+  }>;
+}
+
 function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 }
@@ -18,6 +29,15 @@ function formatCurrency(n: number): string {
 function formatGb(gb: number): string {
   if (gb >= 1000) return `${(gb / 1000).toFixed(1)} TB`;
   return `${Math.round(gb)} GB`;
+}
+
+async function readApiError(response: Response, fallback: string): Promise<string> {
+  try {
+    const body = await response.json() as { error?: unknown };
+    return typeof body.error === 'string' && body.error.trim() ? body.error : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 function timeAgo(dateStr: string): string {
@@ -33,15 +53,22 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function HomePage() {
+  useDocumentTitle('Opportunities');
+
   const [analyses, setAnalyses] = useState<AnalysisSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [duplicating, setDuplicating] = useState<string | null>(null);
+  const [rerunning, setRerunning] = useState(false);
+  const [rerunMessage, setRerunMessage] = useState<string | null>(null);
+  const [rerunError, setRerunError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'savings' | 'alpha'>('recent');
 
   type SortKey = typeof sortBy;
+  const hasRunnableAnalyses = analyses.some((a) => a.hasBill);
 
   const filteredAnalyses = useMemo(() => {
     let result = analyses;
@@ -67,15 +94,58 @@ export default function HomePage() {
     return sorted;
   }, [analyses, searchQuery, sortBy]);
 
-  const loadAnalyses = useCallback(() => {
-    fetch('/api/analyses')
-      .then((r) => r.json())
+  const fetchAnalyses = useCallback((signal: AbortSignal) => (
+    fetch('/api/analyses', {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      signal,
+    })
+      .then(async (r) => {
+        if (r.status === 401) {
+          window.location.assign('/login');
+          throw new Error('Unauthorized');
+        }
+        if (!r.ok) throw new Error(await readApiError(r, 'Failed to load opportunities'));
+        return r.json() as Promise<AnalysisSummary[]>;
+      })
       .then(setAnalyses)
-      .catch(() => setAnalyses([]))
-      .finally(() => setLoading(false));
-  }, []);
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.message === 'Unauthorized') return;
+        const timedOut = error instanceof DOMException && error.name === 'AbortError';
+        setLoadError(timedOut
+          ? 'Loading opportunities timed out. Please retry.'
+          : error instanceof Error && error.message
+            ? error.message
+            : 'Could not load opportunities. Please retry.');
+      })
+      .finally(() => setLoading(false))
+  ), []);
 
-  useEffect(() => { loadAnalyses(); }, [loadAnalyses]);
+  const loadAnalyses = useCallback((showSpinner = false) => {
+    if (showSpinner) setLoading(true);
+    setLoadError(null);
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 20000);
+
+    void fetchAnalyses(controller.signal).finally(() => {
+      window.clearTimeout(timeout);
+    });
+  }, [fetchAnalyses]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 20000);
+
+    void fetchAnalyses(controller.signal).finally(() => {
+      window.clearTimeout(timeout);
+    });
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [fetchAnalyses]);
 
   const handleDelete = async (id: string) => {
     setDeleting(true);
@@ -102,6 +172,34 @@ export default function HomePage() {
     }
   };
 
+  const handleRerunAll = async () => {
+    setRerunning(true);
+    setRerunMessage(null);
+    setRerunError(null);
+
+    try {
+      const res = await fetch('/api/analyses/rerun', { method: 'POST' });
+      const result = await res.json() as RerunAllResponse;
+
+      if (!res.ok) {
+        throw new Error('Rerun failed');
+      }
+
+      const parts = [
+        `${result.rerun} rerun`,
+        `${result.results.filter((item) => item.parsedUpdated).length} reparsed`,
+        `${result.skipped} skipped`,
+      ];
+      if (result.failed > 0) parts.push(`${result.failed} failed`);
+      setRerunMessage(`Rerun complete: ${parts.join(', ')}.`);
+      loadAnalyses();
+    } catch {
+      setRerunError('Rerun failed. Please try again.');
+    } finally {
+      setRerunning(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 flex flex-col items-center justify-center min-h-[60vh]">
@@ -114,6 +212,23 @@ export default function HomePage() {
     );
   }
 
+  if (loadError && analyses.length === 0) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+          <h1 className="text-lg font-semibold text-red-900">Could Not Load Opportunities</h1>
+          <p className="mt-2 text-sm text-red-700">{loadError}</p>
+          <button
+            onClick={() => loadAnalyses(true)}
+            className="mt-4 rounded-lg bg-bb-red px-4 py-2 text-sm font-medium text-white hover:bg-bb-red-dark"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12">
       <div className="flex items-center justify-between mb-8">
@@ -121,7 +236,30 @@ export default function HomePage() {
           <h1 className="text-2xl font-bold text-gray-900">Opportunities</h1>
           <p className="text-gray-500 mt-1">Upload a Cloud Bill to Model B2 Savings</p>
         </div>
+        {analyses.length > 0 && (
+          <button
+            onClick={handleRerunAll}
+            disabled={rerunning || !hasRunnableAnalyses}
+            title={hasRunnableAnalyses ? 'Reparse stored bills and create fresh snapshots with the current analysis logic' : 'Upload a bill before rerunning analysis'}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <svg className={`h-4 w-4 ${rerunning ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M8.977 14.652H3.985m17.03-10.296v4.992m0 0h-4.992m4.992 0-3.181-3.183a8.25 8.25 0 0 0-13.803 3.7" />
+            </svg>
+            {rerunning ? 'Rerunning...' : 'Rerun All'}
+          </button>
+        )}
       </div>
+
+      {(loadError || rerunMessage || rerunError) && (
+        <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
+          loadError || rerunError
+            ? 'border-red-200 bg-red-50 text-red-700'
+            : 'border-green-200 bg-green-50 text-green-700'
+        }`}>
+          {loadError || rerunError || rerunMessage}
+        </div>
+      )}
 
       {analyses.length > 0 && (
         <div className="flex items-center gap-3 mb-4">

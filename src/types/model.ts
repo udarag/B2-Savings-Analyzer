@@ -75,7 +75,7 @@ export interface ReportSnapshot {
   id: string;
   analysisId: string;
   createdAt: string;
-  trigger: 'pdf-download' | 'report-view';
+  trigger: 'pdf-download' | 'report-view' | 'analysis-rerun';
   monthlySavings: number;
   annualSavings: number;
   savingsPercent: number;

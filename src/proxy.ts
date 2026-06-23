@@ -13,37 +13,43 @@ function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p));
 }
 
-export async function middleware(req: NextRequest) {
+function isApiRequest(pathname: string): boolean {
+  return pathname.startsWith('/api/');
+}
+
+function unauthorizedResponse(req: NextRequest): NextResponse {
+  if (isApiRequest(req.nextUrl.pathname)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  return NextResponse.redirect(new URL('/login', req.url));
+}
+
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Static assets and public paths don't need auth
   if (pathname.startsWith('/_next') || pathname.startsWith('/favicon') || isPublic(pathname)) {
     return NextResponse.next();
   }
 
   const token = req.cookies.get(COOKIE_NAME)?.value;
   if (!token) {
-    return NextResponse.redirect(new URL('/login', req.url));
+    return unauthorizedResponse(req);
   }
 
   const secret = process.env.AUTH_SECRET;
   if (!secret) {
-    return NextResponse.redirect(new URL('/login', req.url));
+    return unauthorizedResponse(req);
   }
 
   try {
     const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
     if (payload.purpose !== 'session' || !payload.email) {
-      return NextResponse.redirect(new URL('/login', req.url));
+      return unauthorizedResponse(req);
     }
 
-    // Pass the user email in a header so API routes can read it without re-verifying
-    const response = NextResponse.next();
-    response.headers.set('x-user-email', payload.email as string);
-    return response;
+    return NextResponse.next();
   } catch {
-    // Invalid or expired token — clear cookie and redirect
-    const response = NextResponse.redirect(new URL('/login', req.url));
+    const response = unauthorizedResponse(req);
     response.cookies.set(COOKIE_NAME, '', { maxAge: 0, path: '/' });
     return response;
   }

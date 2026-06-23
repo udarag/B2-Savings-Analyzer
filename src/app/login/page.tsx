@@ -1,9 +1,13 @@
 'use client';
 
 import { Suspense, useState } from 'react';
+import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
+import { useDocumentTitle } from '@/components/shared/useDocumentTitle';
 
 export default function LoginPage() {
+  useDocumentTitle('Sign In');
+
   return (
     <Suspense fallback={<LoginShell />}>
       <LoginForm />
@@ -47,7 +51,13 @@ function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <img src="/backblaze-webclip.png" alt="Backblaze" className="w-14 h-14 mx-auto mb-4" />
+          <Image
+            src="/backblaze-logo.png"
+            alt="Backblaze"
+            width={800}
+            height={286}
+            className="mx-auto mb-5 h-auto w-48 max-w-full"
+          />
           <h1 className="text-2xl font-bold text-gray-900">Savings Analyzer</h1>
           <p className="text-gray-500 mt-1">Sign In with Your Backblaze Email</p>
         </div>
@@ -113,7 +123,7 @@ function LoginShell() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm rounded-xl border bg-white p-6 shadow-sm">
-        <div className="mx-auto mb-4 h-14 w-14 rounded bg-gray-100" />
+        <div className="mx-auto mb-5 h-12 w-48 max-w-full rounded bg-gray-100" />
         <div className="mx-auto mb-3 h-6 w-40 rounded bg-gray-100" />
         <div className="mx-auto h-4 w-56 rounded bg-gray-100" />
       </div>

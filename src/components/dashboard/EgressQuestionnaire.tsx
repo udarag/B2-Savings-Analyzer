@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import type { EgressConfig } from '@/types/analysis';
+import type { ComputeSignal, EgressConfig, EgressProfileSuggestion } from '@/types/analysis';
 import type { PartnerComputeScenario } from '@/types/model';
 import b2Pricing from '@/lib/pricing/b2.json';
 import { formatCurrency } from '../shared/FormatCurrency';
@@ -12,28 +12,51 @@ interface EgressQuestionnaireProps {
   onChange: (config: EgressConfig) => void;
   partnerComputeScenario?: PartnerComputeScenario | null;
   b2FreeAllowanceGb?: number;
+  computeSignals?: ComputeSignal[];
+  egressProfileSuggestion?: EgressProfileSuggestion;
 }
 
-export function EgressQuestionnaire({ config, onChange, partnerComputeScenario, b2FreeAllowanceGb = 0 }: EgressQuestionnaireProps) {
+export function EgressQuestionnaire({
+  config,
+  onChange,
+  partnerComputeScenario,
+  b2FreeAllowanceGb = 0,
+  computeSignals = [],
+  egressProfileSuggestion,
+}: EgressQuestionnaireProps) {
   const hasPipelineStorageWrite = config.hasHyperscalerCompute && config.hyperscalerComputeFeedsStorage;
   const isTrainingWorkflow = config.hasHyperscalerCompute && !config.hyperscalerComputeFeedsStorage;
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Egress Configuration</h3>
-        <p className="text-sm text-gray-500 mt-1">
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-black/[0.02] dark:border-gray-800 dark:bg-[#11141a] dark:ring-white/[0.04]">
+      <div className="border-b border-gray-200 bg-gray-50/80 px-6 py-4 dark:border-gray-800 dark:bg-[#171b22]">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Egress Configuration</h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Model whether moving storage to B2 creates a new hyperscaler data-transfer path.
         </p>
       </div>
-      <div className="p-6 space-y-6">
+      <div className="space-y-5 p-6 dark:bg-[#11141a]">
+        {computeSignals.length > 0 && (
+          <ComputeSignalsPanel signals={computeSignals} />
+        )}
+
+        {egressProfileSuggestion && (
+          <EgressStarterProfilePanel
+            suggestion={egressProfileSuggestion}
+            onApply={() => onChange({
+              ...config,
+              ...egressProfileSuggestion.suggestedConfig,
+            })}
+          />
+        )}
+
         <div>
-          <p className="font-medium text-gray-900 mb-3">
+          <p className="mb-3 font-medium text-gray-900 dark:text-gray-100">
             Does the customer run compute in the hyperscaler?
           </p>
           <div className="space-y-2">
-            <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-gray-50 ${
-              !config.hasHyperscalerCompute ? 'border-bb-red bg-bb-red-light/40' : 'border-gray-200'
+            <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-gray-50 dark:hover:bg-[#171b22] ${
+              !config.hasHyperscalerCompute ? 'border-bb-red bg-bb-red-light/40 dark:bg-bb-red-light/40' : 'border-gray-200 dark:border-gray-700'
             }`}>
               <input
                 type="radio"
@@ -50,12 +73,12 @@ export function EgressQuestionnaire({ config, onChange, partnerComputeScenario, 
                 className="h-4 w-4 text-bb-red accent-bb-red"
               />
               <div>
-                <p className="text-sm font-medium text-gray-900">No hyperscaler compute in the storage path</p>
-                <p className="text-xs text-gray-500">Applications write directly to object storage, so no new inter-cloud egress applies.</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">No hyperscaler compute in the storage path</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Applications write directly to object storage, so no new inter-cloud egress applies.</p>
               </div>
             </label>
-            <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-gray-50 ${
-              config.hasHyperscalerCompute ? 'border-bb-red bg-bb-red-light/40' : 'border-gray-200'
+            <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-gray-50 dark:hover:bg-[#171b22] ${
+              config.hasHyperscalerCompute ? 'border-bb-red bg-bb-red-light/40 dark:bg-bb-red-light/40' : 'border-gray-200 dark:border-gray-700'
             }`}>
               <input
                 type="radio"
@@ -70,8 +93,8 @@ export function EgressQuestionnaire({ config, onChange, partnerComputeScenario, 
                 className="h-4 w-4 text-bb-red accent-bb-red"
               />
               <div>
-                <p className="text-sm font-medium text-gray-900">Yes, compute is part of the stack</p>
-                <p className="text-xs text-gray-500">Confirm whether processed data is written back to object storage.</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Yes, compute is part of the stack</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Confirm whether processed data is written back to object storage.</p>
               </div>
             </label>
           </div>
@@ -79,12 +102,12 @@ export function EgressQuestionnaire({ config, onChange, partnerComputeScenario, 
 
         {config.hasHyperscalerCompute && (
           <div>
-            <p className="font-medium text-gray-900 mb-3">
+            <p className="mb-3 font-medium text-gray-900 dark:text-gray-100">
               Does that compute write processed data back to object storage?
             </p>
             <div className="space-y-2">
-              <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-gray-50 ${
-                config.hyperscalerComputeFeedsStorage ? 'border-bb-red bg-bb-red-light/40' : 'border-gray-200'
+              <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-gray-50 dark:hover:bg-[#171b22] ${
+                config.hyperscalerComputeFeedsStorage ? 'border-bb-red bg-bb-red-light/40 dark:bg-bb-red-light/40' : 'border-gray-200 dark:border-gray-700'
               }`}>
                 <input
                   type="radio"
@@ -98,12 +121,12 @@ export function EgressQuestionnaire({ config, onChange, partnerComputeScenario, 
                   className="h-4 w-4 text-bb-red accent-bb-red"
                 />
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Yes, processed data lands in storage</p>
-                  <p className="text-xs text-gray-500">Moving storage to B2 creates a hyperscaler-to-B2 write path.</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Yes, processed data lands in storage</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Moving storage to B2 creates a hyperscaler-to-B2 write path.</p>
                 </div>
               </label>
-              <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-gray-50 ${
-                !config.hyperscalerComputeFeedsStorage ? 'border-bb-red bg-bb-red-light/40' : 'border-gray-200'
+              <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-gray-50 dark:hover:bg-[#171b22] ${
+                !config.hyperscalerComputeFeedsStorage ? 'border-bb-red bg-bb-red-light/40 dark:bg-bb-red-light/40' : 'border-gray-200 dark:border-gray-700'
               }`}>
                 <input
                   type="radio"
@@ -121,8 +144,8 @@ export function EgressQuestionnaire({ config, onChange, partnerComputeScenario, 
                   className="h-4 w-4 text-bb-red accent-bb-red"
                 />
                 <div>
-                  <p className="text-sm font-medium text-gray-900">No, compute does not write back to storage</p>
-                  <p className="text-xs text-gray-500">Common for AI/GPU workflows where models or artifacts stay in compute.</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">No, compute does not write back to storage</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Common for AI/GPU workflows where models or artifacts stay in compute.</p>
                 </div>
               </label>
             </div>
@@ -149,7 +172,7 @@ export function EgressQuestionnaire({ config, onChange, partnerComputeScenario, 
               })}
             />
 
-            <label className="flex items-center gap-3 rounded-lg border border-gray-200 p-3">
+            <label className="flex items-center gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
               <input
                 type="checkbox"
                 checked={config.computeMovingToPartner}
@@ -160,33 +183,33 @@ export function EgressQuestionnaire({ config, onChange, partnerComputeScenario, 
                 className="h-4 w-4 text-bb-red accent-bb-red rounded"
               />
               <div>
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   Model primary case with B2 bandwidth alliance compute
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   Use this only when the customer is moving the write path to a partner such as CoreWeave, Vultr, or Equinix Metal.
                 </p>
               </div>
             </label>
 
             {config.computeMovingToPartner ? (
-              <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-                <p className="text-sm font-semibold text-green-900">Partner compute modeled in primary savings</p>
-                <p className="mt-1 text-sm text-green-800">
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-400/30 dark:bg-green-950/30">
+                <p className="text-sm font-semibold text-green-900 dark:text-green-200">Partner compute modeled in primary savings</p>
+                <p className="mt-1 text-sm text-green-800 dark:text-green-200">
                   Hyperscaler-to-B2 processed-data egress is removed from the primary cost model.
                 </p>
               </div>
             ) : partnerComputeScenario ? (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-                <p className="text-sm font-semibold text-emerald-900">Bandwidth alliance upside</p>
-                <p className="mt-1 text-sm text-emerald-800">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-400/30 dark:bg-emerald-950/30">
+                <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Bandwidth alliance upside</p>
+                <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-200">
                   Moving this write path to partner compute would avoid {formatCurrency(partnerComputeScenario.monthlyEgressAvoided)}/month and raise modeled savings to {formatCurrency(partnerComputeScenario.monthlySavings)}/month.
                 </p>
               </div>
             ) : (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                <p className="text-sm font-semibold text-amber-900">Processed-data volume needed</p>
-                <p className="mt-1 text-sm text-amber-800">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/30 dark:bg-amber-950/30">
+                <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">Processed-data volume needed</p>
+                <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
                   Enter the monthly write volume to quantify the hyperscaler egress drag and partner-compute upside.
                 </p>
               </div>
@@ -232,10 +255,10 @@ export function EgressQuestionnaire({ config, onChange, partnerComputeScenario, 
                   className="h-4 w-4 text-bb-red accent-bb-red rounded"
                 />
                 <div>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     Uses or Plans to Use a B2 CDN Partner (Cloudflare, Fastly, bunny.net)
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
                     B2 egress to CDN partners is free
                   </p>
                 </div>
@@ -246,6 +269,218 @@ export function EgressQuestionnaire({ config, onChange, partnerComputeScenario, 
       </div>
     </div>
   );
+}
+
+function EgressStarterProfilePanel({
+  suggestion,
+  onApply,
+}: {
+  suggestion: EgressProfileSuggestion;
+  onApply: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const aeSummary = buildAeFriendlySuggestionSummary(suggestion);
+
+  return (
+    <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-4 shadow-sm ring-1 ring-blue-100/60 dark:border-blue-400/30 dark:bg-blue-950/20">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300">Bill Guess</p>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold text-blue-950 dark:text-blue-100">
+              Bill-Derived Egress Guess
+            </p>
+            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-700 ring-1 ring-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:ring-blue-400/30">
+              {suggestion.confidence} confidence
+            </span>
+          </div>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-blue-900 dark:text-blue-200">{aeSummary}</p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+          <button
+            type="button"
+            onClick={() => setExpanded((value) => !value)}
+            aria-expanded={expanded}
+            className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-800 shadow-sm hover:bg-blue-50 dark:border-blue-400/30 dark:bg-blue-950/30 dark:text-blue-100"
+          >
+            <svg
+              className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.8}
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+            </svg>
+            {expanded ? 'Hide Details' : 'Show Details'}
+          </button>
+          <button
+            type="button"
+            onClick={onApply}
+            className="rounded-md bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+          >
+            Apply Bill Guess
+          </button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="mt-4 border-t border-blue-200 pt-4 dark:border-blue-400/20">
+          <p className="text-xs leading-5 text-blue-900 dark:text-blue-200">{suggestion.summary}</p>
+
+          {suggestion.metrics.length > 0 && (
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {suggestion.metrics.map((metric) => (
+                <div key={metric.label} className="rounded-md bg-white/80 p-3 ring-1 ring-blue-100 dark:bg-[#11141a] dark:ring-blue-400/20">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-500 dark:text-blue-300">{metric.label}</p>
+                  <p className="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">{metric.value}</p>
+                  <p className="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">{metric.detail}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            <StarterProfileList title="Pre-filled from bill" items={suggestion.assumptions} />
+            <StarterProfileList title="Not bill-backed" items={suggestion.questions} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function buildAeFriendlySuggestionSummary(suggestion: EgressProfileSuggestion): string {
+  const servedGb = suggestion.suggestedConfig.gbPerMonthServedToUsers || 0;
+  const foundCompute = Boolean(suggestion.suggestedConfig.hasHyperscalerCompute);
+  const pieces: string[] = [];
+
+  if (servedGb > 0) {
+    pieces.push(`about ${formatVolume(servedGb / 1000)} TB/month of customer-facing outbound usage`);
+  }
+  if (foundCompute) {
+    pieces.push('cloud services that may be part of the storage workflow');
+  }
+
+  if (pieces.length === 0) {
+    return 'The bill had limited outbound-usage clues, so this is only a light starting point for the customer conversation.';
+  }
+
+  return `The bill appears to show ${pieces.join(' and ')}. Apply this as a starting point, then confirm the details with the customer.`;
+}
+
+function StarterProfileList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div>
+      <p className="text-xs font-semibold text-blue-900 dark:text-blue-200">{title}</p>
+      <ul className="mt-2 space-y-1.5">
+        {items.map((item) => (
+          <li key={item} className="flex gap-2 text-xs leading-5 text-blue-900 dark:text-blue-200">
+            <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-blue-500" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ComputeSignalsPanel({ signals }: { signals: ComputeSignal[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const visibleSignals = signals.slice(0, 6);
+  const hiddenCount = Math.max(0, signals.length - visibleSignals.length);
+  const topSignalNames = visibleSignals.slice(0, 3).map((signal) => signal.service);
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm ring-1 ring-slate-100 dark:border-gray-700 dark:bg-[#101218]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-gray-500">Bill Clues</p>
+          <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
+            Compute and Delivery Services Detected
+          </p>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-gray-500 dark:text-gray-400">
+            Found {signals.length} bill clue{signals.length === 1 ? '' : 's'}
+            {topSignalNames.length > 0 ? ` including ${topSignalNames.join(', ')}` : ''}.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          aria-expanded={expanded}
+          className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-gray-700 dark:bg-[#11141a] dark:text-gray-100"
+        >
+          <svg
+            className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.8}
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+          </svg>
+          {expanded ? 'Hide Details' : 'Show Details'}
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="mt-3">
+          {hiddenCount > 0 && (
+            <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+              {hiddenCount} more signal{hiddenCount === 1 ? '' : 's'} hidden
+            </p>
+          )}
+          <div className="grid gap-3 md:grid-cols-2">
+            {visibleSignals.map((signal) => (
+              <div key={signal.service} className="min-w-0 border-l-2 border-gray-200 pl-3 dark:border-gray-700">
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{signal.service}</p>
+                    <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                      {formatSignalType(signal.signalType)} - {formatCurrency(signal.costUsd)}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                    {signal.confidence}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-gray-600 dark:text-gray-300">{signal.egressHint}</p>
+                {signal.regions?.length ? (
+                  <p className="mt-1 truncate text-[11px] text-gray-400 dark:text-gray-500">
+                    Regions: {signal.regions.join(', ')}
+                  </p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatSignalType(type: ComputeSignal['signalType']): string {
+  switch (type) {
+    case 'ai-ml':
+      return 'AI / ML';
+    case 'serverless':
+      return 'Serverless';
+    case 'container':
+      return 'Container';
+    case 'analytics':
+      return 'Analytics';
+    case 'database':
+      return 'Database';
+    case 'delivery':
+      return 'Delivery';
+    case 'networking':
+      return 'Networking';
+    case 'compute':
+    default:
+      return 'Compute';
+  }
 }
 
 type FlowTone = 'neutral' | 'compute' | 'storage' | 'output' | 'chargeable' | 'free';
@@ -729,7 +964,7 @@ function B2OutboundAllowanceSummary({
     }`}>
       <p className={`text-sm font-semibold ${
         !hasEgressInput
-          ? 'text-gray-900'
+          ? 'text-gray-900 dark:text-gray-100'
           : overageTb > 0
             ? 'text-amber-900 dark:text-amber-300'
             : 'text-green-900 dark:text-green-300'
@@ -742,7 +977,7 @@ function B2OutboundAllowanceSummary({
       </p>
       <p className={`mt-1 text-sm ${
         !hasEgressInput
-          ? 'text-gray-500'
+          ? 'text-gray-500 dark:text-gray-400'
           : overageTb > 0
             ? 'text-amber-800 dark:text-amber-300'
             : 'text-green-800 dark:text-green-300'
@@ -817,7 +1052,7 @@ function TrainingEgressInputs({
       }`}>
         <p className={`text-sm font-semibold ${
           !hasTrainingInputs
-            ? 'text-gray-900'
+            ? 'text-gray-900 dark:text-gray-100'
             : overageTb > 0
               ? 'text-amber-900 dark:text-amber-300'
               : 'text-green-900 dark:text-green-300'
@@ -830,7 +1065,7 @@ function TrainingEgressInputs({
         </p>
         <p className={`mt-1 text-sm ${
           !hasTrainingInputs
-            ? 'text-gray-500'
+            ? 'text-gray-500 dark:text-gray-400'
             : overageTb > 0
               ? 'text-amber-800 dark:text-amber-300'
               : 'text-green-800 dark:text-green-300'
@@ -867,11 +1102,11 @@ function VolumeInput({
   const displayValue = focused ? draft : formatVolumeInput(value);
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-[#101218]">
+      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
         {label}
       </label>
-      <div className="flex items-center rounded-md border border-gray-300 bg-white shadow-sm focus-within:border-bb-red focus-within:ring-2 focus-within:ring-red-100">
+      <div className="flex items-center rounded-md border border-gray-300 bg-white shadow-sm focus-within:border-bb-red focus-within:ring-2 focus-within:ring-red-100 dark:border-gray-700 dark:bg-[#11141a] dark:focus-within:ring-red-400/20">
         <input
           type="text"
           inputMode="decimal"
@@ -898,12 +1133,12 @@ function VolumeInput({
               onValueChange(parsed);
             }
           }}
-          className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-lg font-bold text-bb-navy outline-none"
+          className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-lg font-bold text-bb-navy outline-none dark:text-gray-100"
           placeholder={placeholder}
         />
-        <span className="pr-3 text-xs font-semibold uppercase tracking-wide text-gray-400">{unit}</span>
+        <span className="pr-3 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">{unit}</span>
       </div>
-      <p className="mt-2 text-xs text-gray-400">{helperText}</p>
+      <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">{helperText}</p>
     </div>
   );
 }

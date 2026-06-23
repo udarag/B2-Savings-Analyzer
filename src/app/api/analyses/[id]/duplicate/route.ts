@@ -33,6 +33,7 @@ export async function POST(
     ...meta,
     id: newId,
     prospectName: `${meta.prospectName} (Copy)`,
+    companyName: meta.companyName || meta.prospectName,
     createdAt: now,
     updatedAt: now,
   };

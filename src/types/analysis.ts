@@ -12,9 +12,22 @@ export type Category =
   | 'storage-adjacent'
   | 'out-of-scope';
 
+export type ComputeSignalType =
+  | 'compute'
+  | 'container'
+  | 'serverless'
+  | 'ai-ml'
+  | 'analytics'
+  | 'database'
+  | 'delivery'
+  | 'networking';
+
+export type ComputeSignalConfidence = 'low' | 'medium' | 'high';
+
 export interface Analysis {
   id: string;
   prospectName: string;
+  companyName?: string;
   notes?: string;
   provider: Provider;
   billType: BillType;
@@ -57,13 +70,43 @@ export interface AccountServiceBreakdown {
   costUsd: number;
 }
 
+export interface ComputeSignal {
+  provider: Provider;
+  service: string;
+  signalType: ComputeSignalType;
+  costUsd: number;
+  regions?: string[];
+  evidence: string[];
+  egressHint: string;
+  confidence: ComputeSignalConfidence;
+}
+
+export interface EgressProfileMetric {
+  label: string;
+  value: string;
+  detail: string;
+}
+
+export interface EgressProfileSuggestion {
+  confidence: ComputeSignalConfidence;
+  summary: string;
+  suggestedConfig: Partial<EgressConfig>;
+  metrics: EgressProfileMetric[];
+  evidence: string[];
+  assumptions: string[];
+  questions: string[];
+}
+
 export interface ParsedBill {
   lineItems: ParsedLineItem[];
   accounts?: AccountBreakdown[];
   accountServiceBreakdowns?: AccountServiceBreakdown[];
+  computeSignals?: ComputeSignal[];
+  egressProfileSuggestion?: EgressProfileSuggestion;
   grandTotal: number;
   parseConfidence: number;
   warnings: string[];
+  commercialSignals?: string[];
   discounts?: NamedDiscount[];
 }
 

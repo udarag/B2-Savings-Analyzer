@@ -23,6 +23,8 @@
 # misc
 .DS_Store
 *.pem
+/.claude/
+/PROJECT_CONTEXT.local.md
 
 # debug
 npm-debug.log*
@@ -35,6 +37,9 @@ yarn-error.log*
 
 # customer bills (sensitive data)
 /bills/
+
+# local project context and generated outputs
+/tmp/
 
 # local test scripts
 test-parsers.ts

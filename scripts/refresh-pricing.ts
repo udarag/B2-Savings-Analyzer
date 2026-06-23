@@ -19,8 +19,12 @@
 
 import { writeFileSync, readFileSync } from 'fs';
 import { join } from 'path';
+import { loadEnvConfig } from '@next/env';
 
-const PRICING_DIR = join(__dirname, '..', 'src', 'lib', 'pricing');
+const PROJECT_DIR = join(__dirname, '..');
+loadEnvConfig(PROJECT_DIR);
+
+const PRICING_DIR = join(PROJECT_DIR, 'src', 'lib', 'pricing');
 const today = new Date().toISOString().slice(0, 10);
 
 // ---------------------------------------------------------------------------
@@ -369,8 +373,20 @@ async function refreshAzure() {
 // ---------------------------------------------------------------------------
 
 const GCP_CATALOG_API = 'https://cloudbilling.googleapis.com/v1';
+const GCP_GIB_TO_GB = 1.073741824;
 const GCP_STORAGE_CLASSES = ['Standard', 'Nearline', 'Coldline', 'Archive'] as const;
 const GCP_LOCATION_KEYS = ['regional', 'multi-region', 'asia-multi-region', 'dual-region', 'asia-dual-region'] as const;
+
+type GcpStorageClass = typeof GCP_STORAGE_CLASSES[number];
+type GcpLocationKey = typeof GCP_LOCATION_KEYS[number];
+
+const GCP_PREFERRED_SERVICE_REGIONS: Record<GcpLocationKey, string[]> = {
+  regional: ['us-central1', 'us-east1', 'us-east4', 'us-east5', 'us-west1', 'us-west2'],
+  'multi-region': ['us', 'eu'],
+  'asia-multi-region': ['asia'],
+  'dual-region': ['nam4', 'eur4'],
+  'asia-dual-region': ['asia1'],
+};
 
 interface GcpSku {
   description?: string;
@@ -388,7 +404,9 @@ interface GcpSku {
   }>;
 }
 
-function classifyGcpStorageClass(description: string): typeof GCP_STORAGE_CLASSES[number] | null {
+type GcpPricingExpression = NonNullable<NonNullable<GcpSku['pricingInfo']>[number]['pricingExpression']>;
+
+function classifyGcpStorageClass(description: string): GcpStorageClass | null {
   const lower = description.toLowerCase();
   if (!lower.includes('storage')) return null;
   if (lower.includes('archive')) return 'Archive';
@@ -398,13 +416,75 @@ function classifyGcpStorageClass(description: string): typeof GCP_STORAGE_CLASSE
   return null;
 }
 
-function classifyGcpLocationKey(description: string): typeof GCP_LOCATION_KEYS[number] | null {
+function isGcpGibUnit(unit: string): boolean {
+  return /giby|gib/i.test(unit);
+}
+
+function gcpStoragePricePerGb(expression: GcpPricingExpression | undefined): number {
+  const usageUnit = expression?.usageUnit || expression?.baseUnit || '';
+  if (!/by|gib|gb/i.test(usageUnit)) return 0;
+
+  const firstPaidRate = expression?.tieredRates
+    ?.map(rate => usdFromGcpUnitPrice(rate.unitPrice))
+    .find(price => price > 0);
+  if (!firstPaidRate) return 0;
+
+  return isGcpGibUnit(usageUnit) ? firstPaidRate / GCP_GIB_TO_GB : firstPaidRate;
+}
+
+function shouldSkipGcpStorageSku(description: string): boolean {
   const lower = description.toLowerCase();
-  if (lower.includes('dual') && lower.includes('asia')) return 'asia-dual-region';
-  if (lower.includes('dual')) return 'dual-region';
-  if (lower.includes('multi') && lower.includes('asia')) return 'asia-multi-region';
-  if (lower.includes('multi')) return 'multi-region';
-  if (lower.includes('regional') || lower.includes('region')) return 'regional';
+  return lower.startsWith('autoclass ')
+    || lower.includes('early delete')
+    || lower.includes('data anywhere cache');
+}
+
+function isGcpRegionCode(region: string): boolean {
+  return /^[a-z]+(?:-[a-z]+)+[0-9]+$/.test(region);
+}
+
+function preferredGcpRegionPriority(locationKey: GcpLocationKey, serviceRegions: string[]): number | null {
+  const preferred = GCP_PREFERRED_SERVICE_REGIONS[locationKey];
+  const index = preferred.findIndex(region => serviceRegions.includes(region));
+  return index === -1 ? null : index;
+}
+
+function classifyGcpLocationKey(sku: GcpSku): { key: GcpLocationKey; priority: number } | null {
+  const description = sku.description || '';
+  const lower = description.toLowerCase();
+  const serviceRegions = sku.serviceRegions || [];
+  const hasDualRegion = lower.includes('dual-region') || lower.includes('dual region');
+  const hasMultiRegion = lower.includes('multi-region') || lower.includes('multi region');
+
+  if (hasDualRegion) {
+    const asiaPriority = preferredGcpRegionPriority('asia-dual-region', serviceRegions);
+    if (asiaPriority !== null) return { key: 'asia-dual-region', priority: asiaPriority };
+
+    const priority = preferredGcpRegionPriority('dual-region', serviceRegions);
+    if (priority !== null) return { key: 'dual-region', priority };
+
+    if (serviceRegions.some(region => region.startsWith('asia')) || lower.includes('asia')) {
+      return { key: 'asia-dual-region', priority: 100 };
+    }
+    return { key: 'dual-region', priority: 100 };
+  }
+
+  if (hasMultiRegion || serviceRegions.some(region => ['us', 'eu', 'asia'].includes(region))) {
+    const asiaPriority = preferredGcpRegionPriority('asia-multi-region', serviceRegions);
+    if (asiaPriority !== null) return { key: 'asia-multi-region', priority: asiaPriority };
+
+    const priority = preferredGcpRegionPriority('multi-region', serviceRegions);
+    if (priority !== null) return { key: 'multi-region', priority };
+
+    if (lower.includes('asia')) return { key: 'asia-multi-region', priority: 100 };
+    return { key: 'multi-region', priority: 100 };
+  }
+
+  const regionalPriority = preferredGcpRegionPriority('regional', serviceRegions);
+  if (regionalPriority !== null) return { key: 'regional', priority: regionalPriority };
+
+  if (serviceRegions.some(isGcpRegionCode)) return { key: 'regional', priority: 100 };
+
   return null;
 }
 
@@ -477,31 +557,43 @@ async function refreshGcp() {
     console.log(`GCP: Found ${skus.length} Cloud Storage SKUs`);
 
     const storage: Record<string, Record<string, number>> = JSON.parse(JSON.stringify(existing.storage || {}));
+    const candidates: Record<string, Record<string, { price: number; priority: number; description: string; serviceRegions: string[] }>> = {};
 
     for (const sku of skus) {
       const description = sku.description || '';
+      if (shouldSkipGcpStorageSku(description)) continue;
+
       const storageClass = classifyGcpStorageClass(description);
-      const locationKey = classifyGcpLocationKey(description);
+      const location = classifyGcpLocationKey(sku);
+      const locationKey = location?.key;
       if (!storageClass || !locationKey) continue;
       if (sku.category?.resourceFamily !== 'Storage') continue;
 
       const expression = sku.pricingInfo?.[0]?.pricingExpression;
-      const usageUnit = expression?.usageUnit || expression?.baseUnit || '';
-      if (!/by|gib|gb/i.test(usageUnit)) continue;
-
-      const firstRate = expression?.tieredRates?.find(r => (r.startUsageAmount || 0) === 0);
-      const price = usdFromGcpUnitPrice(firstRate?.unitPrice);
+      const price = gcpStoragePricePerGb(expression);
       if (price <= 0) continue;
 
-      storage[locationKey] = storage[locationKey] || {};
-      storage[locationKey][storageClass] = price;
+      candidates[locationKey] = candidates[locationKey] || {};
+      const current = candidates[locationKey][storageClass];
+      if (!current || location.priority < current.priority) {
+        candidates[locationKey][storageClass] = {
+          price,
+          priority: location.priority,
+          description,
+          serviceRegions: sku.serviceRegions || [],
+        };
+      }
     }
 
     for (const locationKey of GCP_LOCATION_KEYS) {
       for (const storageClass of GCP_STORAGE_CLASSES) {
-        if (typeof storage[locationKey]?.[storageClass] !== 'number') {
+        const candidate = candidates[locationKey]?.[storageClass];
+        if (!candidate) {
           throw new Error(`GCP API refresh did not produce ${locationKey} ${storageClass} pricing`);
         }
+
+        storage[locationKey] = storage[locationKey] || {};
+        storage[locationKey][storageClass] = candidate.price;
       }
     }
 

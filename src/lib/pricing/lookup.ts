@@ -130,12 +130,16 @@ function getGcpListRate(storageClass: string, locationType: string): number | nu
   const key = GCP_CLASS_MAP[storageClass];
   if (!key) return null;
 
+  const normalizedLocationType = locationType.toLowerCase();
+
   let locationKey = 'regional';
-  if (locationType.includes('asia') && locationType.includes('multi')) {
+  if (normalizedLocationType.includes('asia') && normalizedLocationType.includes('multi')) {
     locationKey = 'asia-multi-region';
-  } else if (locationType.includes('multi')) {
+  } else if (normalizedLocationType.includes('multi')) {
     locationKey = 'multi-region';
-  } else if (locationType.includes('dual')) {
+  } else if (normalizedLocationType.includes('asia') && normalizedLocationType.includes('dual')) {
+    locationKey = 'asia-dual-region';
+  } else if (normalizedLocationType.includes('dual')) {
     locationKey = 'dual-region';
   }
 

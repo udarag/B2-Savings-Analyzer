@@ -85,6 +85,21 @@ const CHECK_STYLES: Record<ReadinessCheckTone, {
   },
 };
 
+const GCP_COST_MIX: Array<{
+  category: Category;
+  label: string;
+  detail: string;
+}> = [
+  { category: 'storage', label: 'Storage capacity', detail: 'At-rest object storage' },
+  { category: 'egress', label: 'Transfer / egress', detail: 'Replication, network transfer, and downloads' },
+  { category: 'operations', label: 'Operations', detail: 'Class A and Class B API requests' },
+  { category: 'retrieval', label: 'Retrieval', detail: 'Nearline, Coldline, and Archive retrieval fees' },
+];
+
+function isGcpListPriceSignal(message: string): boolean {
+  return /savings programs|list price/i.test(message);
+}
+
 export function ParseReview({
   parsed,
   billType,
@@ -107,6 +122,31 @@ export function ParseReview({
     (categorySums.get('retrieval')?.total || 0);
   const readiness = assessReadiness(parsed, billType, provider, { pricingDiscountConfirmed });
   const readinessStyle = READINESS_STYLES[readiness.status];
+  const isGcp = provider === 'gcp';
+  const parserWarnings = isGcp
+    ? parsed.warnings.filter((warning) => !isGcpListPriceSignal(warning))
+    : parsed.warnings;
+  const commercialSignals = [
+    ...(parsed.commercialSignals || []),
+    ...(isGcp ? parsed.warnings.filter(isGcpListPriceSignal) : []),
+  ].filter((signal, index, signals) => signals.indexOf(signal) === index);
+  const addressableLabel = isGcp ? 'Addressable Cloud Storage spend' : 'Addressable storage spend';
+  const categoryLabels = isGcp
+    ? {
+      ...CATEGORY_LABELS,
+      storage: 'Storage Capacity',
+      egress: 'Transfer / Egress',
+      operations: 'Operations',
+      retrieval: 'Retrieval',
+    }
+    : CATEGORY_LABELS;
+  const gcpCostMix = GCP_COST_MIX
+    .map((item) => ({
+      ...item,
+      count: categorySums.get(item.category)?.count || 0,
+      total: categorySums.get(item.category)?.total || 0,
+    }))
+    .filter((item) => item.count > 0 || item.total > 0);
 
   return (
     <div className="bg-white rounded-lg shadow">
@@ -116,7 +156,7 @@ export function ParseReview({
             <h3 className="text-lg font-semibold text-gray-900">Parse Review</h3>
             <p className="text-sm text-gray-500 mt-1">
               {parsed.lineItems.length} line items parsed. Grand total: {formatCurrency(parsed.grandTotal)}.
-              Addressable storage spend: {formatCurrency(addressable)}.
+              {addressableLabel}: {formatCurrency(addressable)}.
             </p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1">
@@ -127,10 +167,17 @@ export function ParseReview({
             <span className="text-xs text-gray-500">{readiness.score}/100 readiness</span>
           </div>
         </div>
-        {parsed.warnings.length > 0 && (
+        {parserWarnings.length > 0 && (
           <div className="mt-3 p-3 bg-amber-50 rounded-lg">
-            {parsed.warnings.map((w, i) => (
+            {parserWarnings.map((w, i) => (
               <p key={i} className="text-sm text-amber-800">{w}</p>
+            ))}
+          </div>
+        )}
+        {commercialSignals.length > 0 && (
+          <div className="mt-3 p-3 bg-sky-50 rounded-lg dark:bg-sky-950/20">
+            {commercialSignals.map((signal, i) => (
+              <p key={i} className="text-sm text-sky-900 dark:text-sky-200">{signal}</p>
             ))}
           </div>
         )}
@@ -178,6 +225,26 @@ export function ParseReview({
           </div>
         </div>
 
+        {isGcp && gcpCostMix.length > 0 && (
+          <div className="mb-4 border-y border-gray-200 py-3 dark:border-gray-800">
+            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">GCS Cost Mix</p>
+            <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {gcpCostMix.map((item) => (
+                <div key={item.category} className="min-w-0">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">{item.label}</p>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                      {addressable > 0 ? `${Math.round((item.total / addressable) * 100)}%` : '0%'}
+                    </p>
+                  </div>
+                  <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(item.total)}</p>
+                  <p className="mt-0.5 text-xs leading-4 text-gray-500 dark:text-gray-400">{item.detail}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="space-y-3">
           {CATEGORY_ORDER.map((cat) => {
             const data = categorySums.get(cat);
@@ -186,7 +253,7 @@ export function ParseReview({
               <div key={cat} className="flex items-center justify-between gap-2 p-3 rounded-lg bg-gray-50">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${CATEGORY_COLORS[cat]}`}>
-                    {CATEGORY_LABELS[cat]}
+                    {categoryLabels[cat]}
                   </span>
                   <span className="text-sm text-gray-500 shrink-0">{data.count} Items</span>
                 </div>

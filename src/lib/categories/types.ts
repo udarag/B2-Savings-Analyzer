@@ -3,6 +3,8 @@ export const GCP_LOCATION_TYPES: Record<string, string> = {
   'EU Multi-region': 'multi-region',
   'Asia Multi-region': 'multi-region',
   'US Regional': 'regional',
+  'Asia Regional': 'regional',
+  'Europe Regional': 'regional',
   'US Dual-region': 'dual-region',
   Iowa: 'regional',
   Oregon: 'regional',
