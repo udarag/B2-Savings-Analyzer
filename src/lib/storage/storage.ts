@@ -6,6 +6,25 @@ import {
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getB2Client, getBucketName } from './b2-client';
+import {
+  deleteDatabaseAnalysis,
+  getDatabaseAnalysisMeta,
+  getDatabaseModelConfig,
+  getDatabaseParsedBill,
+  getDatabaseUserProfile,
+  getLatestDatabaseSnapshot,
+  getLatestDatabaseUpload,
+  hasDatabaseParsedBill,
+  isDatabaseStorageEnabled,
+  listDatabaseAnalyses,
+  listDatabaseReportSnapshots,
+  recordDatabaseUpload,
+  saveDatabaseAnalysisMeta,
+  saveDatabaseModelConfig,
+  saveDatabaseParsedBill,
+  saveDatabaseReportSnapshot,
+  saveDatabaseUserProfile,
+} from './postgres';
 import type { Analysis, ParsedBill, ModelConfig } from '@/types/analysis';
 import type { ReportSnapshot } from '@/types/model';
 
@@ -16,7 +35,12 @@ interface ListedObject {
 
 export interface StorageErrorDetails {
   status: 500 | 503;
-  code: 'storage_config_error' | 'storage_unavailable' | 'storage_error';
+  code:
+    | 'storage_config_error'
+    | 'storage_unavailable'
+    | 'storage_error'
+    | 'database_config_error'
+    | 'database_unavailable';
   message: string;
 }
 
@@ -155,6 +179,10 @@ function latestSnapshotPath(userEmail: string, id: string): string {
 // --- Analysis CRUD ---
 
 export async function listAnalyses(userEmail: string): Promise<Analysis[]> {
+  if (isDatabaseStorageEnabled()) {
+    return listDatabaseAnalyses(userEmail);
+  }
+
   const analysesPrefix = `${userPrefix(userEmail)}/analyses/`;
   const analysisPrefixes = await listChildPrefixes(analysesPrefix);
   const metaKeys = analysisPrefixes.length > 0
@@ -179,33 +207,64 @@ export async function listAnalyses(userEmail: string): Promise<Analysis[]> {
 }
 
 export async function getAnalysisMeta(userEmail: string, id: string): Promise<Analysis | null> {
+  if (isDatabaseStorageEnabled()) {
+    return getDatabaseAnalysisMeta(userEmail, id);
+  }
+
   const data = await getObject(`${analysisPath(userEmail, id)}/meta.json`);
   return data ? JSON.parse(data) : null;
 }
 
 export async function saveAnalysisMeta(userEmail: string, id: string, meta: Analysis): Promise<void> {
+  if (isDatabaseStorageEnabled()) {
+    await saveDatabaseAnalysisMeta(userEmail, id, meta);
+    return;
+  }
+
   await putObject(`${analysisPath(userEmail, id)}/meta.json`, JSON.stringify(meta, null, 2));
 }
 
 export async function getParsedBill(userEmail: string, id: string): Promise<ParsedBill | null> {
+  if (isDatabaseStorageEnabled()) {
+    return getDatabaseParsedBill(userEmail, id);
+  }
+
   const data = await getObject(`${analysisPath(userEmail, id)}/parsed.json`);
   return data ? JSON.parse(data) : null;
 }
 
 export async function hasParsedBill(userEmail: string, id: string): Promise<boolean> {
+  if (isDatabaseStorageEnabled()) {
+    return hasDatabaseParsedBill(userEmail, id);
+  }
+
   return objectExists(`${analysisPath(userEmail, id)}/parsed.json`);
 }
 
 export async function saveParsedBill(userEmail: string, id: string, parsed: ParsedBill): Promise<void> {
+  if (isDatabaseStorageEnabled()) {
+    await saveDatabaseParsedBill(userEmail, id, parsed);
+    return;
+  }
+
   await putObject(`${analysisPath(userEmail, id)}/parsed.json`, JSON.stringify(parsed, null, 2));
 }
 
 export async function getModelConfig(userEmail: string, id: string): Promise<ModelConfig | null> {
+  if (isDatabaseStorageEnabled()) {
+    return getDatabaseModelConfig(userEmail, id);
+  }
+
   const data = await getObject(`${analysisPath(userEmail, id)}/model-config.json`);
   return data ? JSON.parse(data) : null;
 }
 
 export async function saveModelConfig(userEmail: string, id: string, config: ModelConfig): Promise<void> {
+  if (isDatabaseStorageEnabled()) {
+    await saveDatabaseModelConfig(userEmail, id, config);
+    return;
+  }
+
   await putObject(`${analysisPath(userEmail, id)}/model-config.json`, JSON.stringify(config, null, 2));
 }
 
@@ -216,10 +275,36 @@ export async function uploadFile(
   body: Buffer | Uint8Array,
   contentType: string
 ): Promise<void> {
-  await putBinaryObject(`${analysisPath(userEmail, id)}/uploads/${filename}`, body, contentType);
+  const objectKey = `${analysisPath(userEmail, id)}/uploads/${filename}`;
+  await putBinaryObject(objectKey, body, contentType);
+
+  if (isDatabaseStorageEnabled()) {
+    await recordDatabaseUpload({
+      userEmail,
+      analysisId: id,
+      filename,
+      objectKey,
+      contentType,
+      sizeBytes: body.byteLength,
+    });
+  }
 }
 
 export async function getLatestUploadedFile(userEmail: string, id: string): Promise<StoredUpload | null> {
+  if (isDatabaseStorageEnabled()) {
+    const upload = await getLatestDatabaseUpload(userEmail, id);
+    if (upload) {
+      const data = await getBinaryObject(upload.objectKey);
+      if (data) {
+        return {
+          filename: upload.filename,
+          content: data.body,
+          contentType: data.contentType || upload.contentType || guessContentType(upload.filename),
+        };
+      }
+    }
+  }
+
   const uploadPrefix = `${analysisPath(userEmail, id)}/uploads/`;
   const uploads = (await listObjects(uploadPrefix))
     .filter((obj) => obj.key !== uploadPrefix)
@@ -243,11 +328,20 @@ export async function deleteAnalysis(userEmail: string, id: string): Promise<voi
   for (const key of keys) {
     await deleteObject(key);
   }
+
+  if (isDatabaseStorageEnabled()) {
+    await deleteDatabaseAnalysis(userEmail, id);
+  }
 }
 
 // --- Snapshots ---
 
 export async function saveReportSnapshot(userEmail: string, id: string, snapshot: ReportSnapshot): Promise<void> {
+  if (isDatabaseStorageEnabled()) {
+    await saveDatabaseReportSnapshot(userEmail, id, snapshot);
+    return;
+  }
+
   const body = JSON.stringify(snapshot, null, 2);
   await Promise.all([
     putObject(`${analysisPath(userEmail, id)}/snapshots/${snapshot.id}.json`, body),
@@ -256,6 +350,10 @@ export async function saveReportSnapshot(userEmail: string, id: string, snapshot
 }
 
 export async function listReportSnapshots(userEmail: string, id: string): Promise<ReportSnapshot[]> {
+  if (isDatabaseStorageEnabled()) {
+    return listDatabaseReportSnapshots(userEmail, id);
+  }
+
   const keys = await listKeys(`${analysisPath(userEmail, id)}/snapshots/`);
   const snapshots: ReportSnapshot[] = [];
   for (const key of keys) {
@@ -268,6 +366,10 @@ export async function listReportSnapshots(userEmail: string, id: string): Promis
 }
 
 export async function getLatestSnapshot(userEmail: string, id: string): Promise<ReportSnapshot | null> {
+  if (isDatabaseStorageEnabled()) {
+    return getLatestDatabaseSnapshot(userEmail, id);
+  }
+
   const latestData = await getObject(latestSnapshotPath(userEmail, id));
   if (latestData) {
     try {
@@ -303,11 +405,20 @@ export interface UserProfile {
 }
 
 export async function getUserProfile(userEmail: string): Promise<UserProfile | null> {
+  if (isDatabaseStorageEnabled()) {
+    return getDatabaseUserProfile(userEmail);
+  }
+
   const data = await getObject(`users/${userEmail}/profile.json`);
   return data ? JSON.parse(data) : null;
 }
 
 export async function saveUserProfile(userEmail: string, profile: UserProfile): Promise<void> {
+  if (isDatabaseStorageEnabled()) {
+    await saveDatabaseUserProfile(userEmail, profile);
+    return;
+  }
+
   await putObject(`users/${userEmail}/profile.json`, JSON.stringify(profile, null, 2));
 }
 
@@ -321,6 +432,22 @@ export async function savePricing(provider: string, pricing: unknown): Promise<v
 }
 
 export function getStorageErrorDetails(error: unknown): StorageErrorDetails {
+  if (isDatabaseConfigError(error)) {
+    return {
+      status: 500,
+      code: 'database_config_error',
+      message: 'Database storage is not configured for this environment.',
+    };
+  }
+
+  if (isTransientDatabaseError(error)) {
+    return {
+      status: 503,
+      code: 'database_unavailable',
+      message: 'Database storage is temporarily unavailable. Please retry.',
+    };
+  }
+
   if (isStorageConfigError(error)) {
     return {
       status: 500,
@@ -371,6 +498,32 @@ function isMissingObjectError(e: unknown): boolean {
 function isStorageConfigError(error: unknown): boolean {
   const message = getErrorString(error, 'message');
   return message.startsWith('Missing B2 credentials') || message.startsWith('Missing B2_BUCKET_NAME');
+}
+
+function isDatabaseConfigError(error: unknown): boolean {
+  const message = getErrorString(error, 'message');
+  return message.startsWith('DATABASE_URL is required');
+}
+
+function isTransientDatabaseError(error: unknown): boolean {
+  const code = getErrorString(error, 'code');
+  const transientCodes = new Set([
+    '53300',
+    '57P01',
+    '57P02',
+    '57P03',
+    '58000',
+    '58030',
+    '08000',
+    '08003',
+    '08006',
+    '08001',
+    '08004',
+    '08007',
+    '08P01',
+  ]);
+
+  return transientCodes.has(code) || isTransientStorageError(error);
 }
 
 function isTransientStorageError(error: unknown): boolean {
