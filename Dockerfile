@@ -1,12 +1,12 @@
-# syntax=docker/dockerfile:1
-
-FROM node:22-bookworm-slim AS base
+ARG BASE_IMAGE=node:22-bookworm-slim
+FROM ${BASE_IMAGE} AS base
+USER root
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 
 FROM base AS deps
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --include=dev
 
 FROM deps AS builder
 COPY . .

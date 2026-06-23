@@ -1,4 +1,5 @@
 import nextEnv from '@next/env';
+import { readFileSync } from 'fs';
 import {
   GetObjectCommand,
   HeadObjectCommand,
@@ -261,9 +262,15 @@ function getSslConfig() {
   const flag = process.env.DATABASE_SSL?.trim().toLowerCase();
   if (!flag || flag === 'false' || flag === '0' || flag === 'off') return undefined;
 
-  return {
+  const sslConfig = {
     rejectUnauthorized: process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== 'false',
   };
+
+  if (process.env.DATABASE_SSL_CA_FILE) {
+    sslConfig.ca = readFileSync(process.env.DATABASE_SSL_CA_FILE, 'utf8');
+  }
+
+  return sslConfig;
 }
 
 function isMissingObjectError(error) {

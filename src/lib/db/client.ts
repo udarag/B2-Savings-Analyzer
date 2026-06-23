@@ -1,4 +1,5 @@
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
+import { readFileSync } from 'fs';
 
 let pool: Pool | null = null;
 
@@ -54,11 +55,17 @@ function parsePoolMax(value?: string): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 5;
 }
 
-function getSslConfig(): { rejectUnauthorized: boolean } | undefined {
+function getSslConfig(): { rejectUnauthorized: boolean; ca?: string } | undefined {
   const flag = process.env.DATABASE_SSL?.trim().toLowerCase();
   if (!flag || flag === 'false' || flag === '0' || flag === 'off') return undefined;
 
-  return {
+  const sslConfig: { rejectUnauthorized: boolean; ca?: string } = {
     rejectUnauthorized: process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== 'false',
   };
+
+  if (process.env.DATABASE_SSL_CA_FILE) {
+    sslConfig.ca = readFileSync(process.env.DATABASE_SSL_CA_FILE, 'utf8');
+  }
+
+  return sslConfig;
 }

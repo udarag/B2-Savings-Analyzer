@@ -75,6 +75,7 @@ RESEND_API_KEY=<your-resend-key>
 
 # App
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
+APP_BASE_URL=http://localhost:3000
 
 # Optional: enables API-backed GCP pricing refreshes
 GCP_CLOUD_BILLING_API_KEY=<your-google-cloud-api-key>
@@ -85,6 +86,7 @@ DATABASE_URL=postgres://user:password@host:5432/b2_savings_analyzer
 DATABASE_STORAGE_ENABLED=true
 DATABASE_SSL=false
 DATABASE_SSL_REJECT_UNAUTHORIZED=true
+DATABASE_SSL_CA_FILE=/path/to/ca-bundle.pem
 DATABASE_POOL_MAX=5
 ```
 
@@ -123,6 +125,42 @@ npm run db:backfill -- user@backblaze.com other@backblaze.com
 ```
 
 If `DATABASE_URL` is unset, the app continues to use B2-only persistence.
+
+## Internal VM Deployment
+
+The app runs as a Next.js standalone server and can be deployed on an internal VM with Node or Docker. Keep the public-facing app URL stable through environment configuration, then remap DNS when the VM is ready.
+
+For the planned internal deployment, set both base URL variables to the final hostname:
+
+```env
+APP_BASE_URL=https://savings.backblazedemos.xyz
+NEXT_PUBLIC_BASE_URL=https://savings.backblazedemos.xyz
+```
+
+`APP_BASE_URL` is used by server-side flows such as magic-link generation, auth verification redirects, and PDF generation. `NEXT_PUBLIC_BASE_URL` remains available to client-side code. Keeping both set to the same hostname prevents internal bind addresses like `0.0.0.0:3000` from leaking into user-visible links.
+
+Run database migrations before serving traffic:
+
+```sh
+npm run db:migrate
+```
+
+Build and run with Node:
+
+```sh
+npm install
+npm run build
+HOSTNAME=0.0.0.0 PORT=3000 npm run start
+```
+
+Or build and run the container:
+
+```sh
+docker build -t b2-savings-analyzer .
+docker run --env-file .env.production -p 3000:3000 b2-savings-analyzer
+```
+
+For production, put the app behind the internal reverse proxy or load balancer that terminates TLS for `savings.backblazedemos.xyz`, restrict access to VPN/internal networks there, and point DNS at that internal endpoint when ready.
 
 ## Tech Stack
 
