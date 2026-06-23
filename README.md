@@ -45,6 +45,7 @@ Produces an interactive internal dashboard for AE/SE analysis and a customer-fac
   apt install poppler-utils   # Linux
   ```
 - A **Backblaze B2** bucket for persistence (S3-compatible API)
+- Optional: a **PostgreSQL** database for structured persistence
 - A **Resend** account for magic link emails (free tier works)
 
 ## Setup
@@ -77,17 +78,57 @@ NEXT_PUBLIC_BASE_URL=http://localhost:3000
 
 # Optional: enables API-backed GCP pricing refreshes
 GCP_CLOUD_BILLING_API_KEY=<your-google-cloud-api-key>
+
+# Optional: Postgres structured persistence
+# Leave DATABASE_URL unset to use the original B2-only JSON persistence path.
+DATABASE_URL=postgres://user:password@host:5432/b2_savings_analyzer
+DATABASE_STORAGE_ENABLED=true
+DATABASE_SSL=false
+DATABASE_SSL_REJECT_UNAUTHORIZED=true
+DATABASE_POOL_MAX=5
 ```
 
 ```sh
 npm run dev
 ```
 
+### Optional Postgres Persistence
+
+By default, the app stores structured records as JSON objects in B2. When `DATABASE_URL` is set, the app uses Postgres for structured data and keeps uploaded bill files in B2 object storage.
+
+Postgres stores:
+
+- Analysis metadata
+- Parsed bill JSON
+- Model configuration
+- Report snapshots
+- User profiles
+- Upload object metadata
+
+B2 still stores:
+
+- Original uploaded bills
+- Any future binary exports or artifacts
+
+Run migrations before enabling the app against a new database:
+
+```sh
+npm run db:migrate
+```
+
+Backfill existing B2 JSON records into Postgres for one or more users:
+
+```sh
+npm run db:backfill -- user@backblaze.com other@backblaze.com
+```
+
+If `DATABASE_URL` is unset, the app continues to use B2-only persistence.
+
 ## Tech Stack
 
 - **Next.js 16** (App Router) + React 19 + TypeScript
 - **Tailwind CSS v4** with custom Backblaze theme
-- **Backblaze B2** as sole persistence layer (no database)
+- **Backblaze B2** object storage with optional **Postgres** structured persistence
 - **pdftotext** for PDF text extraction
 - **Recharts** for projection charts
 - **Playwright** for PDF report generation
@@ -110,7 +151,8 @@ src/
 │   ├── parsers/            # Bill parsers (AWS PDF/CSV, GCP CSV, detection)
 │   ├── engine/             # Cost model, tier inventory, egress, projections
 │   ├── pricing/            # Provider pricing JSON, lookup gateway, freshness checks, pricing detection
-│   ├── storage/            # B2 S3-compatible persistence layer
+│   ├── db/                 # Optional Postgres connection helper
+│   ├── storage/            # B2 object storage plus optional Postgres persistence adapters
 │   ├── storage-tiers.ts    # Tier explanations and docs links
 │   ├── regions.ts          # Provider region/location labels
 │   └── auth/               # Magic link tokens + session management
@@ -165,13 +207,13 @@ npm run refresh-pricing -- gcp
 - [ ] **Multi-region bills** — Verify region-specific pricing (e.g., Singapore vs US East) produces separate tier inventory rows with correct effective rates.
 - [ ] **Discount accuracy** — Verify named discounts (EDP, Savings Plans, Private Rate Card) are correctly extracted and pricing detection flags them accurately.
 
-### Future: Database
+### Database-backed Collaboration
 
-The app currently uses B2 object storage as its sole persistence layer — no database. Adding a database (e.g., Postgres or SQLite) would unlock:
+The app can now use Postgres for structured persistence. That opens the door for:
 
-- [ ] **Team analytics dashboard** — Aggregate savings across all AEs and prospects to surface trends like "average savings % by provider" or "top 10 opportunities by ARR." Not feasible today because each analysis is an isolated JSON file with no cross-query capability.
-- [ ] **Audit trail and version history** — Track every change to an analysis (who toggled which tier, when pricing was adjusted, previous model configs) so AEs and managers can review the decision history. Object storage only keeps the latest state.
-- [ ] **Collaboration and sharing** — Let multiple AEs or SEs work on the same opportunity with role-based access, comments, and notifications. Current user-scoped B2 prefixes make cross-user access impractical.
+- [ ] **Team analytics dashboard** — Aggregate savings across all AEs and prospects to surface trends like "average savings % by provider" or "top 10 opportunities by ARR." The Postgres foundation makes this practical, but the UI and aggregation queries still need to be built.
+- [ ] **Audit trail and version history** — Track every change to an analysis (who toggled which tier, when pricing was adjusted, previous model configs) so AEs and managers can review the decision history. The current schema stores snapshots but does not yet record every edit event.
+- [ ] **Collaboration and sharing** — Let multiple AEs or SEs work on the same opportunity with role-based access, comments, and notifications. The current data model is still user-scoped even when backed by Postgres.
 
 ## Adding Bills for Testing
 
