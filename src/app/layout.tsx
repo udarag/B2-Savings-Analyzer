@@ -66,16 +66,20 @@ export default function RootLayout({
         <ThemeController />
         <header className="bg-bb-navy px-4 sm:px-6 py-2.5 print:hidden">
           <div className="max-w-[1600px] mx-auto flex items-center justify-between">
-            <Link href="/" className="flex min-w-0 items-center gap-3 hover:opacity-90 transition-opacity">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/10 ring-1 ring-white/10">
-                <Image src="/backblaze-flame.png" alt="" width={32} height={32} className="h-5 w-5 object-contain" />
-              </span>
+            <Link href="/" className="flex min-w-0 items-center gap-3 hover:opacity-90 transition-opacity" aria-label="B2 Savings Analyzer home">
+              <Image
+                src="/backblaze-logo-white.png"
+                alt="Backblaze"
+                width={800}
+                height={286}
+                className="h-auto w-28 shrink-0 sm:w-32"
+                priority
+              />
               <span className="hidden items-center gap-3 sm:flex">
-                <span className="text-sm font-semibold text-white">Backblaze</span>
-                <span className="h-4 w-px bg-white/20" />
+                <span className="h-4 w-px shrink-0 bg-white/20" />
                 <span className="text-sm font-medium tracking-wide text-gray-200">B2 Savings Analyzer</span>
               </span>
-              <span className="text-sm font-medium tracking-wide text-white sm:hidden">B2 Savings</span>
+              <span className="min-w-0 truncate text-sm font-medium tracking-wide text-gray-200 sm:hidden">B2 Savings</span>
             </Link>
             <div className="flex items-center gap-3">
               <Link
