@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { useDocumentTitle } from '@/components/shared/useDocumentTitle';
 
 export default function LoginPage() {
-  useDocumentTitle('Sign In');
+  useDocumentTitle('Sign in');
 
   return (
     <Suspense fallback={<LoginShell />}>
@@ -68,12 +68,12 @@ function LoginForm() {
             priority
           />
           <h1 className="text-2xl font-bold text-gray-900">Savings Analyzer</h1>
-          <p className="text-gray-500 mt-1">Sign In with Your Backblaze Email</p>
+          <p className="text-gray-500 mt-1">Sign in with your Backblaze email</p>
         </div>
 
         {urlError === 'invalid-token' && (
           <div className="bg-red-50 text-red-700 text-sm rounded-lg p-3 mb-4">
-            That link has expired or is invalid. Please request a new one.
+            That link expired or is invalid. Request a new one below.
           </div>
         )}
 
@@ -84,21 +84,24 @@ function LoginForm() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
               </svg>
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Check Your Email</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              We sent a sign-in link to <span className="font-medium">{email}</span>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Check your email</h2>
+            <p className="text-sm text-gray-600">
+              We sent a secure sign-in link to <span className="font-medium text-gray-800">{email}</span>.
+            </p>
+            <p className="mt-2 text-sm text-gray-500">
+              It expires in 15 minutes. If you do not see it in your inbox, check your spam folder.
             </p>
             <button
               onClick={() => { setStatus('idle'); setEmail(''); }}
-              className="text-sm text-bb-red hover:text-bb-red-dark"
+              className="mt-5 text-sm font-medium text-bb-red hover:text-bb-red-dark"
             >
-              Use a Different Email
+              Use a different email
             </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border p-6">
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
-              Email Address
+              Email address
             </label>
             <input
               id="email"
@@ -119,7 +122,7 @@ function LoginForm() {
               disabled={status === 'sending'}
               className="w-full mt-4 px-4 py-2.5 bg-bb-red text-white text-sm font-medium rounded-lg hover:bg-bb-red-dark disabled:opacity-50 transition-colors"
             >
-              {status === 'sending' ? 'Sending...' : 'Send Sign-In Link'}
+              {status === 'sending' ? 'Sending...' : 'Send sign-in link'}
             </button>
           </form>
         )}
