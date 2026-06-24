@@ -188,7 +188,7 @@ Do not duplicate cost-model assembly in individual routes. Use shared snapshot/r
 - Theme controls belong in the user/profile menu.
 - The app shell owns viewport height: `body` uses `min-h-dvh` and `main` uses `flex min-h-0 flex-1 flex-col`. Route pages under the global header should not use `min-h-screen`, because that adds the header height on top of the viewport and creates unnecessary scroll.
 - Short route states such as login, empty opportunities, loading states, and new-opportunity creation should fill the remaining `main` area only when needed, using `flex-1` for vertical centering rather than adding hard viewport heights.
-- The header "New" action belongs inside `UserMenu` and should render only after an authenticated user is known. Login and other unauthenticated/public states should show only the brand/header chrome, not the New button or divider.
+- The global header is hidden on `/login`; the login card owns its own Backblaze branding. The header "New" action belongs inside `UserMenu` and should render only after an authenticated user is known.
 - Visible Backblaze branding matters on login, dashboard navigation, customer report, and PDF output.
 - Use `public/backblaze-logo.png` for official horizontal logo on light surfaces.
 - Use `public/backblaze-logo-white.png` on dark navigation/login surfaces.
