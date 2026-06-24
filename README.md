@@ -4,6 +4,8 @@ Internal tool for Backblaze Solutions Engineering. Upload a customer's cloud sto
 
 Produces an interactive internal dashboard for AE/SE analysis and a customer-facing report/PDF that frames savings in customer-ready language.
 
+Production is hosted at `https://savings.backblazedemos.xyz` on the Backblaze-internal `deals` VM behind internal/VPN network access. See [Internal VM Deployment](docs/deployment/internal-vm.md) for the operational runbook.
+
 ![Dashboard Preview](public/dashboard-preview.png)
 
 ## What It Does
@@ -27,14 +29,15 @@ Produces an interactive internal dashboard for AE/SE analysis and a customer-fac
 
 - **Tier-grouped storage inventory** — Standard/hot storage is selected by default, cooler tiers are grouped and expandable, and each tier includes region/location detail plus help links
 - **Transaction cost analysis** — groups source transaction line items by B2 transaction class, separates unsupported or non-applicable items into Other, and keeps source line-item detail expandable
-- **Egress modeling** — decision tree for compute location, partner CDN, UDM
+- **Egress modeling** — decision tree for compute location, partner CDN, UDM, and bill-derived egress profile suggestions
 - **Data growth modeling** — choose annual percentage growth or fixed TB/month growth for projections and deal sizing
 - **Custom pricing detection** — flags EDP, Savings Plans, private rate cards, and list-price vs. discounted storage rates, ordered by price with clear region names
 - **Centralized pricing data** — AWS/Azure/GCP/R2/B2 prices flow through JSON-backed lookup helpers
 - **1/2/3/5-year cost projections** — modeled current-provider cost, Backblaze B2 cost, cumulative savings, data stored, and break-even timing
 - **Deal sizing** (internal) — editable B2 price/TB, quick discount presets, ARR/TCV summaries at list/current/custom price, contract term slider, growth controls, and copy-ready Salesforce/Slack handoff text
-- **Customer report generation** — customer-facing summary, storage tier comparison, UDM-covered migration egress cost, projection assumptions, and pricing freshness warnings when applicable
-- **Magic link auth** — scoped to `@backblaze.com` email domain
+- **Customer report generation** — customer-facing summary, storage tier comparison, UDM-covered migration egress cost, projection assumptions, and PDF export
+- **Durable report snapshots and reruns** — report/PDF views store snapshots, and signed-in users can rerun all their opportunities after parser or model changes
+- **Magic link auth** — scoped to `@backblaze.com` email domain with branded Resend email templates
 
 ## Prerequisites
 
@@ -83,12 +86,12 @@ GCP_CLOUD_BILLING_API_KEY=<your-google-cloud-api-key>
 
 # Optional: Postgres structured persistence
 # Leave DATABASE_URL unset to use the original B2-only JSON persistence path.
-DATABASE_URL=postgres://user:password@host:5432/b2_savings_analyzer
-DATABASE_STORAGE_ENABLED=true
-DATABASE_SSL=false
-DATABASE_SSL_REJECT_UNAUTHORIZED=true
-DATABASE_SSL_CA_FILE=/path/to/ca-bundle.pem
-DATABASE_POOL_MAX=5
+# DATABASE_URL=postgres://user:password@host:5432/b2_savings_analyzer
+# DATABASE_STORAGE_ENABLED=true
+# DATABASE_SSL=false
+# DATABASE_SSL_REJECT_UNAUTHORIZED=true
+# DATABASE_SSL_CA_FILE=/path/to/ca-bundle.pem
+# DATABASE_POOL_MAX=5
 ```
 
 ```sh
@@ -127,11 +130,13 @@ npm run db:backfill -- user@backblaze.com other@backblaze.com
 
 If `DATABASE_URL` is unset, the app continues to use B2-only persistence.
 
-## Internal VM Deployment
+## Current Production Deployment
 
-The app runs as a Next.js standalone server and can be deployed on an internal VM with Node or Docker. Keep the public-facing app URL stable through environment configuration, then remap DNS when the VM is ready.
+The app is live at `https://savings.backblazedemos.xyz` on the Backblaze-internal `deals` VM. nginx terminates HTTPS for the hostname and proxies to the systemd-managed Next.js standalone server on `127.0.0.1:3001`.
 
-For the planned internal deployment, set both base URL variables to the final hostname:
+Production currently uses B2-backed JSON/object persistence. The Postgres schema and adapter are in the repo, but production should stay B2-only until the team deliberately runs migrations, backfills existing B2 records, and enables `DATABASE_STORAGE_ENABLED=true`.
+
+The production environment sets both base URL variables to the final hostname:
 
 ```env
 APP_BASE_URL=https://savings.backblazedemos.xyz
@@ -140,30 +145,34 @@ NEXT_PUBLIC_BASE_URL=https://savings.backblazedemos.xyz
 
 `APP_BASE_URL` is used by server-side flows such as magic-link generation, auth verification redirects, and PDF generation. `NEXT_PUBLIC_BASE_URL` remains available to client-side code. Keeping both set to the same hostname prevents internal bind addresses like `0.0.0.0:3000` from leaking into user-visible links.
 
-Production magic-link email requires `EMAIL_FROM` to use a sender address on a verified Resend domain. Resend's default `onboarding@resend.dev` test sender can only send to the Resend account owner's email address and will reject other Backblaze recipients.
+Production magic-link email uses Resend with a verified sender domain. `EMAIL_FROM` is required in production.
 
-Run database migrations before serving traffic:
+### How We Push Code To Production
 
-```sh
-npm run db:migrate
-```
+Normal production updates go through GitHub branch `BSA-V2-db`; do not hot-edit app source on the VM.
 
-Build and run with Node:
+1. Work on `BSA-V2-db`.
+2. Run `npm run lint`, `npm run build`, and `git diff --check`.
+3. Commit only intended source/docs changes.
+4. Push to `origin/BSA-V2-db`.
+5. The VM's `b2-savings-analyzer-deploy.timer` checks that branch about once per minute, builds a release, copies `.next/static` and `public` into the standalone runtime, flips the active `current` symlink, and restarts `b2-savings-analyzer.service`.
+6. Verify `https://savings.backblazedemos.xyz/login` from a network that can reach the internal VM.
 
-```sh
-npm install
-npm run build
-HOSTNAME=0.0.0.0 PORT=3000 npm run start
-```
-
-Or build and run the container:
+To force an immediate VM deploy check:
 
 ```sh
-docker build -t b2-savings-analyzer .
-docker run --env-file .env.production -p 3000:3000 b2-savings-analyzer
+ssh udara@172.16.56.50
+sudo systemctl start b2-savings-analyzer-deploy.service
+sudo systemctl status b2-savings-analyzer-deploy.service --no-pager
 ```
 
-For production, put the app behind the internal reverse proxy or load balancer that terminates TLS for `savings.backblazedemos.xyz`, restrict access to VPN/internal networks there, and point DNS at that internal endpoint when ready.
+Use direct VM changes only for environment, systemd, nginx, certificate, or emergency operational fixes. Document durable operational changes in [docs/deployment/internal-vm.md](docs/deployment/internal-vm.md).
+
+## Shared Coding-Agent Context
+
+Tracked agent context lives in [docs/agent-context.md](docs/agent-context.md). Coding agents should read it before non-trivial work because it captures the current architecture, production release flow, validation gates, and customer-facing product boundaries.
+
+`PROJECT_CONTEXT.local.md` remains ignored by git and is for machine-specific or sensitive handoff notes that should not be shared in the repo.
 
 ## Tech Stack
 
@@ -209,7 +218,7 @@ Provider pricing is kept in `src/lib/pricing/*.json` and accessed through `src/l
 - `azure.json` contains multi-region Blob Storage pricing refreshed from the Azure Retail Prices API.
 - `gcp.json` can be refreshed from the Google Cloud Billing Catalog API when `GCP_CLOUD_BILLING_API_KEY` is configured. Without that key, the script leaves GCP pricing unchanged and prints the manual verification links.
 - `r2.json` and `b2.json` are static pricing assumptions because no stable public pricing API is configured for those sources.
-- If a refresh is skipped or errors because an API key is missing, invalid, rate-limited, or otherwise unavailable, the analysis dashboard and customer report show a warning that affected pricing may be stale or inaccurate.
+- If a refresh is skipped or errors because an API key is missing, invalid, rate-limited, or otherwise unavailable, the internal analysis dashboard can show a warning that affected pricing may be stale or inaccurate. Customer-facing reports should stay free of internal credential and parser warnings.
 
 Refresh supported pricing data with:
 
@@ -225,12 +234,23 @@ npm run refresh-pricing -- azure
 npm run refresh-pricing -- gcp
 ```
 
+## Completed Recently
+
+- Internal VM production deployment at `https://savings.backblazedemos.xyz`, backed by nginx, systemd, Let's Encrypt, Cloudflare DNS, and an automatic deploy timer that follows `origin/BSA-V2-db`.
+- Optional Postgres persistence foundation: migration script, DB adapter, backfill script, and storage abstraction. Production remains B2-only until migration is intentionally enabled.
+- Branded magic-link email flow with a verified Resend sender domain and hard production failure when `EMAIL_FROM` is missing.
+- Durable report snapshots, optimized latest-snapshot reads, and a signed-in-user-scoped "Rerun All" path for parser/model changes.
+- Customer report and PDF polish: Backblaze branding, company-aware headings/filenames, report-specific print layout, action-fee callouts, and no internal pricing-refresh warnings on customer-facing surfaces.
+- Pricing/parser improvements for AWS and GCP, including AWS detailed billing PDF validation, GCP cost table validation, GCP GiB-to-GB pricing normalization, Cloud Billing refresh support, and better commercial/list-price signal handling.
+- App-wide dark mode for the internal app while keeping generated customer reports light-only.
+- Repo hygiene cleanup: root-scoped ignore rules for local files, unused starter assets removed, redundant typings removed, and build/lint gates cleaned up.
+
 ## TODOs
 
 ### Unfinished Features
 
 - [ ] **Transaction analysis for summary invoices** — Summary invoices (like Azira's) have no per-SKU operations data, so the Transaction Cost Analysis section doesn't appear. Need to either estimate operations from service totals or surface a note prompting the AE to request the detailed bill.
-- [ ] **PDF report — end-to-end testing** — The Playwright-based PDF generation route and 4-page report layout exist but haven't been verified with real data. Need to generate a PDF and confirm all pages render correctly.
+- [ ] **PDF report regression testing** — The Playwright-based PDF generation route and report layout exist, but future report changes should be checked with realistic analyses and exported PDFs before production pushes.
 - [ ] **Egress questionnaire → model validation** — The egress decision tree UI is built, but the full flow (compute stays in hyperscaler → new costs appear, partner CDN → egress zeroes out) hasn't been validated against real egress numbers from a bill.
 - [ ] **AI-assisted egress profile and AE/SE follow-up questions** — Current bill-derived egress guesses and follow-up questions are deterministic prompts based on parsed bill signals. A future improvement could use AI to synthesize sharper profile suggestions and questions from the full bill context, customer notes, detected services, egress profile, and likely B2 architecture fit.
 - [ ] **Projection model validation** — Projection growth compounding and fixed TB/month growth exist but should be cross-checked against a manual spreadsheet calculation with real customer numbers.
@@ -240,13 +260,10 @@ npm run refresh-pricing -- gcp
 
 > **Note to the team:** We all should be pushing our AEs to gather bills from customers so we can use the data to make this tool better. Every new bill format we test against makes the parsers more robust and the savings models more accurate. Drop bills in your local `bills/` directory (gitignored — customer data stays local).
 
-- [ ] **AWS detailed billing PDF** — Verify per-SKU line items, storage class mapping (Standard, Standard-IA, Glacier, etc.), operations subcategories in Transaction Analysis, egress categorization, and grand total reconciliation.
-- [ ] **GCP cost table CSV** — Verify Class A / Class B operations parse with storage class attribution, GiB → GB normalization, Nearline/Coldline/Archive tier inventory, and savings programs discount detection.
 - [ ] **AWS S3 cost export CSV** — Test with a real export. Verify pivoted SKU columns (TimedStorage, Requests-Tier1, etc.) parse correctly and monthly breakdowns work.
 - [ ] **AWS summary invoice edge cases** — Bills with fewer linked accounts, no discounts, $0 services, or different formatting/layout variations.
 - [ ] **Excel (.xlsx)** — Test with a real Excel export to verify sheet detection and CSV conversion.
-- [ ] **Multi-region bills** — Verify region-specific pricing (e.g., Singapore vs US East) produces separate tier inventory rows with correct effective rates.
-- [ ] **Discount accuracy** — Verify named discounts (EDP, Savings Plans, Private Rate Card) are correctly extracted and pricing detection flags them accurately.
+- [ ] **More multi-region and discount variants** — AWS detailed PDF and GCP cost table paths have initial real-bill validation, but the parser still needs more customer bills covering additional regions, EDP/Savings Plans/Private Rate Card shapes, and unusual account layouts.
 
 ### Database-backed Collaboration
 
