@@ -72,6 +72,8 @@ sudo systemctl status b2-savings-analyzer-deploy.service --no-pager
 
 The deploy script builds a release under `/home/udara/b2-savings-analyzer/releases/{sha}`, copies `.next/static` and `public` into `.next/standalone`, flips `/home/udara/b2-savings-analyzer/current`, and restarts `b2-savings-analyzer.service`.
 
+PDF generation depends on Playwright inside the standalone runtime. `next.config.ts` explicitly includes `node_modules/playwright-core/browsers.json` in the `/api/analyses/*/pdf` output trace because Playwright loads that metadata at runtime and Next.js may otherwise omit it from `.next/standalone`.
+
 ## Manual Node Deploy Shape
 
 Use this only if the deploy timer needs to be recreated or debugged:
@@ -91,6 +93,7 @@ That static-copy step is required for standalone runtime output; without it, CSS
 The repository has a `Dockerfile`, and Docker remains a good portable target. If switching production to Docker, preserve the same requirements:
 
 - Include Playwright Chromium dependencies.
+- Preserve the `next.config.ts` Playwright trace include so `playwright-core/browsers.json` is present in `.next/standalone`.
 - Include `.next/static` and `public` in the runtime image.
 - Bind the app to localhost or an internal interface behind nginx/load balancer.
 - Run `npm run db:migrate` before enabling Postgres-backed persistence.
