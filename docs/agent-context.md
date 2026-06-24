@@ -185,6 +185,9 @@ Do not duplicate cost-model assembly in individual routes. Use shared snapshot/r
 
 - Internal app can use dark mode; generated customer reports should stay light-only.
 - Theme controls belong in the user/profile menu.
+- The app shell owns viewport height: `body` uses `min-h-dvh` and `main` uses `flex min-h-0 flex-1 flex-col`. Route pages under the global header should not use `min-h-screen`, because that adds the header height on top of the viewport and creates unnecessary scroll.
+- Short route states such as login, empty opportunities, loading states, and new-opportunity creation should fill the remaining `main` area only when needed, using `flex-1` for vertical centering rather than adding hard viewport heights.
+- The header "New" action belongs inside `UserMenu` and should render only after an authenticated user is known. Login and other unauthenticated/public states should show only the brand/header chrome, not the New button or divider.
 - Visible Backblaze branding matters on login, dashboard navigation, customer report, and PDF output.
 - Use `public/backblaze-logo.png` for official horizontal logo on light surfaces.
 - Use `public/backblaze-logo-white.png` on dark navigation/login surfaces.
@@ -209,6 +212,7 @@ Do not duplicate cost-model assembly in individual routes. Use shared snapshot/r
 - Run `git diff --check` before staging or committing.
 - Run `npm run lint` before production pushes.
 - Run `npm run build` before production pushes or when touching shared app logic.
+- For app-shell or short-page layout changes, verify `/login`, empty `/`, and `/analyses/new` at desktop and mobile viewport sizes. Use a mocked/dev session if needed for protected routes, and confirm pages without extra content do not create vertical scroll.
 - Run focused parser/model checks when touching parsers, pricing, cost model, egress, access costs, transactions, or projections.
 - For report/PDF changes, verify the browser report and PDF route with realistic data when credentials and a running app are available.
 - For bulk rerun changes, verify user scoping, skipped/failure aggregation, model config normalization, parsed-bill update behavior, and snapshot creation.

@@ -202,7 +202,7 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 flex flex-col items-center justify-center min-h-[60vh]">
+      <div className="mx-auto flex flex-1 flex-col items-center justify-center px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
         <div className="relative w-12 h-12 mb-4">
           <div className="absolute inset-0 rounded-full border-4 border-gray-200" />
           <div className="absolute inset-0 rounded-full border-4 border-bb-red border-t-transparent animate-spin" />
@@ -214,7 +214,7 @@ export default function HomePage() {
 
   if (loadError && analyses.length === 0) {
     return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 lg:py-10">
         <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
           <h1 className="text-lg font-semibold text-red-900">Could Not Load Opportunities</h1>
           <p className="mt-2 text-sm text-red-700">{loadError}</p>
@@ -230,7 +230,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 lg:py-10">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Opportunities</h1>
@@ -289,7 +289,7 @@ export default function HomePage() {
       )}
 
       {analyses.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-lg shadow">
+        <div className="text-center py-10 sm:py-12 bg-white rounded-lg shadow">
           <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
           </svg>

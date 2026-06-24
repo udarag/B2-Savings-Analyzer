@@ -41,8 +41,8 @@ export default function NewAnalysisPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12">
-      <h1 className="text-2xl font-bold text-gray-900 mb-8">New Analysis</h1>
+    <div className="max-w-2xl mx-auto px-6 py-6 sm:py-8 lg:py-10">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">New Analysis</h1>
 
       {!analysisId ? (
         <div className="bg-white rounded-lg shadow p-6 space-y-4">
