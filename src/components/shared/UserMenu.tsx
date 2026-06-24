@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   getPreferredTheme,
@@ -35,6 +36,7 @@ export function UserMenu() {
 
   useEffect(() => {
     if (pathname === '/login') return;
+
     Promise.all([
       fetch('/api/auth/me').then((r) => r.json()),
       fetch('/api/auth/profile').then((r) => r.json()),
@@ -86,7 +88,7 @@ export function UserMenu() {
     };
   }, []);
 
-  if (!email) return null;
+  if (!email || pathname === '/login') return null;
 
   async function saveProfile() {
     if (!nameInput.trim()) return;
@@ -127,17 +129,26 @@ export function UserMenu() {
   const darkMode = theme === 'dark';
 
   return (
-    <div className="relative" ref={panelRef}>
-      <button
-        onClick={() => { setShowPanel(!showPanel); setEditing(false); setNameInput(profile?.displayName || emailToDisplayName(email)); setTitleInput(profile?.title || ''); }}
-        className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+    <div className="flex items-center gap-3">
+      <Link
+        href="/analyses/new"
+        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-white/10 rounded-md hover:bg-bb-red transition-colors"
       >
-        <div className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center">
-          <span className="text-xs font-semibold text-white">{initials}</span>
-        </div>
-        <span className="text-sm text-gray-300 hidden sm:inline">{displayName}</span>
-        <svg className="w-3 h-3 text-gray-400 hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M19 9l-7 7-7-7" /></svg>
-      </button>
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path d="M12 5v14m-7-7h14" /></svg>
+        New
+      </Link>
+      <div className="w-px h-5 bg-white/20" />
+      <div className="relative" ref={panelRef}>
+        <button
+          onClick={() => { setShowPanel(!showPanel); setEditing(false); setNameInput(profile?.displayName || emailToDisplayName(email)); setTitleInput(profile?.title || ''); }}
+          className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+        >
+          <div className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center">
+            <span className="text-xs font-semibold text-white">{initials}</span>
+          </div>
+          <span className="text-sm text-gray-300 hidden sm:inline">{displayName}</span>
+          <svg className="w-3 h-3 text-gray-400 hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M19 9l-7 7-7-7" /></svg>
+        </button>
 
       {/* Profile setup prompt (first login) */}
       {showSetup && !showPanel && (
@@ -282,6 +293,7 @@ export function UserMenu() {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

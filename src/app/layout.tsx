@@ -57,7 +57,7 @@ export default function RootLayout({
       style={{ colorScheme: 'light' }}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-gray-50 transition-colors duration-300">
+      <body className="min-h-dvh flex flex-col bg-gray-50 transition-colors duration-300">
         <Script
           id="b2-theme-init"
           strategy="beforeInteractive"
@@ -81,20 +81,10 @@ export default function RootLayout({
               </span>
               <span className="min-w-0 truncate text-sm font-medium tracking-wide text-gray-200 sm:hidden">B2 Savings</span>
             </Link>
-            <div className="flex items-center gap-3">
-              <Link
-                href="/analyses/new"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-white/10 rounded-md hover:bg-bb-red transition-colors"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M12 5v14m-7-7h14" /></svg>
-                New
-              </Link>
-              <div className="w-px h-5 bg-white/20" />
-              <UserMenu />
-            </div>
+            <UserMenu />
           </div>
         </header>
-        <main className="flex-1">{children}</main>
+        <main className="flex min-h-0 flex-1 flex-col">{children}</main>
       </body>
     </html>
   );
