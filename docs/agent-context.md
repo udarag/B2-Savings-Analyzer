@@ -134,6 +134,7 @@ Database storage is enabled only when `DATABASE_URL` is present and `DATABASE_ST
 - Dashboard flow reads metadata, parsed bill, and model config, then computes tier inventory, tier selection, cost model, projections, transaction impact, access costs, deal sizing, and readiness.
 - Customer report flow creates durable snapshots and renders the customer-facing report without internal-only warnings.
 - PDF flow uses Playwright to open the report route with the user's session cookie and export a Letter PDF.
+- `next.config.ts` includes `node_modules/playwright-core/browsers.json` in the `/api/analyses/*/pdf` standalone trace. Without that metadata, the VM can have Chromium installed and still fail PDF generation with a missing `playwright-core/browsers.json` module error.
 - The report/PDF path should keep Backblaze branding visible, use compact print-safe layout, and avoid app-like chrome in customer-facing output.
 
 ## Bulk Rerun
@@ -216,7 +217,7 @@ Do not duplicate cost-model assembly in individual routes. Use shared snapshot/r
 - Run focused parser/model checks when touching parsers, pricing, cost model, egress, access costs, transactions, or projections.
 - For report/PDF changes, verify the browser report and PDF route with realistic data when credentials and a running app are available.
 - For bulk rerun changes, verify user scoping, skipped/failure aggregation, model config normalization, parsed-bill update behavior, and snapshot creation.
-- For production-impacting changes, confirm the app still builds as a standalone Next.js server and that `.next/static` plus `public` are included in the standalone runtime artifact.
+- For production-impacting changes, confirm the app still builds as a standalone Next.js server and that `.next/static`, `public`, and the Playwright `browsers.json` trace include are present in the standalone runtime artifact.
 
 ## Production Release Flow
 
