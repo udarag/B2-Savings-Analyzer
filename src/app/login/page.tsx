@@ -104,23 +104,26 @@ function LoginForm() {
             </button>
           </div>
         ) : (
-          <form
-            onSubmit={handleSubmit}
-            autoComplete="off"
-            className="bg-white rounded-xl shadow-sm border p-6"
-          >
+          <form onSubmit={handleSubmit} autoComplete="off" className="bg-white rounded-xl shadow-sm border p-6">
             <label htmlFor="b2sa-access-address" className="block text-sm font-medium text-gray-700 mb-1.5">
-              Email address
+              Backblaze address
             </label>
             <input
               id="b2sa-access-address"
               name="b2sa-access-address"
-              type="email"
+              type="text"
               required
-              autoComplete="off"
+              inputMode="email"
+              enterKeyHint="send"
+              autoComplete="new-password"
               autoCorrect="off"
               autoCapitalize="none"
               spellCheck={false}
+              pattern="[^@\s]+@[^@\s]+\.[^@\s]+"
+              title="Enter a valid Backblaze email address."
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-bwignore="true"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@backblaze.com"
