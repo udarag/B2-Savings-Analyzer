@@ -5,6 +5,7 @@ import type { Provider } from '@/types/analysis';
 import type { CostModelResult } from '@/types/model';
 import { getStorageScopeCurrentMonthly, getStorageScopeReplacementMonthly } from '@/lib/engine/cost-model';
 import { formatCurrency } from '../shared/FormatCurrency';
+import { AnimatedMetricValue } from '../shared/AnimatedMetricValue';
 
 interface CostBreakdownProps {
   result: CostModelResult;
@@ -18,8 +19,8 @@ export function CostBreakdown({ result, provider }: CostBreakdownProps) {
   const eliminatedTotal = getStorageScopeCurrentMonthly(result);
   const newCostTotal = roundCurrency(newCosts.reduce((s, c) => s + c.amountUsd, 0));
   const replacementCostTotal = getStorageScopeReplacementMonthly(result);
-  const currentBillLabel = `Current Customer ${formatProviderName(provider)} Bill`;
-  const newB2BillLabel = 'New B2 Bill';
+  const currentBillLabel = `Current customer ${formatProviderName(provider)} bill`;
+  const newB2BillLabel = 'New B2 bill';
   const hasSavings = result.monthlySavings > 0;
   const savingsPercent = eliminatedTotal > 0 ? Math.round((result.monthlySavings / eliminatedTotal) * 100) : 0;
   const currentScopeByCategory = eliminatedFees.reduce(
@@ -48,7 +49,7 @@ export function CostBreakdown({ result, provider }: CostBreakdownProps) {
   return (
     <div className="bg-white rounded-lg shadow">
       <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Storage Cost Breakdown</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Storage cost breakdown</h3>
         <p className="mt-1 text-sm text-gray-500">
           Monthly view of the modeled storage costs selected for migration. Non-storage spend is outside this view.
         </p>
@@ -57,7 +58,7 @@ export function CostBreakdown({ result, provider }: CostBreakdownProps) {
       <div className="p-6 space-y-5">
         <div>
           <div className="mb-4 flex items-center justify-between gap-4">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Monthly Cost Comparison</h4>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Monthly cost comparison</h4>
             <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
               Storage scope only
             </span>
@@ -78,7 +79,7 @@ export function CostBreakdown({ result, provider }: CostBreakdownProps) {
             />
             <OperatorSymbol symbol="=" />
             <Metric
-              label="Net Monthly Savings"
+              label="Net monthly savings"
               value={result.monthlySavings}
               tone="savings"
               caption={hasSavings && savingsPercent > 0 ? `${savingsPercent}% lower modeled bill` : 'Review savings assumptions'}
@@ -139,11 +140,11 @@ export function CostBreakdown({ result, provider }: CostBreakdownProps) {
             className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left"
           >
             <div>
-              <p className="text-sm font-semibold text-gray-900">Line-Item Savings Detail</p>
+              <p className="text-sm font-semibold text-gray-900">Line-item savings detail</p>
               <p className="mt-0.5 text-xs text-gray-500">For AE follow-up, SE review, or customer validation.</p>
             </div>
             <span className="inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-3 py-1.5 text-sm font-semibold text-gray-700">
-              {detailsOpen ? 'Hide Details' : 'Show Details'}
+              {detailsOpen ? 'Hide details' : 'Show details'}
               <svg
                 className={`h-4 w-4 transition-transform ${detailsOpen ? 'rotate-180' : ''}`}
                 fill="none"
@@ -161,7 +162,7 @@ export function CostBreakdown({ result, provider }: CostBreakdownProps) {
             <div className="border-t border-gray-200 bg-gray-50 p-4">
               <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Costs Removed</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Costs removed</p>
                   <div className="mt-3 space-y-2 border-l-2 border-green-300 pl-3">
                     {eliminatedFees.map((fee, i) => (
                       <div key={i} className="flex justify-between gap-4 text-sm">
@@ -171,13 +172,13 @@ export function CostBreakdown({ result, provider }: CostBreakdownProps) {
                     ))}
                   </div>
                   <div className="mt-3 flex justify-between gap-4 border-t border-gray-200 pt-3 text-sm font-semibold">
-                    <span className="text-gray-900">Total Removed</span>
+                    <span className="text-gray-900">Total removed</span>
                     <span className="shrink-0 text-green-700">{formatCurrency(eliminatedTotal)}</span>
                   </div>
                 </div>
 
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">New B2 Bill</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">New B2 bill</p>
                   <div className="mt-3 space-y-2 border-l-2 border-bb-red/60 pl-3">
                     <Row label="B2 Storage" value={b2Monthly.storage} tone="b2" showZero />
                     <Row label="B2 Egress" value={b2Monthly.egress} tone="b2" />
@@ -190,7 +191,7 @@ export function CostBreakdown({ result, provider }: CostBreakdownProps) {
                     ))}
                   </div>
                   <div className="mt-3 flex justify-between gap-4 border-t border-gray-200 pt-3 text-sm font-semibold">
-                    <span className="text-gray-900">Total New B2 Bill</span>
+                    <span className="text-gray-900">Total new B2 bill</span>
                     <span className="shrink-0 text-bb-red-dark">{formatCurrency(replacementCostTotal)}</span>
                   </div>
                 </div>
@@ -215,8 +216,10 @@ export function CostBreakdown({ result, provider }: CostBreakdownProps) {
                   <span>{formatCurrency(eliminatedTotal)} removed - {formatCurrency(replacementCostTotal)} new B2 bill</span>
                 </div>
                 <div className="mt-1 flex justify-between gap-4 text-base font-semibold">
-                  <span className="text-green-800">Net Storage-Scope Savings</span>
-                  <span className="text-green-700">{formatCurrency(result.monthlySavings)}</span>
+                  <span className="text-green-800">Net storage-scope savings</span>
+                  <span className="text-green-700">
+                    <AnimatedMetricValue value={result.monthlySavings} formatter={formatCurrency} />
+                  </span>
                 </div>
               </div>
             </div>
@@ -245,7 +248,9 @@ function BillPanel({
     <div className="rounded-lg border border-gray-200 p-4">
       <div className="mb-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{title}</p>
-        <p className={`mt-1 text-xl font-bold ${getValueClass(totalTone, total)}`}>{formatCurrency(total)}</p>
+        <p className={`mt-1 text-xl font-bold ${getValueClass(totalTone, total)}`}>
+          <AnimatedMetricValue value={total} formatter={formatCurrency} />
+        </p>
       </div>
       <div className={`space-y-2 border-l-2 pl-3 ${accentClass}`}>
         {rows.map((row) => (
@@ -287,7 +292,9 @@ function Metric({
   return (
     <div className={containerClass}>
       <p className="text-xs font-semibold text-gray-500 tracking-wide">{label}</p>
-      <p className={`mt-1 text-2xl font-bold ${valueClass}`}>{formatCurrency(value)}</p>
+      <p className={`mt-1 text-2xl font-bold ${valueClass}`}>
+        <AnimatedMetricValue value={value} formatter={formatCurrency} />
+      </p>
       {caption && <p className="mt-1 text-xs text-gray-500">{caption}</p>}
     </div>
   );

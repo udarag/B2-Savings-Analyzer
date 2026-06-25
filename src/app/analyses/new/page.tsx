@@ -12,11 +12,11 @@ export default function NewAnalysisPage() {
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
-  useDocumentTitle(analysisId ? `${prospectName} Upload` : 'New Opportunity');
+  useDocumentTitle(analysisId ? `${prospectName} upload` : 'New opportunity');
 
   async function handleCreate() {
     if (!prospectName.trim()) {
-      setError('Please enter a prospect name');
+      setError('Please enter an opportunity name.');
       return;
     }
 
@@ -30,11 +30,11 @@ export default function NewAnalysisPage() {
         body: JSON.stringify({ prospectName: prospectName.trim(), notes: notes.trim() || undefined }),
       });
 
-      if (!res.ok) throw new Error('Failed to create analysis');
+      if (!res.ok) throw new Error('Failed to create opportunity');
       const data = await res.json();
       setAnalysisId(data.id);
     } catch {
-      setError('Failed to create analysis. Check B2 connection.');
+      setError('Failed to create opportunity. Check B2 connection.');
     } finally {
       setCreating(false);
     }
@@ -42,13 +42,13 @@ export default function NewAnalysisPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-6 sm:py-8 lg:py-10">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">New Analysis</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">New opportunity</h1>
 
       {!analysisId ? (
         <div className="bg-white rounded-lg shadow p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Opportunity Name
+              Opportunity name
             </label>
             <input
               type="text"
@@ -69,7 +69,7 @@ export default function NewAnalysisPage() {
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any Context About This Deal..."
+              placeholder="Any context about this deal..."
               rows={3}
               className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-bb-red focus:border-transparent"
             />
@@ -80,14 +80,14 @@ export default function NewAnalysisPage() {
             disabled={creating}
             className="w-full py-2.5 bg-bb-red text-white font-medium rounded-lg hover:bg-bb-red-dark disabled:opacity-50"
           >
-            {creating ? 'Creating...' : 'Continue'}
+            {creating ? 'Creating...' : 'Create opportunity'}
           </button>
         </div>
       ) : (
         <div className="space-y-6">
           <div className="bg-green-50 rounded-lg p-4">
             <p className="text-sm text-green-800">
-              Analysis created for <strong>{prospectName}</strong>. Now upload a bill.
+              Opportunity created for <strong>{prospectName}</strong>. Now upload a bill.
             </p>
           </div>
           <FileUpload

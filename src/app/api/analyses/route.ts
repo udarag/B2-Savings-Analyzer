@@ -9,16 +9,22 @@ import {
 } from '@/lib/storage/storage';
 import { getSessionUser } from '@/lib/auth/session';
 import type { Analysis } from '@/types/analysis';
+import type { ReportSnapshot } from '@/types/model';
+
+type AnalysisSummarySnapshot = Pick<
+  ReportSnapshot,
+  | 'annualSavings'
+  | 'totalStorageGb'
+  | 'b2PricePerTb'
+  | 'termMonths'
+  | 'growthMode'
+  | 'growthRatePercent'
+  | 'growthFixedTbPerMonth'
+>;
 
 export interface AnalysisSummary extends Analysis {
   hasBill: boolean;
-  latestSnapshot: {
-    createdAt: string;
-    monthlySavings: number;
-    annualSavings: number;
-    savingsPercent: number;
-    totalStorageGb: number;
-  } | null;
+  latestSnapshot: AnalysisSummarySnapshot | null;
 }
 
 export async function GET() {
@@ -52,11 +58,13 @@ export async function GET() {
         hasBill: parsed,
         latestSnapshot: snapshot
           ? {
-              createdAt: snapshot.createdAt,
-              monthlySavings: snapshot.monthlySavings,
               annualSavings: snapshot.annualSavings,
-              savingsPercent: snapshot.savingsPercent,
               totalStorageGb: snapshot.totalStorageGb,
+              b2PricePerTb: snapshot.b2PricePerTb,
+              termMonths: snapshot.termMonths,
+              growthMode: snapshot.growthMode,
+              growthRatePercent: snapshot.growthRatePercent,
+              growthFixedTbPerMonth: snapshot.growthFixedTbPerMonth,
             }
           : null,
       };
@@ -83,6 +91,7 @@ export async function POST(req: Request) {
     notes: body.notes,
     provider: body.provider || 'aws',
     billType: body.billType || 'detailed-statement',
+    pipelineStatus: 'open',
     createdAt: now,
     updatedAt: now,
   };
