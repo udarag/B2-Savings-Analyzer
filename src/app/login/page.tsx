@@ -104,14 +104,23 @@ function LoginForm() {
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border p-6">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
+          <form
+            onSubmit={handleSubmit}
+            autoComplete="off"
+            className="bg-white rounded-xl shadow-sm border p-6"
+          >
+            <label htmlFor="b2sa-access-address" className="block text-sm font-medium text-gray-700 mb-1.5">
               Email address
             </label>
             <input
-              id="email"
+              id="b2sa-access-address"
+              name="b2sa-access-address"
               type="email"
               required
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@backblaze.com"
