@@ -149,12 +149,12 @@ Production magic-link email uses Resend with a verified sender domain. `EMAIL_FR
 
 ### How We Push Code To Production
 
-Normal production updates go through GitHub branch `BSA-V2-db`; do not hot-edit app source on the VM.
+Normal production updates go through GitHub branch `main`; do not hot-edit app source on the VM.
 
-1. Work on `BSA-V2-db`.
+1. Work on `main`.
 2. Run `npm run lint`, `npm run build`, and `git diff --check`.
 3. Commit only intended source/docs changes.
-4. Push to `origin/BSA-V2-db`.
+4. Push to `origin/main`.
 5. The VM's `b2-savings-analyzer-deploy.timer` checks that branch about once per minute, builds a release, copies `.next/static` and `public` into the standalone runtime, flips the active `current` symlink, and restarts `b2-savings-analyzer.service`.
 6. Verify `https://savings.backblazedemos.xyz/login` from a network that can reach the internal VM.
 
@@ -236,7 +236,7 @@ npm run refresh-pricing -- gcp
 
 ## Completed Recently
 
-- Internal VM production deployment at `https://savings.backblazedemos.xyz`, backed by nginx, systemd, Let's Encrypt, Cloudflare DNS, and an automatic deploy timer that follows `origin/BSA-V2-db`.
+- Internal VM production deployment at `https://savings.backblazedemos.xyz`, backed by nginx, systemd, Let's Encrypt, Cloudflare DNS, and an automatic deploy timer that follows `origin/main`.
 - Optional Postgres persistence foundation: migration script, DB adapter, backfill script, and storage abstraction. Production remains B2-only until migration is intentionally enabled.
 - Branded magic-link email flow with a verified Resend sender domain and hard production failure when `EMAIL_FROM` is missing.
 - Durable report snapshots, optimized latest-snapshot reads, and a signed-in-user-scoped "Rerun All" path for parser/model changes.
