@@ -48,8 +48,8 @@ When architecture, release flow, validation expectations, or important product b
 - Production URL: `https://savings.backblazedemos.xyz`.
 - Hosting: Backblaze-internal `deals` VM behind internal/VPN network access.
 - Runtime: systemd-managed Next.js standalone server bound to localhost behind nginx.
-- Release branch: `BSA-V2-db` on `origin`.
-- Deploy automation: VM systemd deploy timer checks `origin/BSA-V2-db` about once per minute, builds a new release, copies `.next/static` and `public` into the standalone runtime, flips the `current` symlink, and restarts only `b2-savings-analyzer.service`.
+- Release branch: `main` on `origin`.
+- Deploy automation: VM systemd deploy timer checks `origin/main` about once per minute, builds a new release, copies `.next/static` and `public` into the standalone runtime, flips the `current` symlink, and restarts only `b2-savings-analyzer.service`.
 - Persistence in production: B2-backed JSON/object storage. Postgres support exists, but production should stay B2-only until a deliberate migration/backfill is planned.
 - Email in production: Resend with a verified sender domain. `EMAIL_FROM` is required in production.
 
@@ -221,11 +221,11 @@ Do not duplicate cost-model assembly in individual routes. Use shared snapshot/r
 
 ## Production Release Flow
 
-1. Make changes on `BSA-V2-db`.
+1. Make changes on `main`.
 2. Update `PROJECT_CONTEXT.local.md` with relevant current state, validation results, deployment notes, and handoff context. Keep it ignored/local-only.
 3. Run `git diff --check`, `npm run lint`, and `npm run build`.
 4. Commit only intended tracked files.
-5. Push to `origin/BSA-V2-db`.
+5. Push to `origin/main`.
 6. The VM deploy timer should pick up the new commit within about one minute and restart `b2-savings-analyzer.service`.
 7. Verify `https://savings.backblazedemos.xyz/login` from a network that can reach the internal VM.
 
@@ -233,7 +233,7 @@ If SSH or HTTP checks to the internal VM fail from Codex with network reachabili
 
 ## Completed Recently
 
-- Internal VM production deployment at `https://savings.backblazedemos.xyz`, backed by nginx, systemd, Let's Encrypt, Cloudflare DNS, and an automatic deploy timer following `origin/BSA-V2-db`.
+- Internal VM production deployment at `https://savings.backblazedemos.xyz`, backed by nginx, systemd, Let's Encrypt, Cloudflare DNS, and an automatic deploy timer following `origin/main`.
 - Optional Postgres persistence foundation: migrations, DB adapter, backfill script, storage abstraction, upload metadata references, snapshots, and profiles.
 - Branded magic-link email flow with verified Resend sender domain and hard production failure when `EMAIL_FROM` is missing.
 - Durable report snapshots, optimized latest-snapshot reads, and signed-in-user-scoped "Rerun All" for parser/model changes.

@@ -5,14 +5,14 @@ B2 Savings Analyzer is deployed as a serverful Next.js app on a Backblaze-intern
 ## Current Production Shape
 
 - Host: Backblaze-internal `deals` VM at `172.16.56.50`.
-- App checkout: `/home/udara/b2-savings-analyzer/app`.
+- App checkout: `/home/udara/b2-savings-analyzer/app`, with local branch `main` tracking `origin/main`.
 - Active release symlink: `/home/udara/b2-savings-analyzer/current`.
 - Production env file: `/home/udara/b2-savings-analyzer/shared/.env.production`, symlinked into releases.
 - App service: `b2-savings-analyzer.service`.
 - App bind: `127.0.0.1:3001`.
 - Reverse proxy: nginx site `b2-savings-analyzer`.
 - TLS: Let's Encrypt certificate for `savings.backblazedemos.xyz`, issued with Cloudflare DNS-01.
-- Deploy automation: `b2-savings-analyzer-deploy.timer` runs a deploy check about once per minute against `origin/BSA-V2-db`.
+- Deploy automation: `b2-savings-analyzer-deploy.timer` runs a deploy check about once per minute against `origin/main`.
 - Current persistence mode: B2-backed JSON/object storage. Postgres support exists in the codebase, but production is intentionally not using it until a migration/backfill is planned.
 - Email: Resend magic links from a verified sender on `mail.backblazedemos.xyz`.
 
@@ -59,9 +59,9 @@ DATABASE_SSL_CA_FILE=/path/to/ca-bundle.pem
 
 Normal app changes should ship through git, not by editing source on the VM.
 
-1. Commit the change on branch `BSA-V2-db`.
+1. Commit the change on branch `main`.
 2. Run local verification: `npm run lint`, `npm run build`, and `git diff --check`.
-3. Push to `origin/BSA-V2-db`.
+3. Push to `origin/main`.
 4. Wait for `b2-savings-analyzer-deploy.timer`, or trigger an immediate deploy check:
 
 ```sh
