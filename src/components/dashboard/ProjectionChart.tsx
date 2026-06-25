@@ -4,6 +4,7 @@ import { Area, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveCont
 import type { TooltipContentProps } from 'recharts';
 import type { ProjectionPoint } from '@/types/model';
 import { formatCurrency } from '../shared/FormatCurrency';
+import { AnimatedMetricValue } from '../shared/AnimatedMetricValue';
 
 interface ProjectionChartProps {
   points: ProjectionPoint[];
@@ -35,9 +36,9 @@ export function ProjectionChart({
     <div className="bg-white rounded-lg shadow">
       <div className="flex flex-col gap-4 border-b border-gray-200 px-6 py-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Cost Projections</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Cost projections</h3>
           <p className="mt-1 text-sm text-gray-500">
-            {formatTerm(termMonths)} Projection · {growthLabel}
+            {formatTerm(termMonths)} projection · {growthLabel}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -58,10 +59,10 @@ export function ProjectionChart({
       </div>
       <div className="p-6">
         <div className="mb-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
-          <ChartMetric label="Total Savings" value={formatCurrency(totalSavings)} tone="savings" />
-          <ChartMetric label="Final Monthly Savings" value={formatCurrency(endingMonthlySavings)} tone="savings" />
-          <ChartMetric label="Break-Even" value={breakEven ? `Month ${breakEven.month}` : 'Not in Term'} />
-          <ChartMetric label="Ending Storage" value={formatStorage(endingStorageGb)} />
+          <ChartMetric label="Total savings" value={totalSavings} formatter={formatCurrency} tone="savings" />
+          <ChartMetric label="Final monthly savings" value={endingMonthlySavings} formatter={formatCurrency} tone="savings" />
+          <ChartMetric label="Break-even" value={breakEven ? `Month ${breakEven.month}` : 'Not in term'} />
+          <ChartMetric label="Ending storage" value={endingStorageGb} formatter={formatStorage} />
         </div>
 
         <p className="mb-4 text-sm font-medium text-gray-600">{savingsTrend}</p>
@@ -165,10 +166,12 @@ export function ProjectionChart({
 function ChartMetric({
   label,
   value,
+  formatter,
   tone = 'default',
 }: {
   label: string;
-  value: string;
+  value: number | string;
+  formatter?: (value: number) => string;
   tone?: 'default' | 'savings';
 }) {
   const valueClass = tone === 'savings' ? 'text-emerald-700' : 'text-gray-900';
@@ -176,7 +179,11 @@ function ChartMetric({
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>
-      <p className={`mt-1 text-lg font-semibold ${valueClass}`}>{value}</p>
+      <p className={`mt-1 text-lg font-semibold ${valueClass}`}>
+        {typeof value === 'number'
+          ? <AnimatedMetricValue value={value} formatter={formatter} />
+          : value}
+      </p>
     </div>
   );
 }
@@ -192,7 +199,7 @@ function ChartLegendItem({ colorClass, label }: { colorClass: string; label: str
 
 function formatTerm(months: number): string {
   const years = months / 12;
-  return `${years.toLocaleString(undefined, { maximumFractionDigits: 1 })}-Year`;
+  return `${years.toLocaleString(undefined, { maximumFractionDigits: 1 })}-year`;
 }
 
 function formatShortTerm(months: number): string {

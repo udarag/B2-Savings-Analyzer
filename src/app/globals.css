@@ -338,6 +338,25 @@ select {
   fill: #9ba4b3 !important;
 }
 
+@keyframes metric-value-update {
+  0% {
+    transform: translateY(3px);
+    text-shadow: 0 0 0 rgba(22, 163, 74, 0);
+  }
+  42% {
+    transform: translateY(0);
+    text-shadow: 0 0 18px rgba(22, 163, 74, 0.24);
+  }
+  100% {
+    transform: translateY(0);
+    text-shadow: 0 0 0 rgba(22, 163, 74, 0);
+  }
+}
+
+.metric-value-update {
+  animation: metric-value-update 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @keyframes egress-flow-panel-update {
   0% {
     transform: translateY(3px);
@@ -404,6 +423,7 @@ select {
 .egress-flow-delay-6 { animation-delay: 330ms; }
 
 @media (prefers-reduced-motion: reduce) {
+  .metric-value-update,
   .egress-flow-panel,
   .egress-flow-item,
   .egress-flow-edge {

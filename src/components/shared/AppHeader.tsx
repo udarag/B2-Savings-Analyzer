@@ -8,7 +8,7 @@ import { UserMenu } from '@/components/shared/UserMenu';
 export function AppHeader() {
   const pathname = usePathname();
 
-  if (pathname === '/login') return null;
+  if (pathname === '/login' || /^\/analyses\/[^/]+\/report(?:\/|$)/.test(pathname)) return null;
 
   return (
     <header className="bg-bb-navy px-4 py-2.5 print:hidden sm:px-6">

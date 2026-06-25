@@ -71,14 +71,13 @@ Database storage is enabled only when `DATABASE_URL` is present and `DATABASE_ST
 ## Repository Map
 
 - `src/app/`: App Router pages and API routes.
-- `src/app/page.tsx`: authenticated opportunity list, search/sort, duplicate/delete, latest snapshot previews, and "Rerun All".
+- `src/app/page.tsx`: authenticated opportunity list, search/sort, delete, latest snapshot previews, and "Rerun All".
 - `src/app/analyses/new/page.tsx`: new opportunity creation.
 - `src/app/analyses/[id]/page.tsx`: internal analysis dashboard.
 - `src/app/analyses/[id]/report/page.tsx`: customer-facing report screen used by PDF export.
 - `src/app/api/analyses/route.ts`: list/create analyses for the signed-in user.
 - `src/app/api/analyses/[id]/route.ts`: read/update/delete one analysis.
 - `src/app/api/analyses/[id]/upload/route.ts`: upload bill, parse it, save parsed bill and initial model config.
-- `src/app/api/analyses/[id]/duplicate/route.ts`: duplicate meta, parsed bill, and model config.
 - `src/app/api/analyses/[id]/snapshot/route.ts`: create/list durable report snapshots.
 - `src/app/api/analyses/[id]/pdf/route.ts`: Playwright-based PDF generation.
 - `src/app/api/analyses/rerun/route.ts`: rerun every opportunity owned by the signed-in user.
@@ -197,6 +196,11 @@ Do not duplicate cost-model assembly in individual routes. Use shared snapshot/r
 - Customer Report CTA should use a clear document/report glyph, not an external-link/window glyph.
 - Report/PDF header convention: white header band, Backblaze wordmark on the left, compact metadata on the right.
 - Browser-only report actions should be compact and `no-print`.
+- Customer report browser views use report-specific chrome; the global authenticated app header is hidden on `/login` and `/analyses/{id}/report`.
+- Animated metric values are appropriate for internal dashboard/list summary surfaces, but keep customer reports and PDFs stable/static for capture reliability.
+- Opportunity-list and new-opportunity copy should use "opportunity" language instead of exposing "analysis" language unless the context is explicitly technical.
+- The opportunities page is AE-facing pipeline context: prioritize open opportunities, report readiness, modeled B2 potential TCV/revenue, and storage scope over aggregate customer-savings rollups.
+- Opportunity metadata can carry `pipelineStatus` as `open`, `closed-won`, or `closed-lost`; missing status should be treated as `open` for older records. Closed deals should be filterable but not counted in open potential TCV.
 - Print layout should be defensive: avoid negative header margins, use `min-w-0` for shrinking header/footer text, keep headings with their content, and preserve report-specific print classes for action-fee rows.
 
 ## Auth And Error Handling

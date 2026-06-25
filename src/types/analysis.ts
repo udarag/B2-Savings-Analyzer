@@ -4,6 +4,8 @@ export type Provider = 'aws' | 'gcp' | 'azure' | 'r2';
 
 export type BillType = 'summary-invoice' | 'detailed-statement' | 'sku-export';
 
+export type PipelineStatus = 'open' | 'closed-won' | 'closed-lost';
+
 export type Category =
   | 'storage'
   | 'egress'
@@ -34,6 +36,7 @@ export interface Analysis {
   billingPeriod?: string;
   accountId?: string;
   detectionSignals?: string[];
+  pipelineStatus?: PipelineStatus;
   createdAt: string;
   updatedAt: string;
 }

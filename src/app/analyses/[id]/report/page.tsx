@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import type { Analysis, ParsedBill, ModelConfig, TierInventoryRow } from '@/types/analysis';
 import { normalizeEgressConfig } from '@/types/analysis';
@@ -251,8 +252,64 @@ function ReportPageContent() {
       : null,
   ]);
 
+  const handleDownloadPdf = async () => {
+    setDownloadingPdf(true);
+    try {
+      const r = await fetch(`/api/analyses/${id}/pdf`);
+      if (!r.ok) throw new Error('PDF generation failed');
+      const filename = getFilenameFromContentDisposition(r.headers.get('Content-Disposition')) || buildReportFilename(meta);
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert('PDF generation failed. Make sure Playwright is installed.');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   return (
-    <div className="report-container report-compact max-w-4xl mx-auto bg-white print:max-w-none">
+    <>
+      <div className="no-print border-b border-gray-200 bg-white">
+        <div className="mx-auto flex max-w-4xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <BackblazeLogo compact />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-gray-900">Customer report</p>
+              <p className="truncate text-xs text-gray-500">Prepared for {reportCompanyName}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/analyses/${id}`}
+              className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+              </svg>
+              Back to analysis
+            </Link>
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              id="pdf-btn"
+              disabled={downloadingPdf}
+              className="inline-flex items-center gap-2 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-bb-red-dark shadow-sm transition-colors hover:bg-bb-red-light disabled:cursor-wait disabled:opacity-60"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17" />
+              </svg>
+              {downloadingPdf ? 'Generating PDF' : 'Download PDF'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="report-container report-compact max-w-4xl mx-auto bg-white print:max-w-none">
       <style>{`
         .report-compact .text-xs { font-size: 0.68rem !important; line-height: 1.35; }
         .report-compact .text-sm { font-size: 0.8rem !important; line-height: 1.4; }
@@ -284,6 +341,50 @@ function ReportPageContent() {
         .report-compact .gap-4 { gap: 0.875rem !important; }
         .report-compact .gap-3 { gap: 0.65rem !important; }
         .report-compact table { font-size: 10.5px; }
+        @media screen and (max-width: 640px) {
+          .report-container {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+          }
+          .report-compact .px-8 {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+          }
+          .report-compact .p-8,
+          .report-compact .p-6,
+          .report-compact .p-4 {
+            padding: 1rem !important;
+          }
+          .report-compact .report-header-flush {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 0.75rem !important;
+            text-align: left;
+          }
+          .report-compact .report-header-flush > div:last-child {
+            text-align: left;
+            width: 100%;
+          }
+          .report-compact .grid,
+          .report-compact .flex,
+          .report-compact .grid > *,
+          .report-compact .flex > * {
+            min-width: 0;
+          }
+          .report-compact .grid-cols-2 {
+            grid-template-columns: minmax(0, 1fr) !important;
+          }
+          .report-compact .grid-cols-\\[minmax\\(0\\,1fr\\)_auto\\] {
+            grid-template-columns: minmax(0, 1fr) !important;
+          }
+          .report-compact .shrink-0 {
+            max-width: 100%;
+          }
+          .report-compact .text-4xl {
+            font-size: 1.55rem !important;
+          }
+        }
         @media print {
           @page { size: letter; margin: 0.5in 0.65in; }
           body {
@@ -323,40 +424,6 @@ function ReportPageContent() {
           .print-page-break { break-before: page; }
         }
       `}</style>
-
-      {/* Download PDF button */}
-      <div className="no-print flex items-center justify-end border-b border-gray-200 bg-white px-8 py-3">
-        <button
-          type="button"
-          onClick={async () => {
-            setDownloadingPdf(true);
-            try {
-              const r = await fetch(`/api/analyses/${id}/pdf`);
-              if (!r.ok) throw new Error('PDF generation failed');
-              const filename = getFilenameFromContentDisposition(r.headers.get('Content-Disposition')) || buildReportFilename(meta);
-              const blob = await r.blob();
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = filename;
-              a.click();
-              URL.revokeObjectURL(url);
-            } catch {
-              alert('PDF generation failed. Make sure Playwright is installed.');
-            } finally {
-              setDownloadingPdf(false);
-            }
-          }}
-          id="pdf-btn"
-          disabled={downloadingPdf}
-          className="inline-flex items-center gap-2 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-bb-red-dark shadow-sm transition-colors hover:bg-bb-red-light disabled:cursor-wait disabled:opacity-60"
-        >
-          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17" />
-          </svg>
-          {downloadingPdf ? 'Generating PDF' : 'Download PDF'}
-        </button>
-      </div>
 
       {/* Page 1: Executive Summary */}
       <div>
@@ -799,6 +866,7 @@ function ReportPageContent() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
