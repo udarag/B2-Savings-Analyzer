@@ -2,7 +2,7 @@
 
 This file is tracked on purpose. It gives any coding agent shared repo context without depending on one person's local notes. Keep secrets, customer bills, private credentials, local screenshots, and machine-only observations in `PROJECT_CONTEXT.local.md` instead.
 
-Last updated: 2026-06-24.
+Last updated: 2026-06-25.
 
 ## Source Of Truth
 
@@ -202,6 +202,7 @@ Do not duplicate cost-model assembly in individual routes. Use shared snapshot/r
 ## Auth And Error Handling
 
 - Magic links expire after 15 minutes.
+- In development, localhost login requests bypass external email delivery: `/api/auth/send-link` returns a local verification URL and the login page follows it immediately. Production and other non-local hosts still use Resend magic-link email.
 - Successful login sessions are long-lived unless the user logs out, the browser removes cookies, or `AUTH_SECRET` rotates.
 - Production session cookies are secure; production-like auth testing over plain HTTP can fail to preserve cookies.
 - Protected API routes hit by client fetches should return JSON 401s instead of throwing uncaught auth errors or HTML redirects.

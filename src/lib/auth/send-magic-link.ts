@@ -7,9 +7,7 @@ const BACKBLAZE_LOGO_CONTENT_ID = 'backblaze-logo-white';
 const BACKBLAZE_EMAIL_LOGO_FILENAME = 'backblaze-logo-white-email.png';
 
 export async function sendMagicLink(email: string): Promise<void> {
-  const token = await createMagicLinkToken(email);
-  const baseUrl = getAppBaseUrl();
-  const url = `${baseUrl}/api/auth/verify?token=${token}`;
+  const url = await createMagicLinkUrl(email);
 
   if (process.env.RESEND_API_KEY) {
     const { Resend } = await import('resend');
@@ -36,6 +34,11 @@ export async function sendMagicLink(email: string): Promise<void> {
     console.log(`  Link:  ${url}`);
     console.log('========================================\n');
   }
+}
+
+export async function createMagicLinkUrl(email: string, baseUrl = getAppBaseUrl()): Promise<string> {
+  const token = await createMagicLinkToken(email);
+  return `${baseUrl}/api/auth/verify?token=${token}`;
 }
 
 function getEmailSender(): string {

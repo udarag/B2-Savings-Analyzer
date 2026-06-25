@@ -34,10 +34,15 @@ function LoginForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
+      const data = await res.json();
 
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.error || 'Failed to send link');
+      }
+
+      if (isLocalDevMagicLink(data.devMagicLink)) {
+        window.location.assign(data.devMagicLink);
+        return;
       }
 
       setStatus('sent');
@@ -129,6 +134,21 @@ function LoginForm() {
       </div>
     </div>
   );
+}
+
+function isLocalDevMagicLink(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+
+  try {
+    const url = new URL(value, window.location.origin);
+    return (
+      url.origin === window.location.origin &&
+      url.pathname === '/api/auth/verify' &&
+      url.searchParams.has('token')
+    );
+  } catch {
+    return false;
+  }
 }
 
 function LoginShell() {

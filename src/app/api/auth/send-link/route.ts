@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sendMagicLink } from '@/lib/auth/send-magic-link';
+import { createMagicLinkUrl, sendMagicLink } from '@/lib/auth/send-magic-link';
 
 const ALLOWED_DOMAINS = (process.env.ALLOWED_EMAIL_DOMAIN || 'backblaze.com')
   .split(',')
@@ -22,6 +22,11 @@ export async function POST(req: Request) {
     );
   }
 
+  if (isLocalDevelopmentRequest(req)) {
+    const magicLink = await createMagicLinkUrl(normalized, new URL(req.url).origin);
+    return NextResponse.json({ ok: true, devMagicLink: magicLink });
+  }
+
   try {
     await sendMagicLink(normalized);
     return NextResponse.json({ ok: true });
@@ -29,4 +34,11 @@ export async function POST(req: Request) {
     console.error('Failed to send magic link:', e);
     return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
   }
+}
+
+function isLocalDevelopmentRequest(req: Request): boolean {
+  if (process.env.NODE_ENV === 'production') return false;
+
+  const { hostname } = new URL(req.url);
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]';
 }
