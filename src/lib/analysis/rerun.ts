@@ -10,22 +10,11 @@ import {
   saveReportSnapshot,
 } from '@/lib/storage/storage';
 import { detectAndParse } from '@/lib/parsers/detect';
-import { computeCostModel } from '@/lib/engine/cost-model';
-import { buildTierInventory } from '@/lib/engine/tier-inventory';
-import { applyTierSelectionConfig } from '@/lib/engine/tier-selection';
-import {
-  DEFAULT_MODEL_CONFIG,
-  TIER_SELECTION_VERSION,
-  normalizeEgressConfig,
-  type Analysis,
-  type ModelConfig,
-  type ParsedBill,
-} from '@/types/analysis';
+import { buildTierState, computeAnalysisView, type AnalysisTierState } from './analysis-model';
+import type { Analysis, ModelConfig, ParsedBill } from '@/types/analysis';
 import type { CostModelResult, ReportSnapshot } from '@/types/model';
 
-interface AnalysisModelRun {
-  tiers: ReturnType<typeof buildTierInventory>;
-  modelConfig: ModelConfig;
+interface AnalysisModelRun extends AnalysisTierState {
   costModel: CostModelResult;
 }
 
@@ -208,43 +197,17 @@ async function rerunStoredAnalysis(userEmail: string, analysis: Analysis): Promi
 }
 
 function buildAnalysisModel(parsed: ParsedBill, storedModelConfig?: ModelConfig | null): AnalysisModelRun {
-  const modelConfig = normalizeModelConfig(storedModelConfig);
-  const tiers = applyTierSelectionConfig(
-    buildTierInventory(parsed.lineItems, modelConfig.b2PricePerTb),
-    modelConfig,
-  );
-  const nextModelConfig: ModelConfig = {
-    ...modelConfig,
-    tierToggles: Object.fromEntries(tiers.map((tier) => [tier.id, tier.migrateToB2])),
-    tierSelectionVersion: TIER_SELECTION_VERSION,
-  };
-  const costModel = computeCostModel(
-    parsed.lineItems,
+  const { tiers, modelConfig } = buildTierState(parsed, storedModelConfig);
+  const { costModel } = computeAnalysisView({
+    lineItems: parsed.lineItems,
+    discounts: parsed.discounts,
     tiers,
-    nextModelConfig.egressConfig,
-    nextModelConfig.b2PricePerTb,
-  );
+    egressConfig: modelConfig.egressConfig,
+    b2PricePerTb: modelConfig.b2PricePerTb,
+    termMonths: modelConfig.projectionTermMonths,
+  });
 
-  return {
-    tiers,
-    modelConfig: nextModelConfig,
-    costModel,
-  };
-}
-
-function normalizeModelConfig(modelConfig?: ModelConfig | null): ModelConfig {
-  return {
-    ...DEFAULT_MODEL_CONFIG,
-    ...modelConfig,
-    tierToggles: modelConfig?.tierToggles ?? {},
-    egressConfig: normalizeEgressConfig(modelConfig?.egressConfig),
-    b2PricePerTb: readPositiveNumber(modelConfig?.b2PricePerTb, DEFAULT_MODEL_CONFIG.b2PricePerTb),
-    projectionTermMonths: readPositiveNumber(
-      modelConfig?.projectionTermMonths,
-      DEFAULT_MODEL_CONFIG.projectionTermMonths,
-    ),
-    pricingDiscountConfirmed: Boolean(modelConfig?.pricingDiscountConfirmed),
-  };
+  return { tiers, modelConfig, costModel };
 }
 
 function hasModelConfigChanged(previous: ModelConfig, next: ModelConfig): boolean {
@@ -256,9 +219,4 @@ function hasModelConfigChanged(previous: ModelConfig, next: ModelConfig): boolea
     JSON.stringify(previous.egressConfig) !== JSON.stringify(next.egressConfig) ||
     JSON.stringify(previous.tierToggles ?? {}) !== JSON.stringify(next.tierToggles)
   );
-}
-
-function readPositiveNumber(value: unknown, fallback: number): number {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback;
 }
