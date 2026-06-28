@@ -17,4 +17,21 @@ describe('parseAwsCostCsv', () => {
     const storage = result.parsedBill.lineItems.find((i) => i.sku === 'USE1-TimedStorage-ByteHrs');
     expect(storage?.costUsd).toBeCloseTo(1234.56, 2);
   });
+
+  it('flags a recognized non-storage export without collapsing confidence', () => {
+    // A real, parseable export whose only SKU column is out-of-scope (data transfer in).
+    const csv = [
+      'Usage type,USE1-DataTransfer-In-Bytes($),Total costs($)',
+      '2026-03-01,"100.00","100.00"',
+      'Usage type total,"100.00","100.00"',
+    ].join('\n');
+
+    const result = parseAwsCostCsv(csv);
+    expect(result.parsedBill.lineItems).toHaveLength(1);
+    expect(result.parsedBill.lineItems[0].category).toBe('out-of-scope');
+    // Parse succeeded — baseline confidence, not the empty floor.
+    expect(result.parsedBill.parseConfidence).toBe(0.85);
+    expect(result.parsedBill.warnings.some((w) => /no storage-scope spend/i.test(w))).toBe(true);
+    expect(result.parsedBill.warnings.some((w) => /could not extract/i.test(w))).toBe(false);
+  });
 });

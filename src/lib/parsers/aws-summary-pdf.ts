@@ -9,6 +9,12 @@ import { parseFormattedNumber } from './normalize';
 import { getListRate } from '@/lib/pricing/lookup';
 import { buildAwsComputeSignals } from './aws-compute-signals';
 import { buildEgressProfileSuggestion } from '@/lib/analysis/egress-profile-suggestion';
+import {
+  computeParseConfidence,
+  classifyParseOutcome,
+  sumAddressableCost,
+  NO_STORAGE_SCOPE_WARNING,
+} from './confidence';
 
 function extractText(pdfBuffer: Buffer): string {
   const tmpPath = join(tmpdir(), `bill-${Date.now()}.pdf`);
@@ -422,6 +428,14 @@ export function parseAwsSummaryPdf(pdfBuffer: Buffer): ParseResult {
   }
 
   const parsedTotal = lineItems.reduce((sum, item) => sum + item.costUsd, 0);
+  // The standard "request the detailed export" notice is advisory and must not dock the 0.50
+  // baseline; only a summary that yields no useful rows collapses. A summary with only
+  // storage-adjacent services (e.g. CloudFront/ECR) parsed fine but has no storage scope.
+  const addressableTotal = sumAddressableCost(lineItems);
+  const outcome = classifyParseOutcome(lineItems.length > 0, addressableTotal);
+  if (outcome === 'no-addressable') {
+    warnings.push(NO_STORAGE_SCOPE_WARNING);
+  }
   const egressProfileSuggestion = buildEgressProfileSuggestion(lineItems, computeSignals);
 
   return {
@@ -437,7 +451,7 @@ export function parseAwsSummaryPdf(pdfBuffer: Buffer): ParseResult {
       computeSignals: computeSignals.length > 0 ? computeSignals : undefined,
       egressProfileSuggestion,
       grandTotal: grandTotal || parsedTotal,
-      parseConfidence: 0.5,
+      parseConfidence: computeParseConfidence({ baseline: 0.5, outcome, hasBlockingWarning: false }),
       warnings,
       discounts: discounts.length > 0 ? discounts : undefined,
     },

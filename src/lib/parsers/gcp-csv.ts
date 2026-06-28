@@ -4,6 +4,13 @@ import type { ParsedLineItem, Category } from '@/types/analysis';
 import type { ParseResult } from './types';
 import { parseFormattedNumber, normalizeUnit } from './normalize';
 import { GCP_LOCATION_TYPES } from '../categories/types';
+import {
+  computeParseConfidence,
+  classifyParseOutcome,
+  sumAddressableCost,
+  unsupportedLayoutWarning,
+  NO_STORAGE_SCOPE_WARNING,
+} from './confidence';
 
 interface GcpCsvRow {
   'Service description': string;
@@ -122,12 +129,14 @@ export function parseGcpCsv(content: string): ParseResult {
     header: true,
     skipEmptyLines: true,
   });
+  const fields = parsed.meta.fields ?? [];
 
   const lineItems: ParsedLineItem[] = [];
   let grandTotal = 0;
   let totalSavingsPrograms = 0;
   const warnings: string[] = [];
   const commercialSignals: string[] = [];
+  let hasBlockingWarning = false;
 
   for (const row of parsed.data) {
     // Skip subtotal/filtered total rows
@@ -168,7 +177,9 @@ export function parseGcpCsv(content: string): ParseResult {
     totalSavingsPrograms += savingsProgram;
   }
 
-  if (totalSavingsPrograms === 0 && lineItems.length > 0) {
+  // Only assert "paying list price" when the savings column actually exists. A human-trimmed
+  // export that omits the column reads as all-zeros and would otherwise produce a false claim.
+  if (fields.includes('Savings programs ($)') && totalSavingsPrograms === 0 && lineItems.length > 0) {
     commercialSignals.push('All Savings programs values are $0 — customer appears to be paying list price.');
   }
 
@@ -183,7 +194,18 @@ export function parseGcpCsv(content: string): ParseResult {
       warnings.push(
         `Parsed total ($${grandTotal.toFixed(2)}) differs from reported total ($${reportedTotal.toFixed(2)}) by more than 2%.`
       );
+      hasBlockingWarning = true;
     }
+  }
+
+  // Distinguish a genuinely unreadable export (no rows) from a correctly parsed bill that
+  // simply has no storage-scope spend; only the former is an extraction failure.
+  const addressableTotal = sumAddressableCost(lineItems);
+  const outcome = classifyParseOutcome(lineItems.length > 0, addressableTotal);
+  if (outcome === 'empty') {
+    warnings.push(unsupportedLayoutWarning('GCP billing export'));
+  } else if (outcome === 'no-addressable') {
+    warnings.push(NO_STORAGE_SCOPE_WARNING);
   }
 
   return {
@@ -193,7 +215,7 @@ export function parseGcpCsv(content: string): ParseResult {
     parsedBill: {
       lineItems,
       grandTotal: Math.round(grandTotal * 100) / 100,
-      parseConfidence: warnings.length === 0 ? 0.95 : 0.8,
+      parseConfidence: computeParseConfidence({ baseline: 0.95, outcome, hasBlockingWarning }),
       warnings,
       commercialSignals: commercialSignals.length > 0 ? commercialSignals : undefined,
     },

@@ -52,3 +52,40 @@ describe('parseGcpCsv', () => {
     expect(storage?.usageQuantity).toBeGreaterThan(1000); // 1000 GiB ≈ 1073.7 GB
   });
 });
+
+describe('parseGcpCsv confidence and false-flag guards', () => {
+  it('does not assert list price when the Savings programs column is absent', () => {
+    const headers = ['Service description', 'Service ID', 'SKU description', 'SKU ID', 'Usage amount', 'Usage unit', 'Cost ($)', 'Subtotal ($)'];
+    const rows = [['Cloud Storage', '95FF', 'Standard Storage Multi-Region', 'AAAA', '1000', 'gibibyte month', '24.21', '24.21']];
+    const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
+
+    const result = parseGcpCsv(csv);
+    expect(result.parsedBill.commercialSignals).toBeUndefined();
+    expect(result.parsedBill.parseConfidence).toBe(0.95);
+    expect(result.parsedBill.warnings).toHaveLength(0);
+  });
+
+  it('flags recognized-but-non-storage rows without treating it as an extraction failure', () => {
+    const headers = ['Service description', 'Service ID', 'SKU description', 'SKU ID', 'Usage amount', 'Usage unit', 'Cost ($)', 'Subtotal ($)'];
+    const rows = [['Cloud Storage', '95FF', 'Autoclass Management Fee', 'ZZZZ', '1', 'count', '12.00', '12.00']];
+    const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
+
+    const result = parseGcpCsv(csv);
+    expect(result.parsedBill.lineItems).toHaveLength(1);
+    expect(result.parsedBill.lineItems[0].category).toBe('out-of-scope');
+    // Parse succeeded — confidence stays at baseline, not the empty floor.
+    expect(result.parsedBill.parseConfidence).toBe(0.95);
+    expect(result.parsedBill.warnings.some((w) => /no storage-scope spend/i.test(w))).toBe(true);
+    expect(result.parsedBill.warnings.some((w) => /could not extract/i.test(w))).toBe(false);
+  });
+
+  it('collapses confidence and flags an unsupported layout when no rows are recognized', () => {
+    const headers = ['Service description', 'Service ID', 'SKU description', 'SKU ID', 'Usage amount', 'Usage unit', 'Cost ($)', 'Savings programs ($)', 'Other savings ($)', 'Unrounded subtotal ($)', 'Subtotal ($)'];
+    const csv = headers.join(',');
+
+    const result = parseGcpCsv(csv);
+    expect(result.parsedBill.lineItems).toHaveLength(0);
+    expect(result.parsedBill.parseConfidence).toBe(0.1);
+    expect(result.parsedBill.warnings.some((w) => /could not extract/i.test(w))).toBe(true);
+  });
+});
