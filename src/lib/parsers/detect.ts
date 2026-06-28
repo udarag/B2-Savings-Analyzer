@@ -1,9 +1,15 @@
+import Papa from 'papaparse';
 import type { ParserOptions, ParseResult } from './types';
 import { parseGcpCsv } from './gcp-csv';
 import { parseAwsDetailPdf } from './aws-detail-pdf';
 import { parseAwsSummaryPdf, isSummaryInvoice } from './aws-summary-pdf';
 import { parseAwsCostCsv } from './aws-cost-csv';
+import { parseGenericTabularCsv } from './generic-csv';
+import { transformHeader, resolveColumn } from './csv-utils';
 import { detectProviderFromContent } from './provider-detection';
+
+// Trailing currency/unit marker on an AWS cost-export SKU column header, e.g. "($)" / " (USD)".
+const COST_COLUMN_SUFFIX = /\s*\((?:\$|usd|eur|gbp|€|£)?\)\s*$/i;
 
 export function detectAndParse(options: ParserOptions): ParseResult {
   const { filename, content, mimeType } = options;
@@ -57,6 +63,30 @@ function detectCsvProvider(text: string): ParseResult {
     return result;
   }
 
+  // Alias-based header detection for exports renamed/re-cased enough to miss the literal checks
+  // above. Parse only the header row, then match canonical column sets tolerantly.
+  const probeFields = (Papa.parse<Record<string, string>>(text, {
+    header: true,
+    preview: 1,
+    transformHeader,
+  }).meta.fields) ?? [];
+  if (
+    resolveColumn(probeFields, ['SKU description', 'SKU desc']) &&
+    resolveColumn(probeFields, ['Service description', 'Service'])
+  ) {
+    const result = parseGcpCsv(text);
+    result.detectionSignals = ['CSV format: GCP billing export (header alias match)', ...contentDetection.signals];
+    return result;
+  }
+  if (
+    resolveColumn(probeFields, ['Usage type', 'UsageType']) &&
+    probeFields.some((h) => COST_COLUMN_SUFFIX.test(h))
+  ) {
+    const result = parseAwsCostCsv(text);
+    result.detectionSignals = ['CSV format: AWS cost export (header alias match)', ...contentDetection.signals];
+    return result;
+  }
+
   // Fallback: try content-based detection
   if (contentDetection.confidence > 0.3) {
     if (contentDetection.provider === 'gcp') {
@@ -83,6 +113,17 @@ function detectCsvProvider(text: string): ParseResult {
         // Fall through
       }
     }
+  }
+
+  // Last resort: a guarded generic tabular parse for plausibly-billing CSVs that matched no
+  // known shape. Returns null (and we throw) for anything that isn't clearly a billing export.
+  const generic = parseGenericTabularCsv(text);
+  if (generic) {
+    generic.detectionSignals = [
+      'CSV format: unrecognized — parsed with the generic tabular fallback (verify categorization)',
+      ...contentDetection.signals,
+    ];
+    return generic;
   }
 
   throw new Error('Could not detect CSV format. Expected GCP cost-table, AWS cost export, or AWS CUR format.');
