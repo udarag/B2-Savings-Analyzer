@@ -193,13 +193,11 @@ export function getListRate(
   switch (provider) {
     case 'aws':
       return getAwsListRate(storageClass, region);
-    case 'gcp': {
-      let locationType = 'regional';
-      if (region.includes('asia') && region.includes('multi')) locationType = 'asia-multi-region';
-      else if (region.includes('multi')) locationType = 'multi-region';
-      else if (region.includes('dual')) locationType = 'dual-region';
-      return getGcpListRate(storageClass, locationType);
-    }
+    case 'gcp':
+      // getGcpListRate lowercases and classifies the location label itself, so pass
+      // the raw region through. Re-deriving it here was case-sensitive and silently
+      // collapsed 'US Multi-region'/'US Dual-region' to the cheaper regional rate.
+      return getGcpListRate(storageClass, region);
     case 'azure':
       return getAzureListRate(storageClass, region);
     case 'r2': {
@@ -234,13 +232,14 @@ export function getRetrievalRate(provider: string, storageClass: string): number
   return 0;
 }
 
-export function getDefaultEgressRate(provider: string): number {
+export function getDefaultEgressRate(provider: string, region?: string): number {
   if (provider === 'aws') {
     const dto = (awsPricing as Record<string, unknown>).dataTransferOut as Record<string, Array<{ perGb: number }>> | undefined;
     if (!dto) return 0;
-    const usEast = dto['us-east-1'];
-    if (usEast && usEast.length >= 2) return usEast[1].perGb;
-    return 0;
+    const regionKey = region ? (AWS_REGION_ALIASES[region] || region) : 'us-east-1';
+    const tiers = dto[regionKey] || dto['us-east-1'];
+    // Use the first paid tier rather than a hardcoded index; tier 0 is the free allowance.
+    return tiers?.find((t) => t.perGb > 0)?.perGb ?? 0;
   }
   if (provider === 'gcp') {
     const dto = (gcpPricing as Record<string, unknown>).dataTransferOut as Array<{ perGb: number }> | undefined;
