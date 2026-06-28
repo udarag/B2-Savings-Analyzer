@@ -5,8 +5,9 @@ import type { ParseResult } from './types';
 import { AWS_REGION_CODES, AWS_SKU_STORAGE_CLASS } from '../categories/types';
 import { getListRate } from '../pricing/lookup';
 import { parseFormattedNumber } from './normalize';
+import { classifyS3Suffix } from './aws-s3-classify';
 
-function classifySku(sku: string): {
+export function classifySku(sku: string): {
   category: Category;
   subcategory?: string;
   storageClass?: string;
@@ -45,44 +46,11 @@ function classifySku(sku: string): {
     return { category: 'egress', subcategory: 'S3 Replication' };
   }
 
-  if (suffix.startsWith('Requests-Tier1') || suffix.startsWith('Requests-INT-Tier1')) {
-    return { category: 'operations', subcategory: 'PUT/COPY/POST/LIST' };
-  }
-
-  if (suffix.startsWith('Requests-Tier2') || suffix.startsWith('Requests-INT-Tier2')) {
-    return { category: 'operations', subcategory: 'GET/SELECT' };
-  }
-
-  if (suffix.startsWith('Requests-SIA')) {
-    return { category: 'operations', subcategory: 'Standard-IA Requests', storageClass: 'Standard-IA' };
-  }
-
-  if (suffix.startsWith('Requests-ZIA')) {
-    return { category: 'operations', subcategory: 'One Zone-IA Requests', storageClass: 'One Zone-IA' };
-  }
-
-  if (suffix.startsWith('Requests-GDA')) {
-    return { category: 'operations', subcategory: 'Glacier Deep Archive Requests', storageClass: 'Glacier Deep Archive' };
-  }
-
-  if (suffix.startsWith('Requests-GIR')) {
-    return { category: 'operations', subcategory: 'Glacier IR Requests', storageClass: 'Glacier Instant Retrieval' };
-  }
+  const shared = classifyS3Suffix(suffix);
+  if (shared) return shared;
 
   if (suffix.startsWith('Requests-Tier4')) {
     return { category: 'operations', subcategory: 'Lifecycle Transitions' };
-  }
-
-  if (suffix.includes('Retrieval-SIA')) {
-    return { category: 'retrieval', storageClass: 'Standard-IA' };
-  }
-
-  if (suffix.includes('Retrieval-ZIA')) {
-    return { category: 'retrieval', storageClass: 'One Zone-IA' };
-  }
-
-  if (suffix.includes('Retrieval-GIR')) {
-    return { category: 'retrieval', storageClass: 'Glacier Instant Retrieval' };
   }
 
   if (suffix.includes('EarlyDelete')) {
