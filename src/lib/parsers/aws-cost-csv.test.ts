@@ -34,4 +34,21 @@ describe('parseAwsCostCsv', () => {
     expect(result.parsedBill.warnings.some((w) => /no storage-scope spend/i.test(w))).toBe(true);
     expect(result.parsedBill.warnings.some((w) => /could not extract/i.test(w))).toBe(false);
   });
+
+  it('tolerates a space before the currency suffix and European-formatted amounts', () => {
+    // " ($)" suffix, re-cased "Usage Type", semicolon delimiter, EU 1.234,56 amounts.
+    const csv = [
+      'Usage Type;USE1-TimedStorage-ByteHrs ($);Total costs ($)',
+      '2026-03-01;1.234,56;1.234,56',
+      'Usage type total;1.234,56;1.234,56',
+    ].join('\n');
+
+    const result = parseAwsCostCsv(csv);
+    expect(result.parsedBill.grandTotal).toBeCloseTo(1234.56, 2);
+    const storage = result.parsedBill.lineItems.find((i) => i.sku === 'USE1-TimedStorage-ByteHrs');
+    expect(storage).toBeTruthy();
+    expect(storage?.costUsd).toBeCloseTo(1234.56, 2);
+    // The total column must not be mistaken for a SKU column.
+    expect(result.parsedBill.lineItems).toHaveLength(1);
+  });
 });

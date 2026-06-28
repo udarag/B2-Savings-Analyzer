@@ -88,4 +88,19 @@ describe('parseGcpCsv confidence and false-flag guards', () => {
     expect(result.parsedBill.parseConfidence).toBe(0.1);
     expect(result.parsedBill.warnings.some((w) => /could not extract/i.test(w))).toBe(true);
   });
+
+  it('parses a European-formatted, BOM-prefixed, semicolon-delimited, aliased export', () => {
+    // First header carries a BOM; columns are re-cased/renamed; cost is EU 1.234,56.
+    const csv = [
+      '﻿Service Description;SKU Description;Usage amount;Usage unit;Subtotal',
+      'Cloud Storage;Standard Storage Multi-Region;1000;gibibyte month;1.234,56',
+    ].join('\n');
+
+    const result = parseGcpCsv(csv);
+    expect(result.parsedBill.lineItems).toHaveLength(1);
+    // The EU number must read as 1234.56, not 1.234.
+    expect(result.parsedBill.grandTotal).toBeCloseTo(1234.56, 2);
+    const storage = result.parsedBill.lineItems.find((i) => i.category === 'storage');
+    expect(storage?.costUsd).toBeCloseTo(1234.56, 2);
+  });
 });

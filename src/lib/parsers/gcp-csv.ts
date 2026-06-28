@@ -2,7 +2,8 @@ import Papa from 'papaparse';
 import { v4 as uuid } from 'uuid';
 import type { ParsedLineItem, Category } from '@/types/analysis';
 import type { ParseResult } from './types';
-import { parseFormattedNumber, normalizeUnit } from './normalize';
+import { parseLocaleNumber, normalizeUnit } from './normalize';
+import { transformHeader, resolveColumn } from './csv-utils';
 import { GCP_LOCATION_TYPES } from '../categories/types';
 import {
   computeParseConfidence,
@@ -11,20 +12,6 @@ import {
   unsupportedLayoutWarning,
   NO_STORAGE_SCOPE_WARNING,
 } from './confidence';
-
-interface GcpCsvRow {
-  'Service description': string;
-  'Service ID': string;
-  'SKU description': string;
-  'SKU ID': string;
-  'Usage amount': string;
-  'Usage unit': string;
-  'Cost ($)': string;
-  'Savings programs ($)': string;
-  'Other savings ($)': string;
-  'Unrounded subtotal ($)': string;
-  'Subtotal ($)': string;
-}
 
 function classifySku(skuDesc: string): {
   category: Category;
@@ -125,11 +112,27 @@ function extractRegion(skuDesc: string): string {
 }
 
 export function parseGcpCsv(content: string): ParseResult {
-  const parsed = Papa.parse<GcpCsvRow>(content, {
+  const parsed = Papa.parse<Record<string, string>>(content, {
     header: true,
     skipEmptyLines: true,
+    transformHeader,
   });
   const fields = parsed.meta.fields ?? [];
+
+  // Resolve the columns we read once, tolerating renamed/re-cased/whitespaced/BOM'd headers.
+  const cols = {
+    serviceDesc: resolveColumn(fields, ['Service description', 'Service']),
+    skuDesc: resolveColumn(fields, ['SKU description', 'SKU desc']),
+    skuId: resolveColumn(fields, ['SKU ID']),
+    usageAmount: resolveColumn(fields, ['Usage amount', 'Usage']),
+    usageUnit: resolveColumn(fields, ['Usage unit', 'Unit']),
+    cost: resolveColumn(fields, ['Cost ($)', 'Cost']),
+    subtotal: resolveColumn(fields, ['Subtotal ($)', 'Subtotal']),
+    savings: resolveColumn(fields, ['Savings programs ($)', 'Savings programs']),
+    unrounded: resolveColumn(fields, ['Unrounded subtotal ($)', 'Unrounded subtotal']),
+  };
+  const cell = (row: Record<string, string>, col: string | undefined): string =>
+    (col ? row[col] : undefined) ?? '';
 
   const lineItems: ParsedLineItem[] = [];
   let grandTotal = 0;
@@ -139,29 +142,31 @@ export function parseGcpCsv(content: string): ParseResult {
   let hasBlockingWarning = false;
 
   for (const row of parsed.data) {
+    const skuDesc = cell(row, cols.skuDesc);
+    const unrounded = cell(row, cols.unrounded);
     // Skip subtotal/filtered total rows
-    if (!row['SKU description'] && !row['Service description']) continue;
-    if (row['Unrounded subtotal ($)'] === 'Subtotal' || row['Unrounded subtotal ($)'] === 'Filtered total') continue;
-    if (!row['SKU description']) continue;
+    if (!skuDesc && !cell(row, cols.serviceDesc)) continue;
+    if (unrounded === 'Subtotal' || unrounded === 'Filtered total') continue;
+    if (!skuDesc) continue;
 
-    const costUsd = parseFormattedNumber(row['Subtotal ($)'] || row['Cost ($)'] || '0');
-    const usageAmount = parseFormattedNumber(row['Usage amount'] || '0');
-    const usageUnit = row['Usage unit'] || '';
-    const savingsProgram = parseFormattedNumber(row['Savings programs ($)'] || '0');
+    const costUsd = parseLocaleNumber(cell(row, cols.subtotal) || cell(row, cols.cost) || '0');
+    const usageAmount = parseLocaleNumber(cell(row, cols.usageAmount) || '0');
+    const usageUnit = cell(row, cols.usageUnit);
+    const savingsProgram = parseLocaleNumber(cell(row, cols.savings) || '0');
 
     const { unit: normalizedUnit, multiplier } = normalizeUnit(usageUnit);
     const normalizedUsage = usageAmount * multiplier;
 
-    const { category, subcategory, storageClass } = classifySku(row['SKU description']);
-    const region = extractRegion(row['SKU description']);
+    const { category, subcategory, storageClass } = classifySku(skuDesc);
+    const region = extractRegion(skuDesc);
 
     lineItems.push({
       id: uuid(),
       provider: 'gcp',
-      service: row['Service description'] || 'Cloud Storage',
+      service: cell(row, cols.serviceDesc) || 'Cloud Storage',
       region,
-      sku: row['SKU ID'] || '',
-      description: row['SKU description'],
+      sku: cell(row, cols.skuId),
+      description: skuDesc,
       category,
       subcategory,
       storageClass,
@@ -179,16 +184,16 @@ export function parseGcpCsv(content: string): ParseResult {
 
   // Only assert "paying list price" when the savings column actually exists. A human-trimmed
   // export that omits the column reads as all-zeros and would otherwise produce a false claim.
-  if (fields.includes('Savings programs ($)') && totalSavingsPrograms === 0 && lineItems.length > 0) {
+  if (cols.savings && totalSavingsPrograms === 0 && lineItems.length > 0) {
     commercialSignals.push('All Savings programs values are $0 — customer appears to be paying list price.');
   }
 
   // Validate total
   const lastRows = parsed.data.filter(
-    (r) => r['Unrounded subtotal ($)'] === 'Filtered total' || r['Unrounded subtotal ($)'] === 'Subtotal'
+    (r) => cell(r, cols.unrounded) === 'Filtered total' || cell(r, cols.unrounded) === 'Subtotal'
   );
   if (lastRows.length > 0) {
-    const reportedTotal = parseFormattedNumber(lastRows[0]['Subtotal ($)'] || '0');
+    const reportedTotal = parseLocaleNumber(cell(lastRows[0], cols.subtotal) || '0');
     const diff = Math.abs(grandTotal - reportedTotal);
     if (diff > reportedTotal * 0.02) {
       warnings.push(

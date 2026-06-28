@@ -4,7 +4,8 @@ import type { ParsedLineItem, Category } from '@/types/analysis';
 import type { ParseResult } from './types';
 import { AWS_REGION_CODES, AWS_SKU_STORAGE_CLASS } from '../categories/types';
 import { getListRate } from '../pricing/lookup';
-import { parseFormattedNumber } from './normalize';
+import { parseLocaleNumber } from './normalize';
+import { transformHeader, resolveColumn } from './csv-utils';
 import { classifyS3Suffix } from './aws-s3-classify';
 import {
   computeParseConfidence,
@@ -116,8 +117,11 @@ function extractRegion(sku: string): string {
   return AWS_REGION_CODES[code] || code.toLowerCase();
 }
 
+// Trailing currency/unit marker on a cost column header, e.g. "($)", " ($)", "(USD)", "(€)".
+const CURRENCY_SUFFIX = /\s*\((?:\$|usd|eur|gbp|€|£)?\)\s*$/i;
+
 export function parseAwsCostCsv(text: string): ParseResult {
-  const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+  const parsed = Papa.parse(text, { header: true, skipEmptyLines: true, transformHeader });
   const rows = parsed.data as Record<string, string>[];
 
   if (rows.length === 0) {
@@ -125,27 +129,34 @@ export function parseAwsCostCsv(text: string): ParseResult {
   }
 
   const headers = parsed.meta.fields || [];
+  // Resolve the row-label and total columns up front, tolerating header variants.
+  const usageTypeCol = resolveColumn(headers, ['Usage type', 'UsageType']);
+  const totalCol = resolveColumn(headers, [
+    'Total costs($)', 'Total costs ($)', 'Total cost($)', 'Total cost ($)', 'Total costs', 'Total cost',
+  ]);
+  // SKU columns = every currency-suffixed cost column except the resolved usage/total columns.
   const skuColumns = headers.filter(
-    (h) => h.endsWith('($)') && h !== 'Usage type' && h !== 'Total costs($)',
+    (h) => CURRENCY_SUFFIX.test(h) && h !== usageTypeCol && h !== totalCol,
   );
 
-  const totalsRow = rows.find((r) => r['Usage type'] === 'Usage type total');
+  const usageLabel = (r: Record<string, string>): string => (usageTypeCol ? r[usageTypeCol] : undefined) ?? '';
+  const totalsRow = rows.find((r) => usageLabel(r) === 'Usage type total');
   if (!totalsRow) {
     throw new Error('Could not find "Usage type total" row in CSV');
   }
 
-  const grandTotal = parseFormattedNumber(totalsRow['Total costs($)'] || '0');
+  const grandTotal = parseLocaleNumber((totalCol ? totalsRow[totalCol] : undefined) || '0');
 
   const monthRows = rows.filter(
-    (r) => r['Usage type'] && r['Usage type'] !== 'Usage type total' && /^\d{4}-\d{2}-\d{2}$/.test(r['Usage type']),
+    (r) => usageLabel(r) && usageLabel(r) !== 'Usage type total' && /^\d{4}-\d{2}-\d{2}$/.test(usageLabel(r)),
   );
 
   const latestMonth = monthRows.length > 0 ? monthRows[monthRows.length - 1] : totalsRow;
 
   let billingPeriod = '';
   if (monthRows.length > 0) {
-    const first = monthRows[0]['Usage type'];
-    const last = monthRows[monthRows.length - 1]['Usage type'];
+    const first = usageLabel(monthRows[0]);
+    const last = usageLabel(monthRows[monthRows.length - 1]);
     billingPeriod = `${first} to ${last}`;
   }
 
@@ -153,12 +164,12 @@ export function parseAwsCostCsv(text: string): ParseResult {
   const warnings: string[] = [];
 
   for (const col of skuColumns) {
-    const skuName = col.replace(/\(\$\)$/, '');
-    const totalCost = parseFormattedNumber(totalsRow[col] || '0');
+    const skuName = col.replace(CURRENCY_SUFFIX, '');
+    const totalCost = parseLocaleNumber(totalsRow[col] || '0');
     if (totalCost === 0) continue;
 
     const monthlyCost = monthRows.length > 0
-      ? parseFormattedNumber(latestMonth[col] || '0')
+      ? parseLocaleNumber(latestMonth[col] || '0')
       : totalCost;
 
     if (monthlyCost === 0 && totalCost < 0.01) continue;
