@@ -8,6 +8,7 @@ import type { ParseResult } from './types';
 import { parseFormattedNumber, parseUsdAmount } from './normalize';
 import { AWS_REGION_CODES, AWS_SKU_STORAGE_CLASS } from '../categories/types';
 import { buildAwsComputeSignals, getAwsComputeSignalService, type AwsComputeSignalInput } from './aws-compute-signals';
+import { classifyS3Suffix } from './aws-s3-classify';
 import { buildEgressProfileSuggestion } from '@/lib/analysis/egress-profile-suggestion';
 
 function extractText(pdfBuffer: Buffer): string {
@@ -67,7 +68,7 @@ function regionCodeFromName(regionName: string): string | null {
   return null;
 }
 
-function classifyAwsLine(
+export function classifyAwsLine(
   service: string,
   skuCode: string,
   rateDescription: string
@@ -83,34 +84,12 @@ function classifyAwsLine(
       return { category: 'storage', storageClass: AWS_SKU_STORAGE_CLASS[skuSuffix] };
     }
 
-    // Requests
-    if (skuSuffix.includes('Requests-Tier1') || skuSuffix.includes('Requests-INT-Tier1')) {
-      return { category: 'operations', subcategory: 'PUT/COPY/POST/LIST' };
-    }
-    if (skuSuffix.includes('Requests-Tier2') || skuSuffix.includes('Requests-INT-Tier2')) {
-      return { category: 'operations', subcategory: 'GET/SELECT' };
-    }
-    if (skuSuffix.includes('Requests-SIA')) {
-      return { category: 'operations', subcategory: 'Standard-IA Requests', storageClass: 'Standard-IA' };
-    }
-    if (skuSuffix.includes('Requests-ZIA')) {
-      return { category: 'operations', subcategory: 'One Zone-IA Requests', storageClass: 'One Zone-IA' };
-    }
-    if (skuSuffix.includes('Requests-GDA')) {
-      return { category: 'operations', subcategory: 'Glacier Deep Archive Requests', storageClass: 'Glacier Deep Archive' };
-    }
-    if (skuSuffix.includes('Requests-GIR')) {
-      return { category: 'operations', subcategory: 'Glacier IR Requests', storageClass: 'Glacier Instant Retrieval' };
-    }
+    // Shared request + per-class retrieval classification (see aws-s3-classify.ts)
+    const shared = classifyS3Suffix(skuSuffix);
+    if (shared) return shared;
 
-    // Retrieval
-    if (skuSuffix.includes('Retrieval-SIA')) {
-      return { category: 'retrieval', storageClass: 'Standard-IA' };
-    }
-    if (skuSuffix.includes('Retrieval-ZIA')) {
-      return { category: 'retrieval', storageClass: 'One Zone-IA' };
-    }
-    if (skuSuffix.includes('Retrieval-GIR') || lower.includes('glacier instant')) {
+    // Glacier Instant Retrieval identified only by the rate description
+    if (lower.includes('glacier instant')) {
       return { category: 'retrieval', storageClass: 'Glacier Instant Retrieval' };
     }
 
