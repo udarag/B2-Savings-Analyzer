@@ -1,9 +1,11 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, type ReactNode, useState } from 'react';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { useDocumentTitle } from '@/components/shared/useDocumentTitle';
+
+const BUILD_NUMBER = process.env.NEXT_PUBLIC_BUILD_NUMBER ?? 'local';
 
 export default function LoginPage() {
   useDocumentTitle('Sign in');
@@ -53,7 +55,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center bg-gray-50 px-4 py-6">
+    <LoginFrame>
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Image
@@ -144,7 +146,7 @@ function LoginForm() {
           </form>
         )}
       </div>
-    </div>
+    </LoginFrame>
   );
 }
 
@@ -163,14 +165,31 @@ function isLocalDevMagicLink(value: unknown): value is string {
   }
 }
 
+function LoginFrame({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex flex-1 flex-col bg-gray-50 px-4 py-6">
+      <div className="flex flex-1 items-center justify-center">{children}</div>
+      <BuildNumber />
+    </div>
+  );
+}
+
+function BuildNumber() {
+  return (
+    <p className="mt-4 shrink-0 text-center font-mono text-[11px] leading-none text-gray-400">
+      Build {BUILD_NUMBER}
+    </p>
+  );
+}
+
 function LoginShell() {
   return (
-    <div className="flex flex-1 items-center justify-center bg-gray-50 px-4 py-6">
+    <LoginFrame>
       <div className="w-full max-w-sm rounded-xl border bg-white p-6 shadow-sm">
         <div className="mx-auto mb-5 h-12 w-48 max-w-full rounded bg-gray-100" />
         <div className="mx-auto mb-3 h-6 w-40 rounded bg-gray-100" />
         <div className="mx-auto h-4 w-56 rounded bg-gray-100" />
       </div>
-    </div>
+    </LoginFrame>
   );
 }
