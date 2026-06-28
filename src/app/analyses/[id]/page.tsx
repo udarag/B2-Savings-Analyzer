@@ -5,16 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import type { Analysis, ParsedBill, ModelConfig, TierInventoryRow, EgressConfig, Provider } from '@/types/analysis';
 import { TIER_SELECTION_VERSION } from '@/types/analysis';
-import type { CostModelResult, ProjectionPoint, PricingDetectionResult } from '@/types/model';
-import { buildTierInventory } from '@/lib/engine/tier-inventory';
-import { applyTierSelectionConfig } from '@/lib/engine/tier-selection';
-import {
-  computeCostModel,
-  getStorageScopeCurrentMonthly,
-  getStorageScopeReplacementMonthly,
-} from '@/lib/engine/cost-model';
-import { computeProjections } from '@/lib/engine/projections';
-import { detectCustomPricing } from '@/lib/pricing/detection';
+import { buildTierState, computeAnalysisView } from '@/lib/analysis/analysis-model';
 import { ParseReview } from '@/components/upload/ParseReview';
 import { TierInventory } from '@/components/dashboard/TierInventory';
 import { EgressQuestionnaire } from '@/components/dashboard/EgressQuestionnaire';
@@ -95,17 +86,12 @@ export default function AnalysisDashboard() {
       .then((d: AnalysisData) => {
         setData(d);
         if (d.parsed) {
-          const builtTiers = applyTierSelectionConfig(
-            buildTierInventory(d.parsed.lineItems, d.modelConfig?.b2PricePerTb),
-            d.modelConfig,
-          );
+          const { tiers: builtTiers, modelConfig: norm } = buildTierState(d.parsed, d.modelConfig);
           setTiers(builtTiers);
-          if (d.modelConfig) {
-            setEgressConfig(normalizeEgressConfig(d.modelConfig.egressConfig));
-            setB2PricePerTb(d.modelConfig.b2PricePerTb);
-            setTermMonths(d.modelConfig.projectionTermMonths);
-            setPricingDiscountConfirmed(Boolean(d.modelConfig.pricingDiscountConfirmed));
-          }
+          setEgressConfig(norm.egressConfig);
+          setB2PricePerTb(norm.b2PricePerTb);
+          setTermMonths(norm.projectionTermMonths);
+          setPricingDiscountConfirmed(Boolean(norm.pricingDiscountConfirmed));
         }
       })
       .catch(() => setError('Analysis not found'))
@@ -174,26 +160,23 @@ export default function AnalysisDashboard() {
   const parsedLineItems = data?.parsed?.lineItems;
   const parsedDiscounts = data?.parsed?.discounts;
 
-  // Compute model results
-  const costModel: CostModelResult | null = useMemo(() => {
+  // Compute model results through the shared analysis-model path (same as report + rerun)
+  const view = useMemo(() => {
     if (!parsedLineItems) return null;
-    return computeCostModel(parsedLineItems, tiers, egressConfig, b2PricePerTb);
-  }, [parsedLineItems, tiers, egressConfig, b2PricePerTb]);
-
-  const projections: ProjectionPoint[] = useMemo(() => {
-    if (!costModel) return [];
-    const baseStorageGb = tiers.filter((t) => t.migrateToB2).reduce((s, t) => s + t.gbStored, 0);
-    return computeProjections({
-      currentMonthlyCost: getStorageScopeCurrentMonthly(costModel),
-      b2MonthlyCost: getStorageScopeReplacementMonthly(costModel),
-      migrationCostTotal: costModel.migrationCost.total,
-      baseStorageGb,
-      growthMode: egressConfig.dataGrowthMode,
-      annualGrowthPercent: egressConfig.dataGrowthRatePercent,
-      fixedGrowthTbPerMonth: egressConfig.dataGrowthFixedTbPerMonth,
+    return computeAnalysisView({
+      lineItems: parsedLineItems,
+      discounts: parsedDiscounts,
+      tiers,
+      egressConfig,
+      b2PricePerTb,
       termMonths,
     });
-  }, [costModel, tiers, egressConfig, termMonths]);
+  }, [parsedLineItems, parsedDiscounts, tiers, egressConfig, b2PricePerTb, termMonths]);
+
+  const costModel = view?.costModel ?? null;
+  const projections = view?.projections ?? [];
+  const pricingDetection = view?.pricingDetection ?? [];
+  const migratedStorageGb = view?.migratedStorageGb ?? 0;
 
   const growthLabel = formatGrowthAssumption({
     growthMode: egressConfig.dataGrowthMode,
@@ -201,19 +184,10 @@ export default function AnalysisDashboard() {
     fixedGrowthTbPerMonth: egressConfig.dataGrowthFixedTbPerMonth,
   });
 
-  const pricingDetection: PricingDetectionResult[] = useMemo(() => {
-    if (!parsedLineItems) return [];
-    return detectCustomPricing(parsedLineItems, parsedDiscounts);
-  }, [parsedLineItems, parsedDiscounts]);
-
   const pricingFreshnessWarning = data?.meta.provider
     ? getPricingFreshnessWarning(data.meta.provider)
     : null;
   const reportCompanyName = data?.meta.companyName || data?.meta.prospectName || '';
-
-  const migratedStorageGb = useMemo(() => {
-    return tiers.filter((t) => t.migrateToB2).reduce((s, t) => s + t.gbStored, 0);
-  }, [tiers]);
 
   if (loading) {
     return (

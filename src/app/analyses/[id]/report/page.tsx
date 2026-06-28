@@ -6,21 +6,18 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import type { Analysis, ParsedBill, ModelConfig, TierInventoryRow } from '@/types/analysis';
 import { normalizeEgressConfig } from '@/types/analysis';
-import type { CostModelResult, ProjectionPoint, PricingDetectionResult } from '@/types/model';
-import { buildTierInventory } from '@/lib/engine/tier-inventory';
-import { applyTierSelectionConfig } from '@/lib/engine/tier-selection';
+import type { CostModelResult, ProjectionPoint } from '@/types/model';
 import {
-  computeCostModel,
   getStorageScopeCurrentMonthly,
   getStorageScopeReplacementMonthly,
 } from '@/lib/engine/cost-model';
+import { buildTierState, computeAnalysisView } from '@/lib/analysis/analysis-model';
 import {
   getOperationActionCostSummary,
   type ActionCostDetail,
   type OperationActionCostSummary,
 } from '@/lib/analysis/action-costs';
-import { computeProjections, formatGrowthAssumption } from '@/lib/engine/projections';
-import { detectCustomPricing } from '@/lib/pricing/detection';
+import { formatGrowthAssumption } from '@/lib/engine/projections';
 import { getRegionLocation } from '@/lib/regions';
 import { formatStorageTierName } from '@/lib/storage-tiers';
 import { buildReportFilename, getFilenameFromContentDisposition } from '@/lib/report-filename';
@@ -154,10 +151,7 @@ function ReportPageContent() {
 
   const tiers: TierInventoryRow[] = useMemo(() => {
     if (!parsed || !modelConfig) return [];
-    return applyTierSelectionConfig(
-      buildTierInventory(parsed.lineItems, modelConfig.b2PricePerTb),
-      modelConfig,
-    );
+    return buildTierState(parsed, modelConfig).tiers;
   }, [parsed, modelConfig]);
 
   const egressConfig = useMemo(() => {
@@ -165,30 +159,22 @@ function ReportPageContent() {
     return normalizeEgressConfig(modelConfig.egressConfig);
   }, [modelConfig]);
 
-  const costModel: CostModelResult | null = useMemo(() => {
+  // Same shared computation path as the dashboard + rerun.
+  const view = useMemo(() => {
     if (!parsed || !modelConfig || !egressConfig) return null;
-    return computeCostModel(parsed.lineItems, tiers, egressConfig, modelConfig.b2PricePerTb);
-  }, [parsed, modelConfig, egressConfig, tiers]);
-
-  const projections: ProjectionPoint[] = useMemo(() => {
-    if (!costModel || !modelConfig || !egressConfig) return [];
-    const baseStorageGb = tiers.filter((t) => t.migrateToB2).reduce((s, t) => s + t.gbStored, 0);
-    return computeProjections({
-      currentMonthlyCost: getStorageScopeCurrentMonthly(costModel),
-      b2MonthlyCost: getStorageScopeReplacementMonthly(costModel),
-      migrationCostTotal: costModel.migrationCost.total,
-      baseStorageGb,
-      growthMode: egressConfig.dataGrowthMode,
-      annualGrowthPercent: egressConfig.dataGrowthRatePercent,
-      fixedGrowthTbPerMonth: egressConfig.dataGrowthFixedTbPerMonth,
+    return computeAnalysisView({
+      lineItems: parsed.lineItems,
+      discounts: parsed.discounts,
+      tiers,
+      egressConfig,
+      b2PricePerTb: modelConfig.b2PricePerTb,
       termMonths: modelConfig.projectionTermMonths,
     });
-  }, [costModel, modelConfig, egressConfig, tiers]);
+  }, [parsed, modelConfig, egressConfig, tiers]);
 
-  const pricingDetection: PricingDetectionResult[] = useMemo(() => {
-    if (!parsed) return [];
-    return detectCustomPricing(parsed.lineItems, parsed.discounts);
-  }, [parsed]);
+  const costModel = view?.costModel ?? null;
+  const projections = view?.projections ?? [];
+  const pricingDetection = view?.pricingDetection ?? [];
 
   // Save a snapshot when the report is viewed
   useEffect(() => {
