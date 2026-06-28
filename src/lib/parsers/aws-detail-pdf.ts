@@ -6,6 +6,13 @@ import { join } from 'path';
 import type { ParsedLineItem, AccountBreakdown, Category, NamedDiscount } from '@/types/analysis';
 import type { ParseResult } from './types';
 import { parseFormattedNumber, parseUsdAmount } from './normalize';
+import {
+  computeParseConfidence,
+  classifyParseOutcome,
+  sumAddressableCost,
+  unsupportedLayoutWarning,
+  NO_STORAGE_SCOPE_WARNING,
+} from './confidence';
 import { AWS_REGION_CODES, AWS_SKU_STORAGE_CLASS } from '../categories/types';
 import { buildAwsComputeSignals, getAwsComputeSignalService, type AwsComputeSignalInput } from './aws-compute-signals';
 import { classifyS3Suffix } from './aws-s3-classify';
@@ -262,6 +269,45 @@ function addUnique(values: string[], value: string): string[] {
   return values.includes(value) ? values : [...values, value];
 }
 
+function formatUsdAmount(value: number): string {
+  return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/**
+ * Reconcile parsed storage-scope spend against the bill's grand total.
+ *
+ * Under-capture (addressable < 95% of grand total) is the *expected* outcome for any
+ * compute-heavy AWS bill — non-storage spend is intentionally out-of-scope — so it is a
+ * neutral commercial signal, never a warning that docks parse confidence. Over-capture
+ * (addressable > 105% of grand total) is anomalous (a likely double-count or mis-parse) and is
+ * a genuine, blocking reconciliation warning. Pure and exported for direct unit testing.
+ */
+export function classifyGrandTotalReconciliation(
+  addressableTotal: number,
+  grandTotal: number,
+): { commercialSignal?: string; warning?: string } {
+  if (grandTotal <= 0) return {};
+
+  if (addressableTotal > grandTotal * 1.05) {
+    return {
+      warning:
+        `Parsed storage-scope total ($${formatUsdAmount(addressableTotal)}) exceeds the bill grand total ` +
+        `($${formatUsdAmount(grandTotal)}); some line items may be double-counted.`,
+    };
+  }
+
+  if (addressableTotal < grandTotal * 0.95) {
+    const pct = (addressableTotal / grandTotal) * 100;
+    return {
+      commercialSignal:
+        `Parsed storage scope is ${pct.toFixed(1)}% of the bill grand total ($${formatUsdAmount(grandTotal)}); ` +
+        `the remainder is non-storage spend categorized as out-of-scope.`,
+    };
+  }
+
+  return {};
+}
+
 export function parseAwsDetailPdf(pdfBuffer: Buffer): ParseResult {
   const text = extractText(pdfBuffer);
   const lines = text.split('\n');
@@ -271,6 +317,7 @@ export function parseAwsDetailPdf(pdfBuffer: Buffer): ParseResult {
   const discounts: NamedDiscount[] = [];
   const computeSignals = buildAwsComputeSignals(extractComputeSignalInputs(text));
   const warnings: string[] = [];
+  const commercialSignals: string[] = [];
 
   let currentService = '';
   let currentRegionName = '';
@@ -443,16 +490,26 @@ export function parseAwsDetailPdf(pdfBuffer: Buffer): ParseResult {
     }
   }
 
-  // Validate parsed total against grand total
+  // Reconcile against the grand total using storage-scope (addressable) spend only — the
+  // intended-out-of-scope remainder must not read as a parse error. The grand-total fallback
+  // still uses the full parsed sum so a totalless bill reports a representative total.
   const parsedTotal = lineItems.reduce((sum, item) => sum + item.costUsd, 0);
+  const addressableTotal = sumAddressableCost(lineItems);
   const egressProfileSuggestion = buildEgressProfileSuggestion(lineItems, computeSignals);
-  if (grandTotal > 0) {
-    const diff = Math.abs(parsedTotal - grandTotal);
-    if (diff > grandTotal * 0.05) {
-      warnings.push(
-        `Parsed storage/transfer total ($${parsedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) captures ${((parsedTotal / grandTotal) * 100).toFixed(1)}% of bill grand total ($${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}). Non-storage services are categorized as out-of-scope.`
-      );
-    }
+
+  let hasBlockingWarning = false;
+  const reconciliation = classifyGrandTotalReconciliation(addressableTotal, grandTotal);
+  if (reconciliation.commercialSignal) commercialSignals.push(reconciliation.commercialSignal);
+  if (reconciliation.warning) {
+    warnings.push(reconciliation.warning);
+    hasBlockingWarning = true;
+  }
+
+  const outcome = classifyParseOutcome(lineItems.length > 0, addressableTotal);
+  if (outcome === 'empty') {
+    warnings.push(unsupportedLayoutWarning('AWS detailed billing statement'));
+  } else if (outcome === 'no-addressable') {
+    warnings.push(NO_STORAGE_SCOPE_WARNING);
   }
 
   return {
@@ -467,8 +524,9 @@ export function parseAwsDetailPdf(pdfBuffer: Buffer): ParseResult {
       computeSignals: computeSignals.length > 0 ? computeSignals : undefined,
       egressProfileSuggestion,
       grandTotal: grandTotal || Math.round(parsedTotal * 100) / 100,
-      parseConfidence: warnings.length === 0 ? 0.85 : 0.7,
+      parseConfidence: computeParseConfidence({ baseline: 0.85, outcome, hasBlockingWarning }),
       warnings,
+      commercialSignals: commercialSignals.length > 0 ? commercialSignals : undefined,
       discounts: discounts.length > 0 ? discounts : undefined,
     },
   };

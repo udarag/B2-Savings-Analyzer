@@ -2,6 +2,11 @@ import type { ParsedLineItem, NamedDiscount } from '@/types/analysis';
 import type { PricingDetectionResult } from '@/types/model';
 import { getListRate, getBlendedListRate } from './lookup';
 
+// Region sentinels the parsers use when a line item's region could not be resolved. The
+// pricing lookup aliases these to us-east-1, so comparing a real effective rate against that
+// baseline manufactures phantom discounts. Per-tier verdicts skip these groups entirely.
+const FALLBACK_REGIONS = new Set(['global', 'all regions', 'unknown']);
+
 export function detectCustomPricing(
   lineItems: ParsedLineItem[],
   discounts?: NamedDiscount[],
@@ -27,6 +32,9 @@ export function detectCustomPricing(
     if (totalCost < 0.50) continue;
 
     const [storageClass, region] = key.split('|');
+    // Skip groups whose region is a fallback sentinel: the list-rate baseline would be the
+    // wrong region, so stay silent rather than assert an unverifiable per-tier discount.
+    if (FALLBACK_REGIONS.has(region.toLowerCase())) continue;
     const effectiveRate = totalCost / totalGb;
 
     const provider = storageItems.find(

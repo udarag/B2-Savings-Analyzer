@@ -6,6 +6,13 @@ import { AWS_REGION_CODES, AWS_SKU_STORAGE_CLASS } from '../categories/types';
 import { getListRate } from '../pricing/lookup';
 import { parseFormattedNumber } from './normalize';
 import { classifyS3Suffix } from './aws-s3-classify';
+import {
+  computeParseConfidence,
+  classifyParseOutcome,
+  sumAddressableCost,
+  unsupportedLayoutWarning,
+  NO_STORAGE_SCOPE_WARNING,
+} from './confidence';
 
 export function classifySku(sku: string): {
   category: Category;
@@ -187,11 +194,22 @@ export function parseAwsCostCsv(text: string): ParseResult {
 
   const parsedMonthlyTotal = lineItems.reduce((s, i) => s + i.costUsd, 0);
 
+  // Advisory only — selecting the latest month is expected behavior, not a parse problem.
   if (monthRows.length > 1) {
     warnings.push(
       `CSV contains ${monthRows.length} months of data ($${grandTotal.toFixed(2)} total). ` +
       `Using latest month for analysis ($${parsedMonthlyTotal.toFixed(2)}).`,
     );
+  }
+
+  // Recognized structure = at least one SKU cost column. Columns present but all zero (or all
+  // non-storage) is a parsed-but-non-storage bill, not an extraction failure.
+  const addressableTotal = sumAddressableCost(lineItems);
+  const outcome = classifyParseOutcome(skuColumns.length > 0, addressableTotal);
+  if (outcome === 'empty') {
+    warnings.push(unsupportedLayoutWarning('AWS cost export'));
+  } else if (outcome === 'no-addressable') {
+    warnings.push(NO_STORAGE_SCOPE_WARNING);
   }
 
   return {
@@ -203,7 +221,7 @@ export function parseAwsCostCsv(text: string): ParseResult {
     parsedBill: {
       lineItems,
       grandTotal: Math.round(parsedMonthlyTotal * 100) / 100,
-      parseConfidence: 0.85,
+      parseConfidence: computeParseConfidence({ baseline: 0.85, outcome, hasBlockingWarning: false }),
       warnings,
     },
   };
