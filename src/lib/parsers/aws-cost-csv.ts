@@ -4,6 +4,7 @@ import type { ParsedLineItem, Category } from '@/types/analysis';
 import type { ParseResult } from './types';
 import { AWS_REGION_CODES, AWS_SKU_STORAGE_CLASS } from '../categories/types';
 import { getListRate } from '../pricing/lookup';
+import { parseFormattedNumber } from './normalize';
 
 function classifySku(sku: string): {
   category: Category;
@@ -158,7 +159,7 @@ export function parseAwsCostCsv(text: string): ParseResult {
     throw new Error('Could not find "Usage type total" row in CSV');
   }
 
-  const grandTotal = parseFloat(totalsRow['Total costs($)'] || '0');
+  const grandTotal = parseFormattedNumber(totalsRow['Total costs($)'] || '0');
 
   const monthRows = rows.filter(
     (r) => r['Usage type'] && r['Usage type'] !== 'Usage type total' && /^\d{4}-\d{2}-\d{2}$/.test(r['Usage type']),
@@ -178,11 +179,11 @@ export function parseAwsCostCsv(text: string): ParseResult {
 
   for (const col of skuColumns) {
     const skuName = col.replace(/\(\$\)$/, '');
-    const totalCost = parseFloat(totalsRow[col] || '0');
+    const totalCost = parseFormattedNumber(totalsRow[col] || '0');
     if (totalCost === 0) continue;
 
     const monthlyCost = monthRows.length > 0
-      ? parseFloat(latestMonth[col] || '0')
+      ? parseFormattedNumber(latestMonth[col] || '0')
       : totalCost;
 
     if (monthlyCost === 0 && totalCost < 0.01) continue;

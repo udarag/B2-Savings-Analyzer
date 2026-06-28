@@ -6,24 +6,35 @@ import {
   saveReportSnapshot,
   getUserProfile,
 } from '@/lib/storage/storage';
-import { requireUser } from '@/lib/auth/session';
+import { getSessionUser } from '@/lib/auth/session';
+import { storageErrorResponse } from '@/lib/api/route-helpers';
 import { buildAnalysisSnapshot } from '@/lib/analysis/rerun';
 import { buildReportFilename } from '@/lib/report-filename';
 import { getAppBaseUrl } from '@/lib/app-base-url';
+import type { Analysis, ParsedBill, ModelConfig } from '@/types/analysis';
 
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const userEmail = await requireUser();
+  const userEmail = await getSessionUser();
+  if (!userEmail) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   const { id } = await params;
   const cookieHeader = req.headers.get('cookie') || '';
 
-  const [meta, parsed, modelConfig] = await Promise.all([
-    getAnalysisMeta(userEmail, id),
-    getParsedBill(userEmail, id),
-    getModelConfig(userEmail, id),
-  ]);
+  let loaded: [Analysis | null, ParsedBill | null, ModelConfig | null];
+  try {
+    loaded = await Promise.all([
+      getAnalysisMeta(userEmail, id),
+      getParsedBill(userEmail, id),
+      getModelConfig(userEmail, id),
+    ]);
+  } catch (error) {
+    return storageErrorResponse(error, `Failed to load analysis ${id} for PDF`);
+  }
+  const [meta, parsed, modelConfig] = loaded;
 
   if (!meta) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });

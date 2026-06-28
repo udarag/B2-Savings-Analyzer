@@ -27,6 +27,14 @@ import {
 } from './postgres';
 import type { Analysis, ParsedBill, ModelConfig } from '@/types/analysis';
 import type { ReportSnapshot } from '@/types/model';
+import {
+  parseStoredAnalysis,
+  parseStoredParsedBill,
+  parseStoredModelConfig,
+  parseStoredSnapshot,
+  safeJsonParse,
+  isRecord,
+} from './validate';
 
 interface ListedObject {
   key: string;
@@ -193,7 +201,7 @@ export async function listAnalyses(userEmail: string): Promise<Analysis[]> {
     metaKeys.map(async (key) => {
       try {
         const data = await getObject(key);
-        return data ? JSON.parse(data) as Analysis : null;
+        return data ? parseStoredAnalysis(data) : null;
       } catch (error) {
         console.error(`Skipping unreadable analysis metadata at ${key}:`, error);
         return null;
@@ -212,7 +220,7 @@ export async function getAnalysisMeta(userEmail: string, id: string): Promise<An
   }
 
   const data = await getObject(`${analysisPath(userEmail, id)}/meta.json`);
-  return data ? JSON.parse(data) : null;
+  return data ? parseStoredAnalysis(data) : null;
 }
 
 export async function saveAnalysisMeta(userEmail: string, id: string, meta: Analysis): Promise<void> {
@@ -230,7 +238,7 @@ export async function getParsedBill(userEmail: string, id: string): Promise<Pars
   }
 
   const data = await getObject(`${analysisPath(userEmail, id)}/parsed.json`);
-  return data ? JSON.parse(data) : null;
+  return data ? parseStoredParsedBill(data) : null;
 }
 
 export async function hasParsedBill(userEmail: string, id: string): Promise<boolean> {
@@ -256,7 +264,7 @@ export async function getModelConfig(userEmail: string, id: string): Promise<Mod
   }
 
   const data = await getObject(`${analysisPath(userEmail, id)}/model-config.json`);
-  return data ? JSON.parse(data) : null;
+  return data ? parseStoredModelConfig(data) : null;
 }
 
 export async function saveModelConfig(userEmail: string, id: string, config: ModelConfig): Promise<void> {
@@ -358,7 +366,9 @@ export async function listReportSnapshots(userEmail: string, id: string): Promis
   const snapshots: ReportSnapshot[] = [];
   for (const key of keys) {
     const data = await getObject(key);
-    if (data) snapshots.push(JSON.parse(data));
+    if (!data) continue;
+    const snapshot = parseStoredSnapshot(data);
+    if (snapshot) snapshots.push(snapshot);
   }
   return snapshots.sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -372,11 +382,8 @@ export async function getLatestSnapshot(userEmail: string, id: string): Promise<
 
   const latestData = await getObject(latestSnapshotPath(userEmail, id));
   if (latestData) {
-    try {
-      return JSON.parse(latestData);
-    } catch (error) {
-      console.error(`Ignoring unreadable latest snapshot pointer for ${id}:`, error);
-    }
+    const pointer = parseStoredSnapshot(latestData);
+    if (pointer) return pointer;
   }
 
   const snapshotPrefix = `${analysisPath(userEmail, id)}/snapshots/`;
@@ -390,7 +397,8 @@ export async function getLatestSnapshot(userEmail: string, id: string): Promise<
   const data = await getObject(latest.key);
   if (!data) return null;
 
-  const snapshot = JSON.parse(data) as ReportSnapshot;
+  const snapshot = parseStoredSnapshot(data);
+  if (!snapshot) return null;
   putObject(latestSnapshotPath(userEmail, id), JSON.stringify(snapshot, null, 2)).catch((error) => {
     console.error(`Failed to backfill latest snapshot pointer for ${id}:`, error);
   });
@@ -410,7 +418,9 @@ export async function getUserProfile(userEmail: string): Promise<UserProfile | n
   }
 
   const data = await getObject(`users/${userEmail}/profile.json`);
-  return data ? JSON.parse(data) : null;
+  if (!data) return null;
+  const v = safeJsonParse(data, 'user profile');
+  return isRecord(v) && typeof v.displayName === 'string' ? (v as unknown as UserProfile) : null;
 }
 
 export async function saveUserProfile(userEmail: string, profile: UserProfile): Promise<void> {

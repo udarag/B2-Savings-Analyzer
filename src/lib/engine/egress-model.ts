@@ -54,7 +54,7 @@ export function computeEgressModel(
 
   // Determine provider for egress rate
   const provider = migratedTiers[0]?.provider || 'aws';
-  const providerEgressRate = getDefaultEgressRate(provider);
+  const providerEgressRate = getDefaultEgressRate(provider, migratedTiers[0]?.region);
 
   // New egress: hyperscaler -> B2 if hyperscaler compute writes processed data to B2.
   let newEgressCost = 0;
