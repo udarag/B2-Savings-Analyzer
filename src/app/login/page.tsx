@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { useDocumentTitle } from '@/components/shared/useDocumentTitle';
 
 const BUILD_NUMBER = process.env.NEXT_PUBLIC_BUILD_NUMBER ?? 'local';
+const GITHUB_REPO_URL = 'https://github.com/udarag/B2-Savings-Analyzer';
 
 export default function LoginPage() {
   useDocumentTitle('Sign in');
@@ -22,6 +23,10 @@ function LoginForm() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  // Start the field read-only and drop it on first focus. Browser/OS autofill
+  // (incl. Safari/iCloud Passwords) evaluates eligibility when a field is focused,
+  // and skips a field that is read-only at that moment, so no suggestions pop up.
+  const [emailReadOnly, setEmailReadOnly] = useState(true);
 
   const urlError = searchParams.get('error');
 
@@ -117,7 +122,7 @@ function LoginForm() {
               required
               inputMode="email"
               enterKeyHint="send"
-              autoComplete="new-password"
+              autoComplete="off"
               autoCorrect="off"
               autoCapitalize="none"
               spellCheck={false}
@@ -126,6 +131,9 @@ function LoginForm() {
               data-1p-ignore="true"
               data-lpignore="true"
               data-bwignore="true"
+              data-form-type="other"
+              readOnly={emailReadOnly}
+              onFocus={() => setEmailReadOnly(false)}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@backblaze.com"
@@ -175,9 +183,22 @@ function LoginFrame({ children }: { children: ReactNode }) {
 }
 
 function BuildNumber() {
+  const hasCommit = BUILD_NUMBER !== 'local';
   return (
     <p className="mt-4 shrink-0 text-center font-mono text-[11px] leading-none text-gray-400">
-      Build {BUILD_NUMBER}
+      Build{' '}
+      {hasCommit ? (
+        <a
+          href={`${GITHUB_REPO_URL}/commit/${BUILD_NUMBER}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline decoration-dotted underline-offset-2 transition-colors hover:text-gray-600"
+        >
+          {BUILD_NUMBER}
+        </a>
+      ) : (
+        BUILD_NUMBER
+      )}
     </p>
   );
 }
