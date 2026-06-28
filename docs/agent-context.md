@@ -50,6 +50,7 @@ When architecture, release flow, validation expectations, or important product b
 - Runtime: systemd-managed Next.js standalone server bound to localhost behind nginx.
 - Release branch: `main` on `origin`.
 - Deploy automation: VM systemd deploy timer checks `origin/main` about once per minute, builds a new release, copies `.next/static` and `public` into the standalone runtime, flips the `current` symlink, and restarts only `b2-savings-analyzer.service`.
+- Build/version display: `/login` shows a small `Build <short-sha>` footer. `next.config.ts` derives it from the git SHA at build time, so the VM login page tracks the deployed commit after each push to `origin/main`.
 - Persistence in production: B2-backed JSON/object storage. Postgres support exists, but production should stay B2-only until a deliberate migration/backfill is planned.
 - Email in production: Resend with a verified sender domain. `EMAIL_FROM` is required in production.
 
@@ -61,6 +62,7 @@ See `docs/deployment/internal-vm.md` for the full operator runbook. Do not hot-e
 - Auth: `AUTH_SECRET`, `ALLOWED_EMAIL_DOMAIN`.
 - Email: `RESEND_API_KEY`, `EMAIL_FROM`.
 - App URLs: `APP_BASE_URL`, `NEXT_PUBLIC_BASE_URL`.
+- Optional build metadata override: `B2SA_BUILD_SHA`, `GIT_HASH`, or `VERCEL_GIT_COMMIT_SHA`.
 - Optional pricing refresh: `GCP_CLOUD_BILLING_API_KEY`.
 - Optional Postgres: `DATABASE_URL`, `DATABASE_STORAGE_ENABLED`, `DATABASE_SSL`, `DATABASE_SSL_REJECT_UNAUTHORIZED`, `DATABASE_SSL_CA_FILE`, `DATABASE_POOL_MAX`.
 
@@ -188,6 +190,7 @@ Do not duplicate cost-model assembly in individual routes. Use shared snapshot/r
 - The app shell owns viewport height: `body` uses `min-h-dvh` and `main` uses `flex min-h-0 flex-1 flex-col`. Route pages under the global header should not use `min-h-screen`, because that adds the header height on top of the viewport and creates unnecessary scroll.
 - Short route states such as login, empty opportunities, loading states, and new-opportunity creation should fill the remaining `main` area only when needed, using `flex-1` for vertical centering rather than adding hard viewport heights.
 - The global header is hidden on `/login`; the login card owns its own Backblaze branding. The header "New" action belongs inside `UserMenu` and should render only after an authenticated user is known.
+- The `/login` build footer should stay small, low-contrast, and outside the sign-in card so it can identify the deployed VM version without competing with the sign-in flow.
 - Visible Backblaze branding matters on login, dashboard navigation, customer report, and PDF output.
 - Use `public/backblaze-logo.png` for official horizontal logo on light surfaces.
 - Use `public/backblaze-logo-white.png` on dark navigation/login surfaces.
