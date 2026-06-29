@@ -6,6 +6,7 @@ import type { ComputeSignal, EgressConfig, EgressProfileSuggestion } from '@/typ
 import type { PartnerComputeScenario } from '@/types/model';
 import b2Pricing from '@/lib/pricing/b2.json';
 import { formatCurrency } from '../shared/FormatCurrency';
+import { Collapse } from '../shared/Collapse';
 
 interface EgressQuestionnaireProps {
   config: EgressConfig;
@@ -325,7 +326,7 @@ function EgressStarterProfilePanel({
         </div>
       </div>
 
-      {expanded && (
+      <Collapse open={expanded}>
         <div className="mt-4 border-t border-blue-200 pt-4 dark:border-blue-400/20">
           <p className="text-xs leading-5 text-blue-900 dark:text-blue-200">{suggestion.summary}</p>
 
@@ -346,7 +347,7 @@ function EgressStarterProfilePanel({
             <StarterProfileList title="Not bill-backed" items={suggestion.questions} />
           </div>
         </div>
-      )}
+      </Collapse>
     </div>
   );
 }
@@ -425,7 +426,7 @@ function ComputeSignalsPanel({ signals }: { signals: ComputeSignal[] }) {
         </button>
       </div>
 
-      {expanded && (
+      <Collapse open={expanded}>
         <div className="mt-3">
           {hiddenCount > 0 && (
             <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
@@ -456,7 +457,7 @@ function ComputeSignalsPanel({ signals }: { signals: ComputeSignal[] }) {
             ))}
           </div>
         </div>
-      )}
+      </Collapse>
     </div>
   );
 }
