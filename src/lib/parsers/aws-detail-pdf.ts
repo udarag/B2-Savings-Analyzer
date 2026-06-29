@@ -15,15 +15,21 @@ import { buildAwsComputeSignals, getAwsComputeSignalService, type AwsComputeSign
 import { classifyS3Suffix } from './aws-s3-classify';
 import { buildEgressProfileSuggestion } from '@/lib/analysis/egress-profile-suggestion';
 
+// Normalize AWS's SKU region prefix (e.g. "APS1") to a canonical region code, passing through
+// anything not in the table unchanged.
 function resolveRegionCode(code: string): string {
   return AWS_REGION_CODES[code] || code;
 }
 
+// Pull the region prefix off a SKU code (e.g. "APS1-TimedStorage" -> "APS1"). SKUs for us-east-1
+// often carry no prefix, so this returns null and the caller falls back to the region header.
 function extractRegionCode(sku: string): string | null {
   const match = sku.match(/^([A-Z]{2,4}\d?)-/);
   return match ? match[1] : null;
 }
 
+// Maps the friendly region labels AWS prints in section headers ("N. Virginia") to region codes,
+// used as a fallback when a line's SKU carries no region prefix.
 const REGION_NAME_TO_CODE: Record<string, string> = {
   'N. Virginia': 'us-east-1',
   'Ohio': 'us-east-2',
@@ -60,6 +66,13 @@ function regionCodeFromName(regionName: string): string | null {
   return null;
 }
 
+/**
+ * Classify one AWS detail line into a savings-model category from its service, SKU code, and rate
+ * description. The categories decide what counts as addressable storage scope vs. egress vs.
+ * out-of-scope, so the mapping here directly shapes the savings math. Order matters: more specific
+ * SKU-suffix checks run before the storage catch-all, and unrecognized S3 SKUs deliberately default
+ * to operations (not storage) to avoid inflating addressable spend.
+ */
 export function classifyAwsLine(
   service: string,
   skuCode: string,
@@ -129,7 +142,9 @@ export function classifyAwsLine(
     return { category: 'operations', subcategory: 'Other S3' };
   }
 
-  // Data Transfer
+  // Data Transfer. Only egress out to the internet / across regions maps to B2 egress economics;
+  // inbound and intra-region transfer have no B2 analog and are out-of-scope. Checks run
+  // most-specific-first so e.g. an "AWS-In-Bytes" SKU is caught before the generic out/in regex.
   if (service.includes('Data Transfer')) {
     if (lower.includes('regional data transfer') || lower.includes('between ec2 az')) {
       return { category: 'out-of-scope', subcategory: 'Intra-region Transfer' };
@@ -190,6 +205,10 @@ const COMPUTE_SIGNAL_TOTAL_PATTERN = /^\s{0,4}(.+?)\s+USD\s+([\d,.]+)\s*$/;
 const CHARGES_BY_SERVICE_PATTERN = /Charges by service/;
 const CHARGES_BY_SERVICE_END_PATTERN = /Charges by account|Invoices|Tax Invoices|Taxes by service/;
 
+// Harvest non-storage services and their regions from the "Charges by service" rollup, to feed the
+// compute-signal builder. This is a separate, lighter pass than the main per-SKU loop: it reads the
+// service-total view, not the line-item detail, and only the bounded section between the
+// "Charges by service" header and the next major section.
 function extractComputeSignalInputs(text: string): AwsComputeSignalInput[] {
   const lines = text.split('\n');
   const inputs: AwsComputeSignalInput[] = [];
@@ -232,8 +251,10 @@ function extractComputeSignalInputs(text: string): AwsComputeSignalInput[] {
     if (!totalMatch) continue;
 
     const name = totalMatch[1].trim();
+    // A colon marks a rate/detail sub-line ("$0.09 per GB:"), not a service total — skip it.
     if (name.includes(':')) continue;
 
+    // Cheap pre-filter: only services the signal classifier recognizes become inputs.
     const signalService = getAwsComputeSignalService(name);
     if (!signalService) continue;
 
@@ -293,10 +314,17 @@ export function classifyGrandTotalReconciliation(
   return {};
 }
 
+/** Parse an AWS detailed billing statement (per-SKU rate lines) from a PDF buffer into a ParseResult. */
 export function parseAwsDetailPdf(pdfBuffer: Buffer): ParseResult {
   return parseAwsDetailPdfText(extractPdfText(pdfBuffer));
 }
 
+/**
+ * Parse already-extracted detail-statement text into a ParseResult. Walks the document line by
+ * line, tracking the current service / region / SKU as section headers go by, and emits a line item
+ * per rate line under a storage-relevant service. Higher-confidence than the summary parser because
+ * usage quantities come straight from the bill rather than being estimated from cost.
+ */
 export function parseAwsDetailPdfText(text: string): ParseResult {
   const lines = text.split('\n');
 
@@ -347,7 +375,9 @@ export function parseAwsDetailPdfText(text: string): ParseResult {
   const totalMatch = text.match(/Grand\s+total:\s*USD\s+([\d,.]+)/i);
   if (totalMatch) grandTotal = parseFormattedNumber(totalMatch[1]);
 
-  // Detect named discounts
+  // Detect named negotiated discounts (EDP / Private Rate Card). These lower the customer's
+  // effective AWS rate, so surfacing them lets the savings comparison be made against the real
+  // discounted spend rather than list price.
   const edpPattern = /Enterprise\s+Discount\s+Program.*?USD\s+([\d,.]+)/gi;
   const prcPattern = /Private\s+Rate\s+Card.*?USD\s+([\d,.]+)/gi;
   let discountMatch;
@@ -368,7 +398,10 @@ export function parseAwsDetailPdfText(text: string): ParseResult {
   // Matches both hyphenated SKUs (APS1-TimedStorage-ByteHrs) and single-word SKUs (CopyObject)
   const skuLinePattern = /^\s*(Amazon Simple Storage Service|AWS Data Transfer|Amazon S3 Glacier[^U]*?|Amazon Elastic[^U]*?|Amazon EC2 Container Registry[^U]*?|Amazon CloudFront[^U]*?|Amazon Athena|AWS Transfer Family[^U]*?)\s+([\w][\w-]*(?:-[\w-]+)?)(?:\s+(?:USD\s+)?([\d,.]+))?\s*$/;
 
-  // Rate line pattern: $rate per description ... quantity unit ... USD cost
+  // Rate line pattern: $rate per description ... quantity unit ... USD cost.
+  // Three shapes because AWS prints the unit rate inconsistently: "$0.023 per ...", "USD 0.023 per
+  // GB ...", and a zero-rate ("USD0.000 per GB ...") form whose run-together digits the first two
+  // miss. The zero-rate case is kept so free/zeroed usage still produces a quantity-bearing line.
   const rateLinePattern = /^\s+\$?([\d.]+)\s+per\s+(.*?)\s{2,}([\d,.]+)\s+([\w-]+)\s+USD\s+([\d,.]+)/;
   const rateLine2Pattern = /^\s+USD\s*(\d+\.?\d*)\s+per\s+GB\s+(.*?)\s{2,}([\d,.]+)\s+([\w-]+)\s+USD\s+([\d,.]+)/;
   const zeroRatePattern = /^\s+USD0\.0+\s+per\s+GB\s+(.*?)\s{2,}([\d,.]+)\s+([\w-]+)\s+USD\s+([\d,.]+)/;
@@ -377,12 +410,16 @@ export function parseAwsDetailPdfText(text: string): ParseResult {
   const regionPattern = /^(US (?:East|West)|Asia Pacific|EU|South America|Canada|Middle East|Africa)\s+\(([^)]+)\)\s+(?:USD\s+)?([\d,.]+)/;
   const globalRegionPattern = /^Global\s+(?:USD\s+)?([\d,.]+)/;
 
-  // Service section markers — broad set to detect when we leave a relevant section
+  // Service section markers. The pattern lists many services (well beyond the ones we keep) so that
+  // hitting ANY service header reliably tells us we've left the previous section and must reset SKU
+  // state; relevantServices is the much smaller subset whose rate lines we actually emit.
   const serviceSectionPattern = /^\s{0,4}(Simple Storage Service|S3 Glacier Deep Archive|Data Transfer|Elastic Compute Cloud|Elastic Block Store|Elastic File System|CloudFront|ElastiCache|Relational Database|DynamoDB|Redshift|Lambda|CloudWatch|Security Hub|Glue|Athena|EMR|SQS|SNS|Config|WAF|Guard|Shield|Key Management|Secrets Manager|CodeBuild|CodePipeline|Step Functions|Managed Streaming|Kinesis|Backup|Organizations|Systems Manager|Directory Service|Inspector|Macie|Certificate|Route 53|API Gateway|Virtual Private Cloud|Elastic Load Balancing|QuickSight|Elastic Container|Cost Explorer|CloudTrail|Simple Email|Simple Notification|Simple Queue|SimpleDB|Bedrock|SageMaker|OpenSearch|Elasticsearch|Comprehend|Textract|Rekognition)\b/;
   const relevantServices = new Set(['Simple Storage Service', 'S3 Glacier Deep Archive', 'Data Transfer', 'Elastic Block Store', 'Elastic File System', 'CloudFront', 'Elastic Compute Cloud', 'Athena']);
   let inRelevantService = false;
 
-  // Entity boundary pattern — clears all parsing state on new billing entity
+  // Entity boundary pattern — a consolidated bill repeats the service breakdown per legal entity
+  // (e.g. AWS Inc. then AWS EMEA SARL), so crossing this line must clear all SKU/service state to
+  // stop a SKU from one entity leaking onto the next entity's rate lines.
   const entityBoundaryPattern = /^Amazon Web Services\b/;
 
   // Accounts section
@@ -450,10 +487,14 @@ export function parseAwsDetailPdfText(text: string): ParseResult {
     if (!rateMatch) {
       const zeroMatch = line.match(zeroRatePattern);
       if (zeroMatch) {
+        // Reshape the zero-rate match to the 5-group layout the others produce (rate forced to "0"),
+        // so the consumer below can read groups uniformly regardless of which pattern hit.
         rateMatch = ['', '0', zeroMatch[1], zeroMatch[2], zeroMatch[3], zeroMatch[4]];
       }
     }
 
+    // Glacier is allowed through even when not flagged in-relevant-service because Glacier rate
+    // lines can appear under an S3 Glacier SKU service that the section pattern didn't mark relevant.
     if (rateMatch && currentSkuCode && (inRelevantService || currentSkuService.includes('S3 Glacier'))) {
       const unitRate = parseFloat(rateMatch[1]);
       const rateDescription = rateMatch[2].trim();
@@ -461,6 +502,8 @@ export function parseAwsDetailPdfText(text: string): ParseResult {
       const usageUnit = rateMatch[4];
       const costUsd = parseUsdAmount(rateMatch[5]);
 
+      // Region resolution prefers the SKU prefix (most precise); falls back to the current region
+      // header name, then to GLOBAL when neither is available.
       const regionCode = extractRegionCode(currentSkuCode);
       const region = regionCode
         ? resolveRegionCode(regionCode)

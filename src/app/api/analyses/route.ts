@@ -11,6 +11,8 @@ import { getSessionUser } from '@/lib/auth/session';
 import type { Analysis } from '@/types/analysis';
 import type { ReportSnapshot } from '@/types/model';
 
+// Just the headline figures the analyses-list cards render — keeps the list payload small instead
+// of shipping the full snapshot for every analysis.
 type AnalysisSummarySnapshot = Pick<
   ReportSnapshot,
   | 'annualSavings'
@@ -22,11 +24,14 @@ type AnalysisSummarySnapshot = Pick<
   | 'growthFixedTbPerMonth'
 >;
 
+/** An analysis enriched for the list view with whether a bill is uploaded and its latest saved snapshot. */
 export interface AnalysisSummary extends Analysis {
+  /** Whether a parsed bill exists yet — drives the "needs upload" vs. ready state in the list. */
   hasBill: boolean;
   latestSnapshot: AnalysisSummarySnapshot | null;
 }
 
+/** List the signed-in AE's analyses, each enriched with bill status and latest-snapshot headlines. */
 export async function GET() {
   const userEmail = await getSessionUser();
   if (!userEmail) {
@@ -45,6 +50,9 @@ export async function GET() {
     );
   }
 
+  // Two extra storage reads per analysis (bill presence + latest snapshot); bound the fan-out so a
+  // large list doesn't open a read per analysis all at once. Per-item failures degrade to
+  // false/null rather than failing the whole list.
   const summaries: AnalysisSummary[] = await mapWithConcurrency(
     analyses,
     8,
@@ -74,6 +82,7 @@ export async function GET() {
   return NextResponse.json(summaries);
 }
 
+/** Create an empty analysis (metadata only) for the AE to upload a bill into next. */
 export async function POST(req: Request) {
   const userEmail = await getSessionUser();
   if (!userEmail) {
@@ -84,6 +93,8 @@ export async function POST(req: Request) {
   const id = uuid();
   const now = new Date().toISOString();
 
+  // Provider/billType are seeded from the create form but are authoritative only as defaults — the
+  // upload step overwrites them with what the parser actually detected from the bill.
   const meta: Analysis = {
     id,
     prospectName: body.prospectName || 'Untitled',
@@ -110,6 +121,8 @@ export async function POST(req: Request) {
   return NextResponse.json(meta, { status: 201 });
 }
 
+// Run `mapper` over `items` with at most `limit` in flight, preserving input order in the result.
+// Workers share a cursor (nextIndex) and pull the next item until the list is drained.
 async function mapWithConcurrency<T, R>(
   items: T[],
   limit: number,

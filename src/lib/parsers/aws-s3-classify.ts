@@ -1,17 +1,22 @@
 import type { Category } from '@/types/analysis';
 
+/** Spend categorization for one S3 usage-type suffix, shared across the AWS parsers. */
 export interface S3SuffixClassification {
   category: Category;
   subcategory?: string;
   storageClass?: string;
 }
 
-// The S3 usage-type suffix patterns the detailed-PDF and cost-CSV parsers classify
-// identically: request tiers, per-class request charges, and per-class retrieval.
-// The region prefix is expected to be already stripped by the caller. Returns null
-// for anything outside this shared set so each parser keeps applying its own
-// format-specific rules (e.g. the PDF's rate-description "glacier instant"
-// fallback, early-deletion handling, or CSV-only Tier4/S3RTC/Metadata SKUs).
+/**
+ * Classify the S3 usage-type suffix patterns the detailed-PDF and cost-CSV parsers categorize
+ * identically: request tiers, per-class request charges, and per-class retrieval. Centralizing
+ * them here keeps the two parsers from drifting.
+ *
+ * The region prefix is expected to be already stripped by the caller. Returns null
+ * for anything outside this shared set so each parser keeps applying its own
+ * format-specific rules (e.g. the PDF's rate-description "glacier instant"
+ * fallback, early-deletion handling, or CSV-only Tier4/S3RTC/Metadata SKUs).
+ */
 export function classifyS3Suffix(suffix: string): S3SuffixClassification | null {
   if (suffix.startsWith('Requests-Tier1') || suffix.startsWith('Requests-INT-Tier1')) {
     return { category: 'operations', subcategory: 'PUT/COPY/POST/LIST' };

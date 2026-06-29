@@ -7,6 +7,11 @@ const PROVIDER_LABELS: Record<Analysis['provider'], string> = {
   r2: 'Cloudflare-R2',
 };
 
+/**
+ * Build the customer-facing PDF filename, e.g. "Acme-B2-Savings-Report-AWS-2026-06.pdf".
+ * Prefers company over prospect name, drops empty parts, and sanitizes every segment so the name
+ * stays safe to put in a Content-Disposition header.
+ */
 export function buildReportFilename(meta: Pick<Analysis, 'prospectName' | 'companyName' | 'provider' | 'billingPeriod'>, generatedAt = new Date()): string {
   const parts = [
     sanitizeFilenamePart(meta.companyName || meta.prospectName, 'Prospect'),
@@ -19,6 +24,11 @@ export function buildReportFilename(meta: Pick<Analysis, 'prospectName' | 'compa
   return `${parts.join('-')}.pdf`;
 }
 
+/**
+ * Recover the suggested filename from a download response's Content-Disposition header so the
+ * client saves the PDF under the server's name. Prefers the RFC 5987 `filename*` (UTF-8) form over
+ * plain `filename`, and re-sanitizes whatever it finds before trusting it.
+ */
 export function getFilenameFromContentDisposition(contentDisposition: string | null): string | null {
   if (!contentDisposition) return null;
 
@@ -36,6 +46,8 @@ export function getFilenameFromContentDisposition(contentDisposition: string | n
   return null;
 }
 
+// Reduce a name segment to safe filename characters: collapse non-alphanumerics to single dashes,
+// trim leading/trailing dashes, and cap length so one long field can't blow out the filename.
 function sanitizeFilenamePart(value: string, fallback: string): string {
   const sanitized = value
     .replace(/[^a-zA-Z0-9]+/g, '-')
@@ -46,6 +58,8 @@ function sanitizeFilenamePart(value: string, fallback: string): string {
 }
 
 function normalizePdfFilename(filename: string): string | null {
+  // Strip any path components before sanitizing — defends against a header carrying a directory
+  // traversal or absolute path rather than a bare name.
   const basename = filename.split(/[\\/]/).pop()?.trim();
   if (!basename) return null;
 

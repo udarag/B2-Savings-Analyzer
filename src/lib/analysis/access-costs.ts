@@ -1,23 +1,33 @@
 import type { ParsedLineItem, Provider } from '@/types/analysis';
 
+// Surfaces the cold-tier access fees (retrieval, early-deletion, lifecycle/restore ops) that B2
+// eliminates entirely. These are part of a customer's true storage cost but are easy to overlook
+// because they don't show up as plain "storage" lines on the bill.
+
+/** A roll-up of one kind of cold-tier access fee (e.g. retrieval) for a given storage class/unit. */
 export interface AccessCostGroup {
   id: string;
   label: string;
   storageClass?: string;
   cost: number;
+  /** Number of bill line items folded into this group. */
   count: number;
   usageQuantity: number;
   usageUnit?: string;
 }
 
+/** Aggregate view of all cold-tier access fees on a bill, broken out by group. */
 export interface AccessCostSummary {
   totalCost: number;
   lineCount: number;
   usageQuantity: number;
+  /** Set only when every group shares one unit; left undefined for mixed units. */
   usageUnit?: string;
   groups: AccessCostGroup[];
 }
 
+// Storage classes that carry retrieval / early-deletion economics. Used to decide whether request
+// and access fees on a line are "cold-tier" (eliminated on B2) versus ordinary hot-tier activity.
 const AWS_COLD_STORAGE_CLASSES = new Set([
   'Standard-IA',
   'One Zone-IA',
@@ -37,6 +47,8 @@ const GCS_COLD_STORAGE_CLASSES = new Set([
   'Archive',
 ]);
 
+/** Whether a storage class is a cold/archive tier for the given provider (Azure/R2 have no
+ *  cold-tier access model here, so they return false). */
 export function isColdStorageClass(provider: Provider, storageClass?: string): boolean {
   if (!storageClass) return false;
   if (provider === 'aws') return AWS_COLD_STORAGE_CLASSES.has(storageClass);
@@ -44,6 +56,7 @@ export function isColdStorageClass(provider: Provider, storageClass?: string): b
   return false;
 }
 
+/** Roll up every cold-tier access fee on a bill into labelled groups, sorted by cost descending. */
 export function getColdTierAccessSummary(lineItems: ParsedLineItem[]): AccessCostSummary {
   const groups = new Map<string, AccessCostGroup>();
 
@@ -51,6 +64,7 @@ export function getColdTierAccessSummary(lineItems: ParsedLineItem[]): AccessCos
     const label = getColdTierAccessLabel(item);
     if (!label) continue;
 
+    // Group by label + storage class + unit so mixed units never get summed into one quantity.
     const key = `${label}|${item.storageClass || 'Unattributed'}|${item.usageUnit || ''}`;
     const usageQuantity = item.usageQuantity || 0;
     const existing = groups.get(key);
@@ -92,10 +106,14 @@ export function getColdTierAccessSummary(lineItems: ParsedLineItem[]): AccessCos
   };
 }
 
+/** Whether a single line is a cold-tier access fee (mirrors the grouping in the summary). */
 export function isColdTierAccessItem(item: ParsedLineItem): boolean {
   return getColdTierAccessLabel(item) !== null;
 }
 
+// Classify a line into a cold-tier access label, or null if it isn't one. Only AWS/GCP carry these
+// tier economics; we match on subcategory first, falling back to free-text in description/SKU
+// because providers don't expose a consistent structured field for these fee types.
 function getColdTierAccessLabel(item: ParsedLineItem): string | null {
   if (item.provider !== 'aws' && item.provider !== 'gcp') return null;
 
@@ -117,6 +135,8 @@ function getColdTierAccessLabel(item: ParsedLineItem): string | null {
 
   if (item.category !== 'operations') return null;
 
+  // Lifecycle/restore/transition ops are tier-management work that disappears on B2's flat model,
+  // regardless of which storage class the line is tagged with.
   if (
     subcategory.includes('lifecycle') ||
     text.includes('restore') ||
@@ -126,6 +146,8 @@ function getColdTierAccessLabel(item: ParsedLineItem): string | null {
     return 'Tiering, restore, and lifecycle operations';
   }
 
+  // Plain request ops only count as cold-tier access when the line is actually a cold class —
+  // hot-tier requests are ordinary operations handled elsewhere, not an access-fee saving.
   if (isColdTier && (
     subcategory.includes('request') ||
     subcategory === 'class a' ||

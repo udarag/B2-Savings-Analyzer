@@ -13,6 +13,11 @@ import { buildReportFilename } from '@/lib/report-filename';
 import { getAppBaseUrl } from '@/lib/app-base-url';
 import type { Analysis, ParsedBill, ModelConfig } from '@/types/analysis';
 
+/**
+ * Render the customer-facing report to a PDF. Drives a headless browser to the report page and
+ * prints it, rather than re-deriving layout server-side, so the PDF is pixel-identical to what the
+ * AE sees on screen. Returns the PDF as a file attachment.
+ */
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -22,6 +27,7 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const { id } = await params;
+  // Forwarded to the headless browser so it loads the report page as the same authenticated AE.
   const cookieHeader = req.headers.get('cookie') || '';
 
   let loaded: [Analysis | null, ParsedBill | null, ModelConfig | null];
@@ -40,7 +46,9 @@ export async function GET(
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  // Save a snapshot of the current analysis state
+  // Record the exact figures going out the door as a snapshot before printing — a downloaded PDF is
+  // a customer artifact, so we want an audit record of what it contained. Best-effort: a snapshot
+  // failure must not block the download.
   if (parsed && modelConfig) {
     try {
       const { snapshot } = buildAnalysisSnapshot({
@@ -61,6 +69,8 @@ export async function GET(
     const baseUrl = getAppBaseUrl();
     const url = new URL(baseUrl);
 
+    // Replay the caller's cookies into the browser context so the report page authenticates as this
+    // AE. rest.join('=') preserves '=' chars inside the value (e.g. base64 session tokens).
     const sessionCookies = cookieHeader.split(';').map(c => c.trim()).filter(Boolean).map(c => {
       const [name, ...rest] = c.split('=');
       return { name: name.trim(), value: rest.join('='), domain: url.hostname, path: '/' };
@@ -70,6 +80,8 @@ export async function GET(
     if (sessionCookies.length) await context.addCookies(sessionCookies);
     const page = await context.newPage();
 
+    // Stamp the AE's identity (name/title) onto the report via query params so the customer-facing
+    // PDF is signed by a person, not just an email.
     const profile = await getUserProfile(userEmail);
     const reportParams = new URLSearchParams({ ae: userEmail });
     if (profile?.displayName) reportParams.set('aeName', profile.displayName);
@@ -78,8 +90,12 @@ export async function GET(
       waitUntil: 'networkidle',
     });
 
+    // Settle late client-side rendering (charts/fonts) that finishes after networkidle, so they
+    // aren't captured half-drawn.
     await page.waitForTimeout(1000);
 
+    // scale 0.94 and these margins are tuned so the report's fixed-width layout fits US Letter
+    // without overflow clipping; printBackground keeps the branded fills/colors.
     const pdf = await page.pdf({
       format: 'Letter',
       printBackground: true,

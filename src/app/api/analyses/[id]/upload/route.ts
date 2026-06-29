@@ -12,6 +12,11 @@ import { detectAndParse } from '@/lib/parsers/detect';
 import { buildTierState } from '@/lib/analysis/analysis-model';
 import { DEFAULT_MODEL_CONFIG } from '@/types/analysis';
 
+/**
+ * Upload a customer's cloud bill into an existing analysis: store the raw file, parse it into a
+ * bill, then seed the detected metadata and a default tier-selection model config. Returns the
+ * parsed bill plus the initial tier state for the dashboard to render immediately.
+ */
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -55,6 +60,8 @@ export async function POST(
       mimeType: file.type,
     });
   } catch (error) {
+    // Log the real parse error server-side for triage, but return a generic 422 — the underlying
+    // message can reference internal parser/file details we don't want to surface to the client.
     console.error(`Failed to parse uploaded bill for ${id}:`, error);
     return NextResponse.json(
       { error: 'Could not parse the uploaded bill. Check the file format and try again.' },
@@ -65,6 +72,8 @@ export async function POST(
   try {
     await saveParsedBill(userEmail, id, result.parsedBill);
 
+    // Overwrite the seed metadata from create-time with what the parser actually detected — the
+    // detected provider/billType are authoritative over the AE's initial guess.
     meta.provider = result.provider;
     meta.billType = result.billType;
     meta.billingPeriod = result.billingPeriod;
@@ -73,6 +82,8 @@ export async function POST(
     meta.updatedAt = new Date().toISOString();
     await saveAnalysisMeta(userEmail, id, meta);
 
+    // Derive the initial tier inventory + model config (default migrate-all selection, default
+    // pricing) from the freshly parsed bill so the dashboard has something to render right away.
     const { tiers, modelConfig } = buildTierState(result.parsedBill, DEFAULT_MODEL_CONFIG);
     await saveModelConfig(userEmail, id, modelConfig);
 

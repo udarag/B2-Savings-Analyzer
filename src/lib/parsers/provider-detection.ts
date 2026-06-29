@@ -1,7 +1,13 @@
+// Content-based provider detection: a fallback for when the column-header checks in detect.ts can't
+// identify the export. Each provider has a table of regex "signals" with weights — the more specific
+// and exclusive a marker (e.g. an AWS SKU prefix or a GCP-only storage class), the higher its weight
+// — and the provider with the highest summed score wins. This is a best-effort hint, not ground
+// truth; the result only steers parser selection and is shown to the AE as a detection signal.
 import type { Provider } from '@/types/analysis';
 
 interface DetectionResult {
   provider: Provider;
+  /** 0–1 hint strength, not a probability; see the `/ 10` saturation in `detectProviderFromContent`. */
   confidence: number;
   signals: string[];
 }
@@ -9,6 +15,7 @@ interface DetectionResult {
 interface SignalDef {
   pattern: RegExp;
   label: string;
+  /** Higher = more exclusive to this provider; ~3 for near-unique SKU/redundancy markers, 1 for generic brand mentions. */
   weight: number;
 }
 
@@ -141,6 +148,11 @@ interface ProviderScore {
   signals: string[];
 }
 
+/**
+ * Score the raw bill text against every provider's signal table and return the best match with the
+ * signals that fired. With no signals at all, defaults to AWS (the most common upload) at confidence
+ * 0 so callers can tell a default apart from a real match.
+ */
 export function detectProviderFromContent(text: string): DetectionResult {
   const providers: ProviderScore[] = [
     { provider: 'aws', score: 0, signals: [] },
@@ -178,6 +190,8 @@ export function detectProviderFromContent(text: string): DetectionResult {
 
   return {
     provider: best.provider,
+    // Saturate at a score of 10 (~3-4 strong signals) so a heavily-matched bill maxes out at 1.0;
+    // detectCsvProvider only trusts this path above a 0.3 confidence threshold.
     confidence: Math.min(1, best.score / 10),
     signals: best.signals,
   };

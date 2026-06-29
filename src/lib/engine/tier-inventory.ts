@@ -3,6 +3,12 @@ import { getListRate } from '../pricing/lookup';
 import type { ParsedLineItem, TierInventoryRow } from '@/types/analysis';
 import { getDefaultTierMigration, makeTierInventoryId } from './tier-selection';
 
+// Collapses the flat list of parsed bill lines into one row per storage tier (storage class +
+// region), rolling each tier's storage, retrieval, ops and other fees into a single "true cost"
+// the AE can compare against B2 and toggle for migration.
+
+// Tiers we never present as migration candidates: transient staging buckets that aren't real
+// stored data, and classes whose durability/semantics don't map cleanly to B2 standard storage.
 const EXCLUDED_TIERS = new Set([
   'Glacier Staging',
   'GDA Staging',
@@ -10,9 +16,14 @@ const EXCLUDED_TIERS = new Set([
   'Express One Zone',
 ]);
 
+// Drop sub-half-cent / sub-0.005 GB rows so rounding dust from the bill doesn't clutter the table.
 const MIN_DISPLAYABLE_COST_USD = 0.005;
 const MIN_DISPLAYABLE_GB = 0.005;
 
+/**
+ * Aggregate parsed line items into per-tier inventory rows, default-selected for migration.
+ * @param b2PricePerTb B2 storage rate ($/TB-month) used to model each tier's B2 cost and delta.
+ */
 export function buildTierInventory(
   lineItems: ParsedLineItem[],
   b2PricePerTb: number = b2Pricing.storage.perTbMonth
@@ -32,6 +43,7 @@ export function buildTierInventory(
   for (const item of lineItems) {
     if (!item.storageClass || EXCLUDED_TIERS.has(item.storageClass)) continue;
 
+    // Same storage class in two regions is two distinct tiers (different rates, durability).
     const key = `${item.storageClass}|${item.region}`;
 
     if (!tiers.has(key)) {
@@ -68,7 +80,9 @@ export function buildTierInventory(
     }
   }
 
-  // Also assign unattributed operations/retrieval to tiers proportionally
+  // Bills often carry account-level operations/retrieval lines with no storage class. Pool them
+  // here and spread across tiers by storage-cost share below, so these real fees still count
+  // toward each tier's true cost instead of being dropped.
   const unattributed = {
     operations: 0,
     retrieval: 0,
@@ -90,7 +104,8 @@ export function buildTierInventory(
   for (const tier of tiers.values()) {
     if (tier.gbStored <= 0 && tier.monthlyStorageCost <= 0) continue;
 
-    // If no usage quantity was parsed (summary invoices), estimate from cost
+    // Summary invoices give a dollar amount but no GB. Back into stored GB from cost / list rate
+    // so the tier still has a size to migrate and project; skip if no list rate is known.
     if (tier.gbStored <= 0 && tier.monthlyStorageCost > 0) {
       const listRate = getListRate(tier.provider, tier.storageClass, tier.region);
       if (listRate) {
@@ -98,10 +113,13 @@ export function buildTierInventory(
       }
     }
 
+    // Distribute the pooled account-level fees by this tier's share of total storage cost.
     const proportion = totalStorage > 0 ? tier.monthlyStorageCost / totalStorage : 0;
     tier.operationsFees += unattributed.operations * proportion;
     tier.retrievalFees += unattributed.retrieval * proportion;
 
+    // Blended effective rate in $/TB-month (x1000 from the $/GB basis), used for the B2 comparison
+    // and the default-migrate decision. For AWS Standard this blends its volume tiers into one rate.
     const effectivePerTb = tier.gbStored > 0
       ? (tier.monthlyStorageCost / tier.gbStored) * 1000
       : 0;
@@ -114,6 +132,8 @@ export function buildTierInventory(
       continue;
     }
 
+    // delta vs B2 compares the tier's full true cost (storage + all fees) to B2 storage alone,
+    // since B2's transactions are free and it has no retrieval/early-deletion fees to add back.
     const modeledB2Cost = tier.gbStored * (b2PricePerTb / 1000);
     const delta = totalTrueCost - modeledB2Cost;
 
@@ -138,5 +158,6 @@ export function buildTierInventory(
     });
   }
 
+  // Largest storage spend first, so the biggest savings opportunities lead the table.
   return rows.sort((a, b) => b.monthlyStorageCost - a.monthlyStorageCost);
 }

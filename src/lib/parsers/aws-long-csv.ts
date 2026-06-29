@@ -13,6 +13,9 @@ import {
   NO_STORAGE_SCOPE_WARNING,
 } from './confidence';
 
+// Column aliases span the CUR's namespaced headers (lineItem/*, product/*) and the friendlier
+// labels Cost Explorer exports use, so the same parser handles both shapes. Order is preference:
+// for cost, unblended is tried before blended (unblended is what the customer actually pays).
 const USAGE_TYPE_ALIASES = ['lineItem/UsageType', 'Usage type', 'UsageType', 'usageType'];
 const COST_ALIASES = [
   'lineItem/UnblendedCost', 'lineItem/BlendedCost', 'lineItem/NetUnblendedCost',
@@ -22,6 +25,7 @@ const PRODUCT_ALIASES = ['lineItem/ProductCode', 'product/ProductName', 'Product
 const REGION_ALIASES = ['product/region', 'lineItem/AvailabilityZone', 'product/location', 'region', 'Region'];
 
 const S3_PRODUCT = /s3|simple storage|glacier/i;
+// AWS region id shape (e.g. "us-east-1") — used to trust a region column value over the SKU prefix.
 const AWS_REGION_PATTERN = /^[a-z]{2}-[a-z]+-\d$/;
 
 /**
@@ -69,6 +73,8 @@ export function parseAwsLongCsv(text: string): ParseResult {
   for (const [usageType, { cost, region: rowRegion }] of byUsageType) {
     if (cost === 0) continue;
     const { category, subcategory, storageClass } = classifySku(usageType);
+    // Prefer an explicit, well-formed region column; otherwise fall back to the SKU's region prefix
+    // (CUR rows for global usage types often carry a blank/AZ-only region).
     const region = AWS_REGION_PATTERN.test(rowRegion) ? rowRegion : extractRegion(usageType);
 
     let usageQuantity: number | undefined;

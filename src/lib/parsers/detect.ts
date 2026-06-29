@@ -1,3 +1,7 @@
+// Entry point for turning an uploaded bill into a ParseResult. Routes by file type (CSV/PDF/Excel),
+// then for CSVs walks from the most specific format signatures down to a guarded generic fallback,
+// so a slightly off-spec export still parses rather than 422-ing. The selection is intentionally
+// tolerant; the chosen parser is what actually validates the data.
 import Papa from 'papaparse';
 import type { ParserOptions, ParseResult } from './types';
 import { parseGcpCsv } from './gcp-csv';

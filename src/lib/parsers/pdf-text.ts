@@ -4,10 +4,13 @@ import { writeFileSync, unlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
-// Extract layout-preserving text from a PDF via poppler's `pdftotext`. Extracted ONCE per upload
-// and threaded through detection + the chosen parser, rather than re-shelling 2-3x (which tripled
-// the transient-failure surface). A unique temp filename avoids collisions between concurrent
-// uploads landing in the same millisecond.
+/**
+ * Extract layout-preserving text from a PDF via poppler's `pdftotext` (the `-layout` flag keeps
+ * column alignment the AWS invoice parsers depend on). Extracted ONCE per upload and threaded
+ * through detection + the chosen parser, rather than re-shelling 2-3x (which tripled the
+ * transient-failure surface). A unique temp filename avoids collisions between concurrent uploads
+ * landing in the same millisecond.
+ */
 export function extractPdfText(pdfBuffer: Buffer): string {
   const tmpPath = join(tmpdir(), `bill-${uuid()}.pdf`);
   try {

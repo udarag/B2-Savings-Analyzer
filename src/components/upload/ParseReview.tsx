@@ -7,16 +7,20 @@ import { assessReadiness } from '@/lib/analysis/readiness';
 import { formatCurrency } from '../shared/FormatCurrency';
 import { Collapse } from '../shared/Collapse';
 
+// Persists the AE's open/closed preference for this card across sessions.
 const EXPANDED_STORAGE_KEY = 'b2-savings-parse-review-expanded';
 
 interface ParseReviewProps {
   parsed: ParsedBill;
   billType?: BillType;
   provider?: Provider;
+  /** Whether the AE has confirmed the bill already reflects negotiated (not list) pricing; feeds the readiness assessment. */
   pricingDiscountConfirmed?: boolean;
   onPricingDiscountConfirmedChange?: (confirmed: boolean) => void;
 }
 
+// Display order for the category summary: addressable storage-scope categories
+// first, then storage-adjacent and out-of-scope (which don't drive savings).
 const CATEGORY_ORDER: Category[] = ['storage', 'egress', 'operations', 'retrieval', 'storage-adjacent', 'out-of-scope'];
 const CATEGORY_LABELS: Record<Category, string> = {
   'storage': 'Storage',
@@ -89,6 +93,8 @@ const CHECK_STYLES: Record<ReadinessCheckTone, {
   },
 };
 
+// GCS-specific relabeling of the addressable categories for the "GCS Cost Mix"
+// panel, with plain-language detail on what each bucket covers for GCP bills.
 const GCP_COST_MIX: Array<{
   category: Category;
   label: string;
@@ -100,10 +106,19 @@ const GCP_COST_MIX: Array<{
   { category: 'retrieval', label: 'Retrieval', detail: 'Nearline, Coldline, and Archive retrieval fees' },
 ];
 
+// A GCP parser warning that's really a commercial observation (the export shows
+// list price / savings-program detail) rather than a parse defect. We reclassify
+// these out of the "warnings" bucket so they read as pricing context, not errors.
 function isGcpListPriceSignal(message: string): boolean {
   return /savings programs|list price/i.test(message);
 }
 
+/**
+ * Collapsible internal QA card shown after a bill is parsed: per-category spend
+ * breakdown, addressable storage-scope total, parser warnings, and a readiness
+ * assessment that scores whether the bill has enough commercial detail to sell
+ * B2 against. Internal-only — these warnings never appear on the customer report.
+ */
 export function ParseReview({
   parsed,
   billType,
@@ -144,6 +159,9 @@ export function ParseReview({
     categorySums.set(item.category, existing);
   }
 
+  // Addressable storage-scope spend = the four categories migration can affect.
+  // Deliberately excludes storage-adjacent (EBS/EFS/ECR/CloudFront) and
+  // out-of-scope lines, which B2 doesn't replace.
   const addressable = (categorySums.get('storage')?.total || 0) +
     (categorySums.get('egress')?.total || 0) +
     (categorySums.get('operations')?.total || 0) +
@@ -151,6 +169,9 @@ export function ParseReview({
   const readiness = assessReadiness(parsed, billType, provider, { pricingDiscountConfirmed });
   const readinessStyle = READINESS_STYLES[readiness.status];
   const isGcp = provider === 'gcp';
+  // For GCP, peel list-price/savings-program warnings out of the warning list and
+  // surface them as commercial signals instead (deduped); other providers keep
+  // their warnings as-is.
   const parserWarnings = isGcp
     ? parsed.warnings.filter((warning) => !isGcpListPriceSignal(warning))
     : parsed.warnings;
@@ -159,6 +180,8 @@ export function ParseReview({
     ...(isGcp ? parsed.warnings.filter(isGcpListPriceSignal) : []),
   ].filter((signal, index, signals) => signals.indexOf(signal) === index);
   const addressableLabel = isGcp ? 'Addressable Cloud Storage spend' : 'Addressable storage spend';
+  // Use GCP/GCS-native terminology for GCP bills so the breakdown matches what
+  // the AE sees in the customer's own console.
   const categoryLabels = isGcp
     ? {
       ...CATEGORY_LABELS,
@@ -168,6 +191,8 @@ export function ParseReview({
       retrieval: 'Retrieval',
     }
     : CATEGORY_LABELS;
+  // Drop categories with no parsed activity so the cost-mix panel only shows
+  // buckets actually present in this bill.
   const gcpCostMix = GCP_COST_MIX
     .map((item) => ({
       ...item,
@@ -394,6 +419,7 @@ function ReadinessCheckRow({
       <div>
         <p className={`text-sm font-semibold ${style.value}`}>{value}</p>
         <p className="mt-0.5 text-xs leading-5 text-gray-600 dark:text-gray-400">{detail}</p>
+        {/* Only the discount-confirmation check renders an inline action, and only when the parent wired up a handler. */}
         {action === 'confirm-discount' && onActionChange && (
           <label className={`mt-2 flex items-start gap-2 rounded-md border px-3 py-2 text-xs ${actionBoxClass}`}>
             <input
@@ -411,6 +437,8 @@ function ReadinessCheckRow({
 }
 
 function ReadinessList({ title, items, empty }: { title: string; items: string[]; empty: string }) {
+  // Show the empty-state line as a normal bullet when there are no items, so the
+  // three columns stay visually balanced.
   const visibleItems = items.length > 0 ? items : [empty];
 
   return (

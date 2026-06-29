@@ -8,11 +8,15 @@ interface PricingDetectionProps {
   results: PricingDetectionResult[];
 }
 
+// The per-TB rate we headline for a tier: the list rate when no discount was detected, otherwise
+// the bill-implied effective rate. Rates are stored per-GB, so ×1000 to get $/TB/mo for display.
 function ratePerTb(result: PricingDetectionResult): number {
   const rate = result.assessment === 'list-price' ? result.listRate : result.effectiveRate;
   return rate * 1000;
 }
 
+// Order tiers most-expensive first (where B2's win is largest), breaking ties on region then
+// storage class so the list stays stable across re-renders.
 function sortByRateDesc(a: PricingDetectionResult, b: PricingDetectionResult): number {
   const rateDiff = ratePerTb(b) - ratePerTb(a);
   if (rateDiff !== 0) return rateDiff;
@@ -21,12 +25,19 @@ function sortByRateDesc(a: PricingDetectionResult, b: PricingDetectionResult): n
   return (a.storageClass || '').localeCompare(b.storageClass || '');
 }
 
+/**
+ * Internal-only panel that reports how the customer's observed pricing compares to list — flagging
+ * any existing discount the B2 quote has to beat. Splits results into named discount programs
+ * (e.g. EDP/PPA credits) and per-storage-tier rate analysis. Never rendered in the customer report.
+ */
 export function PricingDetection({ results }: PricingDetectionProps) {
   if (results.length === 0) return null;
 
+  // Account-level discount programs, biggest dollar impact first.
   const discountPrograms = results
     .filter(r => r.category === 'discount-program')
     .sort((a, b) => (b.totalAmountUsd || 0) - (a.totalAmountUsd || 0));
+  // Everything else is a per-tier rate observation (one row per storage class + region).
   const tierAnalysis = results.filter(r => r.category !== 'discount-program');
 
   const sortedTiers = [...tierAnalysis].sort(sortByRateDesc);
@@ -34,6 +45,7 @@ export function PricingDetection({ results }: PricingDetectionProps) {
   const discountedTierCount = tierAnalysis.filter(r => r.assessment === 'small-discount').length;
   const listPriceTierCount = tierAnalysis.filter(r => r.assessment === 'list-price').length;
 
+  // Headline effective/list rate: prefer the top discount program, falling back to the first tier.
   const effectiveRate = discountPrograms[0]?.effectiveRate || tierAnalysis[0]?.effectiveRate || 0;
   const listRate = discountPrograms[0]?.listRate || tierAnalysis[0]?.listRate || 0;
 
@@ -132,6 +144,7 @@ function SummaryPill({
   );
 }
 
+/** One storage tier's rate row: its $/TB, region, discount assessment badge, and a list-vs-effective bar. */
 function TierRateRow({ result: r }: { result: PricingDetectionResult }) {
   const isCustom = r.assessment === 'custom-agreement';
   const isDiscounted = r.assessment === 'small-discount';
@@ -152,6 +165,7 @@ function TierRateRow({ result: r }: { result: PricingDetectionResult }) {
 
   const displayedTb = ratePerTb(r).toFixed(2);
   const listTb = (r.listRate * 1000).toFixed(2);
+  // Bar fill = effective as a fraction of list, floored at 5% so a deep discount still shows a sliver.
   const barWidth = r.listRate > 0 ? Math.max(5, (r.effectiveRate / r.listRate) * 100) : 100;
 
   return (

@@ -15,11 +15,15 @@ import { extractPdfText } from './pdf-text';
 
 interface ServiceEntry {
   name: string;
+  /** Service spend after discounts/savings plans — what the customer actually pays for this service. */
   netTotal: number;
+  /** Gross charges before discounts; 0 if the invoice only printed a net line. */
   charges: number;
   discounts: { name: string; amount: number }[];
 }
 
+// Map a summary-invoice service name to a category. Coarser than the detail parser's per-SKU
+// classifier: a summary only names the service, so S3 collapses to one "S3 (Summary)" storage class.
 function classifyService(name: string): { category: Category; subcategory?: string; storageClass?: string } {
   const lower = name.toLowerCase();
 
@@ -57,6 +61,9 @@ function classifyService(name: string): { category: Category; subcategory?: stri
   return { category: 'out-of-scope' };
 }
 
+// Back out an approximate stored GB from a service's dollar cost when the invoice gives no
+// quantity. Divides spend by the us-east-1 list rate ($/GB-month) as a stand-in region — a rough
+// figure flagged as an estimate downstream, never billed-quantity accurate.
 function estimateStorageGb(costUsd: number, storageClass: string | undefined): number | undefined {
   if (!costUsd || costUsd <= 0 || !storageClass) return undefined;
 
@@ -76,7 +83,8 @@ function parseServiceEntries(text: string): ServiceEntry[] {
   const discountPattern = /^\s+Discount\s+\(([^)]+)\)\s+\(\$?([\d,.]+)\)/;
   const savingsPlanPattern = /^\s+Savings Plan\s+\([^)]+\)\s+\(\$?([\d,.]+)\)/;
 
-  // Known sub-item labels to skip (not service names)
+  // Sub-item / tax / discount labels that share the indented "name ... $amount" shape of a real
+  // service line and must be skipped so they don't get parsed as their own services.
   const subItemLabels = new Set([
     'charges', 'discount', 'savings plan', 'vat', 'gst', 'ct',
     'estimated us sales tax', 'credits', 'tax',
@@ -101,6 +109,7 @@ function parseServiceEntries(text: string): ServiceEntry[] {
 
       // Check sub-item patterns BEFORE the service line pattern,
       // since "Charges $144,208.65" also matches the service line shape.
+      // These attach to the service entry currently being built.
       if (currentEntry) {
         const chargesMatch = line.match(chargesPattern);
         if (chargesMatch) {
@@ -185,6 +194,9 @@ function parseLinkedAccounts(text: string): AccountBreakdown[] {
   return accounts;
 }
 
+// Per-account breakdowns only track the storage-relevant services worth attributing to an account,
+// so this deliberately returns null for everything classifyService would call storage-adjacent or
+// out-of-scope (no point splitting CloudFront/ECR across accounts here).
 function serviceNameToKey(serviceName: string): string | null {
   const lower = serviceName.toLowerCase();
   if (lower.includes('simple storage service') || lower === 'amazon s3') return 'S3 (Summary)';
@@ -243,7 +255,8 @@ function parseAccountServiceBreakdowns(text: string, accounts: AccountBreakdown[
 
     if (!inDetailSection || !currentAccountId) continue;
 
-    // End of detail section markers
+    // End of this account's detail block: either the next account's summary header, or the
+    // per-account "total allocated" footer line.
     if (summaryHeaderPattern.test(line) || line.includes('Account') && line.includes('total allocated')) {
       inDetailSection = false;
       continue;
@@ -278,10 +291,16 @@ function parseAccountServiceBreakdowns(text: string, accounts: AccountBreakdown[
   return breakdowns;
 }
 
+/** Parse an AWS summary invoice (no per-SKU detail) from a PDF buffer into the common ParseResult. */
 export function parseAwsSummaryPdf(pdfBuffer: Buffer): ParseResult {
   return parseAwsSummaryPdfText(extractPdfText(pdfBuffer));
 }
 
+/**
+ * Parse already-extracted summary-invoice text. Storage quantities here are *estimated* from cost
+ * (the invoice carries only per-service totals), so the result is lower-confidence than the detail
+ * parser and tells the AE to request the Cost & Usage Report for an accurate analysis.
+ */
 export function parseAwsSummaryPdfText(text: string): ParseResult {
 
   const serviceEntries = parseServiceEntries(text);
@@ -318,7 +337,9 @@ export function parseAwsSummaryPdfText(text: string): ParseResult {
     if (altTotal) grandTotal = parseFormattedNumber(altTotal[1]);
   }
 
-  // Aggregate discounts across all services, tracking storage-specific amounts
+  // Aggregate discounts across all services, separately tracking the storage-only slice. We need the
+  // storage-specific share so the savings model discounts AWS storage spend at the customer's
+  // actual effective rate, not the blended whole-bill discount.
   const discountTotals: Record<string, number> = {};
   const storageDiscountTotals: Record<string, number> = {};
   let storageGrossCharges = 0;
@@ -343,6 +364,7 @@ export function parseAwsSummaryPdfText(text: string): ParseResult {
         amountUsd: amount,
         storageAmountUsd: storageAmount || undefined,
         storageGrossCharges: storageAmount > 0 ? storageGrossCharges : undefined,
+        // Effective storage discount rate, to one decimal place (e.g. 12.3%).
         estimatedPercent: storageGrossCharges > 0 && storageAmount > 0
           ? Math.round((storageAmount / storageGrossCharges) * 1000) / 10
           : undefined,
@@ -359,6 +381,8 @@ export function parseAwsSummaryPdfText(text: string): ParseResult {
     // Only create line items for storage-relevant categories
     if (category === 'out-of-scope') continue;
 
+    // Estimate from gross charges when available so the implied GB reflects usage before discounts;
+    // fall back to net only when the invoice didn't break out charges.
     const costForEstimate = entry.charges > 0 ? entry.charges : entry.netTotal;
     const estimatedGb = category === 'storage' ? estimateStorageGb(costForEstimate, storageClass) : undefined;
 
@@ -428,9 +452,16 @@ export function parseAwsSummaryPdfText(text: string): ParseResult {
   };
 }
 
-// Operates on already-extracted text (the caller extracts once). Structural rather than
-// position-bounded: a detail statement is identified by per-SKU rate codes appearing ANYWHERE in
-// the document, not just the first 500 lines.
+/**
+ * True if the PDF text is a summary invoice (route to the summary parser) rather than a detailed
+ * statement (route to the detail parser). The deciding factor is the ABSENCE of per-SKU rate codes:
+ * an invoice with summary-style headers but no SKU codes is a summary, but the presence of any SKU
+ * code (TimedStorage / Requests-Tier) means there's real detail to parse.
+ *
+ * Operates on already-extracted text (the caller extracts once). Structural rather than
+ * position-bounded: a detail statement is identified by per-SKU rate codes appearing ANYWHERE in
+ * the document, not just the first 500 lines.
+ */
 export function isSummaryInvoice(text: string): boolean {
   const hasConsolidatedBill = /Detail for Consolidated Bill/i.test(text);
   const hasInvoiceSummary = /Invoice Summary/i.test(text);

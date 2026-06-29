@@ -13,17 +13,27 @@ interface CostBreakdownProps {
   provider: Provider;
 }
 
+/**
+ * Internal "current vs. B2" monthly storage-cost comparison, scoped to the addressable storage
+ * spend only (non-storage line items are deliberately excluded). Shows the headline subtraction,
+ * a per-category split of both bills, and an expandable line-item detail for SE/AE review.
+ */
 export function CostBreakdown({ result, provider }: CostBreakdownProps) {
   const { b2Monthly, eliminatedFees, newCosts } = result;
   const [detailsOpen, setDetailsOpen] = useState(false);
 
+  // "Removed" total and storage-scope current spend are the same number by construction: the fees
+  // migration eliminates ARE the storage-scope slice of today's bill (see cost-model.ts).
   const eliminatedTotal = getStorageScopeCurrentMonthly(result);
+  // New storage-path data-transfer charges B2 introduces (e.g. ongoing egress), shown as one line.
   const newCostTotal = roundCurrency(newCosts.reduce((s, c) => s + c.amountUsd, 0));
   const replacementCostTotal = getStorageScopeReplacementMonthly(result);
   const currentBillLabel = `Current customer ${formatProviderName(provider)} bill`;
   const newB2BillLabel = 'New B2 bill';
   const hasSavings = result.monthlySavings > 0;
+  // Percent reduction vs. the current storage-scope bill (not the whole cloud bill); 0 if no scope spend.
   const savingsPercent = eliminatedTotal > 0 ? Math.round((result.monthlySavings / eliminatedTotal) * 100) : 0;
+  // Roll the eliminated fees up into the display categories; anything uncategorized falls into otherFees.
   const currentScopeByCategory = eliminatedFees.reduce(
     (totals, fee) => {
       switch (fee.category) {
@@ -198,6 +208,8 @@ export function CostBreakdown({ result, provider }: CostBreakdownProps) {
                 </div>
               </div>
 
+              {/* Upside-only "what if" line: with a Bandwidth Alliance compute partner, hyperscaler→B2
+                  egress is free, so this models the extra savings on top of the base comparison. */}
               {result.partnerComputeScenario && (
                 <div className="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
                   <div className="flex justify-between gap-4 text-sm">
@@ -314,6 +326,8 @@ function Row({
   showZero?: boolean;
   tone?: 'default' | 'b2' | 'savings';
 }) {
+  // Hide zero-valued rows to keep the breakdown tight, unless explicitly kept (e.g. B2 storage,
+  // which we always want to show even at $0) or emphasized as a bold total.
   if (value === 0 && !bold && !showZero) return null;
   const labelClass = bold ? 'font-semibold text-gray-900' : 'text-gray-600';
   const valueClass = bold
@@ -334,6 +348,8 @@ function getValueClass(tone: 'default' | 'b2' | 'savings', value: number): strin
   return 'text-gray-900';
 }
 
+// Round to cents and flatten sub-half-cent residue to exactly 0, so floating-point dust doesn't
+// render as "-$0.00" or trip the zero-row hiding in Row.
 function roundCurrency(value: number): number {
   const rounded = Math.round(value * 100) / 100;
   return Math.abs(rounded) < 0.005 ? 0 : rounded;

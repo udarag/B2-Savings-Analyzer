@@ -8,8 +8,10 @@ interface SavingsSummaryProps {
   result: CostModelResult;
 }
 
+/** Top-of-dashboard headline cards: monthly/annual savings, savings rate, and migration cost. */
 export function SavingsSummary({ result }: SavingsSummaryProps) {
   const positive = result.monthlySavings > 0;
+  // Under UDM, Backblaze absorbs migration egress/restore, so the customer-facing migration cost is $0.
   const migrationCost = result.udmEnabled ? 0 : result.migrationCost.egressCost + result.migrationCost.restoreCost;
 
   return (
@@ -42,6 +44,7 @@ export function SavingsSummary({ result }: SavingsSummaryProps) {
         <p className={`text-2xl font-bold mt-1 ${result.udmEnabled ? 'text-green-700' : 'text-gray-900'}`}>
           <AnimatedMetricValue value={migrationCost} formatter={formatMigrationCost} />
         </p>
+        {/* Caption frames the migration cost: free under UDM, else payback timing or immediate savings. */}
         <p className="text-xs text-gray-500 mt-1">
           {result.udmEnabled
             ? 'Covered by Backblaze UDM'

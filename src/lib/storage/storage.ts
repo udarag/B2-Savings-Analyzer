@@ -1,3 +1,7 @@
+// Backend-agnostic storage facade for the analyzer. Each public function routes to the
+// Postgres backend (postgres.ts) when DATABASE_URL is configured, and otherwise to the
+// B2 object store via the low-level helpers below. Uploaded bill bytes always live in B2
+// even in DB mode — Postgres only holds metadata and the JSON artifacts.
 import {
   GetObjectCommand,
   HeadObjectCommand,
@@ -41,6 +45,11 @@ interface ListedObject {
   lastModified?: Date;
 }
 
+/**
+ * Classified storage failure for the API layer to turn into an HTTP response.
+ * status is 503 for transient (retryable) faults and 500 for config/other faults.
+ * message is operator-safe and deliberately generic — never leak it into customer-facing output.
+ */
 export interface StorageErrorDetails {
   status: 500 | 503;
   code:
@@ -52,12 +61,15 @@ export interface StorageErrorDetails {
   message: string;
 }
 
+/** An uploaded bill retrieved from storage: original filename, raw bytes, and content type. */
 export interface StoredUpload {
   filename: string;
   content: Buffer;
   contentType: string;
 }
 
+// The low-level helpers below treat a missing object as null/false (a normal "not found"
+// outcome) and only rethrow genuine errors, so callers can branch on absence without try/catch.
 async function getObject(key: string): Promise<string | null> {
   try {
     const res = await getB2Client().send(
@@ -123,6 +135,7 @@ async function deleteObject(key: string) {
   );
 }
 
+// Flat list of every object under a prefix, paging through ListObjectsV2's 1000-key limit.
 async function listObjects(prefix: string): Promise<ListedObject[]> {
   const objects: ListedObject[] = [];
   let continuationToken: string | undefined;
@@ -144,6 +157,8 @@ async function listObjects(prefix: string): Promise<ListedObject[]> {
   return objects;
 }
 
+// Lists immediate "subdirectories" under a prefix using a '/' delimiter, so we can enumerate
+// analysis folders without fetching every object inside them (cheaper than listObjects + filter).
 async function listChildPrefixes(prefix: string): Promise<string[]> {
   const prefixes: string[] = [];
   let continuationToken: string | undefined;
@@ -171,6 +186,8 @@ async function listKeys(prefix: string): Promise<string[]> {
 }
 
 // --- User-scoped helpers ---
+// Object keys are namespaced by user email so listings/deletes can't cross tenant boundaries.
+// Layout: users/<email>/analyses/<id>/{meta,parsed,model-config}.json, uploads/, snapshots/.
 
 function userPrefix(userEmail: string): string {
   return `users/${userEmail}`;
@@ -180,18 +197,23 @@ function analysisPath(userEmail: string, id: string): string {
   return `${userPrefix(userEmail)}/analyses/${id}`;
 }
 
+// Convenience pointer to the newest snapshot (see getLatestSnapshot) — avoids a list+sort
+// on the hot read path by maintaining a single well-known key alongside the snapshots/ folder.
 function latestSnapshotPath(userEmail: string, id: string): string {
   return `${analysisPath(userEmail, id)}/latest-snapshot.json`;
 }
 
 // --- Analysis CRUD ---
 
+/** Lists a user's analyses, newest first. One unreadable record is skipped, not fatal to the list. */
 export async function listAnalyses(userEmail: string): Promise<Analysis[]> {
   if (isDatabaseStorageEnabled()) {
     return listDatabaseAnalyses(userEmail);
   }
 
   const analysesPrefix = `${userPrefix(userEmail)}/analyses/`;
+  // Prefer the cheap delimiter listing to find analysis folders; fall back to a full key scan
+  // for legacy buckets where the delimiter listing returns no common prefixes.
   const analysisPrefixes = await listChildPrefixes(analysesPrefix);
   const metaKeys = analysisPrefixes.length > 0
     ? analysisPrefixes.map((prefix) => `${prefix}meta.json`)
@@ -203,6 +225,7 @@ export async function listAnalyses(userEmail: string): Promise<Analysis[]> {
         const data = await getObject(key);
         return data ? parseStoredAnalysis(data) : null;
       } catch (error) {
+        // A single corrupt/inaccessible record shouldn't blank the whole list.
         console.error(`Skipping unreadable analysis metadata at ${key}:`, error);
         return null;
       }
@@ -214,6 +237,7 @@ export async function listAnalyses(userEmail: string): Promise<Analysis[]> {
   );
 }
 
+/** Loads one analysis's metadata, or null if it doesn't exist or fails validation. */
 export async function getAnalysisMeta(userEmail: string, id: string): Promise<Analysis | null> {
   if (isDatabaseStorageEnabled()) {
     return getDatabaseAnalysisMeta(userEmail, id);
@@ -223,6 +247,7 @@ export async function getAnalysisMeta(userEmail: string, id: string): Promise<An
   return data ? parseStoredAnalysis(data) : null;
 }
 
+/** Creates or overwrites an analysis's metadata. */
 export async function saveAnalysisMeta(userEmail: string, id: string, meta: Analysis): Promise<void> {
   if (isDatabaseStorageEnabled()) {
     await saveDatabaseAnalysisMeta(userEmail, id, meta);
@@ -232,6 +257,7 @@ export async function saveAnalysisMeta(userEmail: string, id: string, meta: Anal
   await putObject(`${analysisPath(userEmail, id)}/meta.json`, JSON.stringify(meta, null, 2));
 }
 
+/** Loads the parsed bill (line items + totals) for an analysis, or null if absent/invalid. */
 export async function getParsedBill(userEmail: string, id: string): Promise<ParsedBill | null> {
   if (isDatabaseStorageEnabled()) {
     return getDatabaseParsedBill(userEmail, id);
@@ -241,6 +267,7 @@ export async function getParsedBill(userEmail: string, id: string): Promise<Pars
   return data ? parseStoredParsedBill(data) : null;
 }
 
+/** Cheap existence check for a parsed bill, without fetching/validating its contents. */
 export async function hasParsedBill(userEmail: string, id: string): Promise<boolean> {
   if (isDatabaseStorageEnabled()) {
     return hasDatabaseParsedBill(userEmail, id);
@@ -249,6 +276,7 @@ export async function hasParsedBill(userEmail: string, id: string): Promise<bool
   return objectExists(`${analysisPath(userEmail, id)}/parsed.json`);
 }
 
+/** Persists the parsed bill for an analysis. */
 export async function saveParsedBill(userEmail: string, id: string, parsed: ParsedBill): Promise<void> {
   if (isDatabaseStorageEnabled()) {
     await saveDatabaseParsedBill(userEmail, id, parsed);
@@ -258,6 +286,7 @@ export async function saveParsedBill(userEmail: string, id: string, parsed: Pars
   await putObject(`${analysisPath(userEmail, id)}/parsed.json`, JSON.stringify(parsed, null, 2));
 }
 
+/** Loads the saved cost-model config (tier toggles, egress, B2 price, term) for an analysis. */
 export async function getModelConfig(userEmail: string, id: string): Promise<ModelConfig | null> {
   if (isDatabaseStorageEnabled()) {
     return getDatabaseModelConfig(userEmail, id);
@@ -267,6 +296,7 @@ export async function getModelConfig(userEmail: string, id: string): Promise<Mod
   return data ? parseStoredModelConfig(data) : null;
 }
 
+/** Persists the cost-model config for an analysis. */
 export async function saveModelConfig(userEmail: string, id: string, config: ModelConfig): Promise<void> {
   if (isDatabaseStorageEnabled()) {
     await saveDatabaseModelConfig(userEmail, id, config);
@@ -276,6 +306,10 @@ export async function saveModelConfig(userEmail: string, id: string, config: Mod
   await putObject(`${analysisPath(userEmail, id)}/model-config.json`, JSON.stringify(config, null, 2));
 }
 
+/**
+ * Stores an uploaded bill. Bytes always go to B2; in DB mode we additionally record a
+ * pointer row so getLatestUploadedFile can find it without a B2 listing.
+ */
 export async function uploadFile(
   userEmail: string,
   id: string,
@@ -298,6 +332,11 @@ export async function uploadFile(
   }
 }
 
+/**
+ * Returns the most recently uploaded bill for an analysis, or null if none.
+ * In DB mode it resolves via the pointer row first, then falls through to a B2
+ * listing so uploads recorded before DB mode (or with a stale pointer) still resolve.
+ */
 export async function getLatestUploadedFile(userEmail: string, id: string): Promise<StoredUpload | null> {
   if (isDatabaseStorageEnabled()) {
     const upload = await getLatestDatabaseUpload(userEmail, id);
@@ -313,9 +352,10 @@ export async function getLatestUploadedFile(userEmail: string, id: string): Prom
     }
   }
 
+  // B2 path (and DB fallback): pick the newest object under uploads/ by last-modified.
   const uploadPrefix = `${analysisPath(userEmail, id)}/uploads/`;
   const uploads = (await listObjects(uploadPrefix))
-    .filter((obj) => obj.key !== uploadPrefix)
+    .filter((obj) => obj.key !== uploadPrefix) // drop the zero-byte folder-marker object
     .sort((a, b) => (b.lastModified?.getTime() ?? 0) - (a.lastModified?.getTime() ?? 0));
 
   const latest = uploads[0];
@@ -331,6 +371,10 @@ export async function getLatestUploadedFile(userEmail: string, id: string): Prom
   };
 }
 
+/**
+ * Deletes an analysis and everything under it. Always clears the B2 objects (where
+ * upload bytes live regardless of backend), then the DB rows when in DB mode.
+ */
 export async function deleteAnalysis(userEmail: string, id: string): Promise<void> {
   const keys = await listKeys(`${analysisPath(userEmail, id)}/`);
   for (const key of keys) {
@@ -344,6 +388,11 @@ export async function deleteAnalysis(userEmail: string, id: string): Promise<voi
 
 // --- Snapshots ---
 
+/**
+ * Persists a report snapshot. In B2 mode it writes the snapshot twice — once under its
+ * id and once to the well-known latest-snapshot key — so the common "load the latest"
+ * read is a single GET instead of a list+sort.
+ */
 export async function saveReportSnapshot(userEmail: string, id: string, snapshot: ReportSnapshot): Promise<void> {
   if (isDatabaseStorageEnabled()) {
     await saveDatabaseReportSnapshot(userEmail, id, snapshot);
@@ -357,6 +406,7 @@ export async function saveReportSnapshot(userEmail: string, id: string, snapshot
   ]);
 }
 
+/** Lists all report snapshots for an analysis, newest first; silently skips unreadable ones. */
 export async function listReportSnapshots(userEmail: string, id: string): Promise<ReportSnapshot[]> {
   if (isDatabaseStorageEnabled()) {
     return listDatabaseReportSnapshots(userEmail, id);
@@ -375,6 +425,12 @@ export async function listReportSnapshots(userEmail: string, id: string): Promis
   );
 }
 
+/**
+ * Returns the newest report snapshot for an analysis, or null if none.
+ * Fast path reads the latest-snapshot pointer; if it's missing (e.g. snapshots
+ * written before the pointer existed), it falls back to listing snapshots/ and
+ * lazily backfills the pointer for next time.
+ */
 export async function getLatestSnapshot(userEmail: string, id: string): Promise<ReportSnapshot | null> {
   if (isDatabaseStorageEnabled()) {
     return getLatestDatabaseSnapshot(userEmail, id);
@@ -399,6 +455,7 @@ export async function getLatestSnapshot(userEmail: string, id: string): Promise<
 
   const snapshot = parseStoredSnapshot(data);
   if (!snapshot) return null;
+  // Backfill the pointer, but don't await or fail the read on it — it's a best-effort cache write.
   putObject(latestSnapshotPath(userEmail, id), JSON.stringify(snapshot, null, 2)).catch((error) => {
     console.error(`Failed to backfill latest snapshot pointer for ${id}:`, error);
   });
@@ -407,11 +464,13 @@ export async function getLatestSnapshot(userEmail: string, id: string): Promise<
 
 // --- Pricing ---
 
+/** AE's profile used to personalize the customer-facing report (e.g. the "prepared by" line). */
 export interface UserProfile {
   displayName: string;
   title?: string;
 }
 
+/** Loads the user's profile, or null if unset or missing the required displayName. */
 export async function getUserProfile(userEmail: string): Promise<UserProfile | null> {
   if (isDatabaseStorageEnabled()) {
     return getDatabaseUserProfile(userEmail);
@@ -419,10 +478,12 @@ export async function getUserProfile(userEmail: string): Promise<UserProfile | n
 
   const data = await getObject(`users/${userEmail}/profile.json`);
   if (!data) return null;
+  // displayName is the only hard requirement; title is optional.
   const v = safeJsonParse(data, 'user profile');
   return isRecord(v) && typeof v.displayName === 'string' ? (v as unknown as UserProfile) : null;
 }
 
+/** Persists the user's profile. */
 export async function saveUserProfile(userEmail: string, profile: UserProfile): Promise<void> {
   if (isDatabaseStorageEnabled()) {
     await saveDatabaseUserProfile(userEmail, profile);
@@ -432,15 +493,26 @@ export async function saveUserProfile(userEmail: string, profile: UserProfile): 
   await putObject(`users/${userEmail}/profile.json`, JSON.stringify(profile, null, 2));
 }
 
+// Pricing tables are global (provider rate cards), not user-scoped, and live in B2 only —
+// there's no DB path and no schema validation, so callers must treat the result as unknown.
+/** Loads the cached rate card for a provider (e.g. 'aws', 'gcp', 'azure'), or null if none. */
 export async function getPricing(provider: string): Promise<unknown> {
   const data = await getObject(`pricing/${provider}.json`);
   return data ? JSON.parse(data) : null;
 }
 
+/** Persists a provider's rate card. */
 export async function savePricing(provider: string, pricing: unknown): Promise<void> {
   await putObject(`pricing/${provider}.json`, JSON.stringify(pricing, null, 2));
 }
 
+/**
+ * Maps a thrown storage error to an operator-safe {status, code, message} for the API layer.
+ * Order matters: config (non-retryable, 500) is checked before transient (retryable, 503),
+ * and database faults before B2 faults, so the most specific cause wins. The returned message
+ * is generic by design — it must never carry env-var names, file paths, or internal warnings
+ * into anything customer-facing.
+ */
 export function getStorageErrorDetails(error: unknown): StorageErrorDetails {
   if (isDatabaseConfigError(error)) {
     return {
@@ -490,6 +562,8 @@ function guessContentType(filename: string): string {
   return 'application/octet-stream';
 }
 
+// True for a B2/S3 "object not found" — by SDK error name or a raw 404 in the response
+// metadata, since different command paths surface the absence in different shapes.
 function isMissingObjectError(e: unknown): boolean {
   if (!e || typeof e !== 'object') return false;
 
@@ -505,6 +579,8 @@ function isMissingObjectError(e: unknown): boolean {
   );
 }
 
+// Config errors are detected by matching the exact messages thrown in b2-client.ts /
+// the db client. Keep these prefixes in sync with those throw sites.
 function isStorageConfigError(error: unknown): boolean {
   const message = getErrorString(error, 'message');
   return message.startsWith('Missing B2 credentials') || message.startsWith('Missing B2_BUCKET_NAME');
@@ -515,6 +591,9 @@ function isDatabaseConfigError(error: unknown): boolean {
   return message.startsWith('DATABASE_URL is required');
 }
 
+// Retryable Postgres faults, keyed on SQLSTATE: 53300 too-many-connections, the 57Pxx
+// admin-shutdown/crash codes, the 58xxx I/O-system errors, and the 08xxx connection-exception
+// family. Also treats network-level transients (shared with B2) as retryable.
 function isTransientDatabaseError(error: unknown): boolean {
   const code = getErrorString(error, 'code');
   const transientCodes = new Set([
@@ -536,6 +615,9 @@ function isTransientDatabaseError(error: unknown): boolean {
   return transientCodes.has(code) || isTransientStorageError(error);
 }
 
+// Retryable B2/network faults. Matches on SDK error name, OS-level socket error codes,
+// 5xx/408/429 HTTP status, and as a last resort substrings in the message, because the
+// same underlying timeout/reset surfaces inconsistently across the SDK and Node layers.
 function isTransientStorageError(error: unknown): boolean {
   const name = getErrorString(error, 'name');
   const code = getErrorString(error, 'code');

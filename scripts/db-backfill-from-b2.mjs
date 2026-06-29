@@ -1,3 +1,6 @@
+// One-shot backfill: re-reads the per-user analysis artifacts we already store in B2 (via its
+// S3-compatible API) and replays them into Postgres, so the DB becomes the source of truth without
+// losing history. Idempotent — every write is an upsert, so it's safe to rerun per user.
 import nextEnv from '@next/env';
 import { readFileSync } from 'fs';
 import {
@@ -12,6 +15,8 @@ const { loadEnvConfig } = nextEnv;
 
 loadEnvConfig(process.cwd());
 
+// Email is the partition key for the object layout (users/<email>/...) and the DB rows, so
+// normalize case here to match how the app keys everything.
 const userEmails = process.argv.slice(2).map((email) => email.trim().toLowerCase()).filter(Boolean);
 
 if (userEmails.length === 0) {
@@ -21,11 +26,13 @@ if (userEmails.length === 0) {
 
 const s3 = new S3Client({
   endpoint: requireEnv('B2_ENDPOINT'),
+  // Default matches the bucket's home region; B2 still requires a region string even with a custom endpoint.
   region: process.env.B2_REGION || 'us-west-004',
   credentials: {
     accessKeyId: requireEnv('B2_KEY_ID'),
     secretAccessKey: requireEnv('B2_APP_KEY'),
   },
+  // B2's S3 API needs path-style addressing (bucket in the path, not a virtual-host subdomain).
   forcePathStyle: true,
 });
 
@@ -47,13 +54,17 @@ try {
 async function backfillUser(userEmail) {
   console.log(`Backfilling ${userEmail}`);
   const userPrefix = `users/${userEmail}`;
+  // List the user's whole analyses subtree once, then slice it locally per artifact type below
+  // rather than issuing a fresh List per analysis.
   const objects = await listObjects(`${userPrefix}/analyses/`);
+  // Each analysis is anchored by its meta.json; presence of one defines a backfillable analysis.
   const metaObjects = objects.filter((object) => object.key.endsWith('/meta.json'));
 
   const profile = await getJsonObject(`${userPrefix}/profile.json`);
   if (profile) await saveUserProfile(userEmail, profile);
 
   for (const metaObject of metaObjects) {
+    // Recover the analysis id from the key: users/<email>/analyses/<id>/meta.json.
     const analysisId = metaObject.key.slice(`${userPrefix}/analyses/`.length).split('/')[0];
     if (!analysisId) continue;
 
@@ -78,6 +89,7 @@ async function backfillUser(userEmail) {
       if (snapshot?.id) await saveReportSnapshot(userEmail, analysisId, snapshot);
     }
 
+    // Exclude the bare "uploads/" prefix marker some S3 tooling materializes as a zero-byte object.
     const uploadObjects = objects.filter((object) => (
       object.key.startsWith(`${analysisPrefix}/uploads/`) && object.key !== `${analysisPrefix}/uploads/`
     ));
@@ -92,6 +104,8 @@ async function backfillUser(userEmail) {
         analysisId,
         filename,
         objectKey: uploadObject.key,
+        // Trust the stored content-type, but fall back to extension-based guessing for older
+        // uploads written before we persisted it.
         contentType: head.contentType || guessContentType(filename),
         sizeBytes: head.sizeBytes,
         createdAt: uploadObject.lastModified?.toISOString(),
@@ -258,6 +272,8 @@ function parsePoolMax(value) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 5;
 }
 
+// SSL is opt-in: undefined (no TLS) unless DATABASE_SSL is explicitly truthy; when on, certs are
+// verified unless deliberately disabled, with an optional pinned CA. Mirrors scripts/db-migrate.mjs.
 function getSslConfig() {
   const flag = process.env.DATABASE_SSL?.trim().toLowerCase();
   if (!flag || flag === 'false' || flag === '0' || flag === 'off') return undefined;
@@ -273,6 +289,9 @@ function getSslConfig() {
   return sslConfig;
 }
 
+// Treat a not-found as "optional artifact absent" rather than a hard error, so a partial analysis
+// (e.g. no model-config.json yet) still backfills. Checks both the error name and the HTTP status
+// because Get vs Head, and AWS SDK vs B2, surface the 404 in different shapes.
 function isMissingObjectError(error) {
   if (!error || typeof error !== 'object') return false;
   const name = 'name' in error ? error.name : undefined;

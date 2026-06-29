@@ -7,6 +7,8 @@ import type { EgressConfig } from '@/types/analysis';
 import { formatGrowthAssumption, projectStorageGbForMonth } from '@/lib/engine/projections';
 
 const B2_LIST_PRICE_PER_TB = b2Pricing.storage.perTbMonth;
+// Tolerance for matching the live price back to a preset. Preset prices are rounded to cents, so an
+// exact === would fail to re-highlight a preset after the price round-trips through the input.
 const PRICE_EPSILON = 0.001;
 const TERM_OPTIONS = [
   { years: 1, months: 12 },
@@ -18,8 +20,10 @@ const TERM_OPTIONS = [
 type PresetId = 'list' | 'discount5' | 'discount10' | 'custom';
 
 interface DealSizingProps {
+  /** Negotiated B2 storage rate in $/TB-month the AE is modeling (list, a discount preset, or a custom value). */
   b2PricePerTb: number;
   onB2PriceChange: (price: number) => void;
+  /** Total modeled monthly B2 spend (storage plus any non-storage B2 revenue); drives ARR/TCV and UDM break-even. */
   monthlyB2Revenue: number;
   termMonths: number;
   onTermChange: (months: number) => void;
@@ -27,12 +31,19 @@ interface DealSizingProps {
   growthRatePercent: number;
   growthFixedTbPerMonth: number;
   onGrowthChange: (updates: Partial<Pick<EgressConfig, 'dataGrowthMode' | 'dataGrowthRatePercent' | 'dataGrowthFixedTbPerMonth'>>) => void;
+  /** Starting (month-zero) migrated storage in GB; growth projects forward from this base. */
   totalStorageGb: number;
   udmEnabled: boolean;
   onUdmChange: (enabled: boolean) => void;
+  /** One-time internal cost to Backblaze of covering the migration egress under UDM — never customer-facing. */
   udmCostToBackblaze: number;
 }
 
+/**
+ * Internal-only deal-sizing panel: lets the AE set the B2 price, term, and data-growth assumptions,
+ * then shows projected B2 revenue (ARR/TCV) versus list and the UDM cost/break-even. Surfaces revenue
+ * to Backblaze, not customer savings — it is deliberately gated behind the "Internal Only" label.
+ */
 export function DealSizing({
   b2PricePerTb,
   onB2PriceChange,
@@ -66,6 +77,7 @@ export function DealSizing({
   const discountPercent = B2_LIST_PRICE_PER_TB > 0
     ? (1 - b2PricePerTb / B2_LIST_PRICE_PER_TB) * 100
     : 0;
+  // App basis is decimal TB (1 TB = 1000 GB), matching how B2 and hyperscaler bills price storage.
   const storageTb = totalStorageGb / 1000;
   const termIndex = termIndexForMonths(termMonths);
   const growthLabel = formatGrowthAssumption({
@@ -73,6 +85,9 @@ export function DealSizing({
     annualGrowthPercent: growthRatePercent,
     fixedGrowthTbPerMonth: growthFixedTbPerMonth,
   });
+  // Split the modeled monthly B2 revenue into the storage portion (which scales with the price slider)
+  // and a non-storage remainder (e.g. egress) that the price control should not move. The remainder is
+  // later scaled with storage volume so it grows in proportion as projected data grows.
   const baseStorageRevenue = totalStorageGb * (b2PricePerTb / 1000);
   const baseNonStorageRevenue = Math.max(0, monthlyB2Revenue - baseStorageRevenue);
   const currentRevenue = getProjectedRevenueProfile({
@@ -362,6 +377,8 @@ export function DealSizing({
             </button>
           </div>
           {udmEnabled && (() => {
+            // Months of B2 revenue needed to recoup Backblaze's one-time UDM migration outlay.
+            // This is the internal payback for Backblaze, not the customer's savings break-even.
             const b2BreakEven = monthlyB2Revenue > 0
               ? Math.ceil(udmCostToBackblaze / monthlyB2Revenue)
               : null;
@@ -470,6 +487,8 @@ function pricesMatch(a: number, b: number): boolean {
   return Math.abs(a - b) <= PRICE_EPSILON;
 }
 
+// Infer which preset chip a live price corresponds to, falling back to 'custom' when it matches none.
+// Used to re-highlight the right chip after the price is loaded or round-tripped through the input.
 function getActivePreset(price: number, discount5Price: number, discount10Price: number): PresetId {
   if (pricesMatch(price, B2_LIST_PRICE_PER_TB)) return 'list';
   if (pricesMatch(price, discount5Price)) return 'discount5';
@@ -502,6 +521,8 @@ function formatTbMonths(tbMonths: number): string {
   return `${tbMonths.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} TB-months`;
 }
 
+// Map a term in months to its slider index. The slider only offers the fixed TERM_OPTIONS stops, so a
+// persisted term that isn't one of them (e.g. an older config) snaps to the nearest available stop.
 function termIndexForMonths(termMonths: number): number {
   const exact = TERM_OPTIONS.findIndex((option) => option.months === termMonths);
   if (exact >= 0) return exact;
@@ -519,6 +540,10 @@ function formatTermLabel(months: number): string {
   return `${months} Months`;
 }
 
+// Walk each month of the term, growing storage per the chosen growth assumption, and accumulate the
+// resulting B2 revenue. Returns first-year revenue (ARR), full-term revenue (TCV), the cumulative
+// TB-months of storage modeled, and the ending storage volume — all driven off the same per-month walk
+// so the deal-summary copy and the on-screen rows can never disagree.
 function getProjectedRevenueProfile({
   baseStorageGb,
   baseNonStorageRevenue,
@@ -551,6 +576,8 @@ function getProjectedRevenueProfile({
       month,
     });
     const storageRevenue = (projectedStorageGb / 1000) * pricePerTb;
+    // Scale the non-storage revenue with storage volume so it grows alongside the data; if there's no
+    // base storage to scale against, hold it flat rather than dividing by zero.
     const nonStorageRevenue = baseStorageGb > 0
       ? baseNonStorageRevenue * (projectedStorageGb / baseStorageGb)
       : baseNonStorageRevenue;

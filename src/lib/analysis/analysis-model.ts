@@ -82,6 +82,9 @@ export function buildTierState(
     buildTierInventory(parsed.lineItems, modelConfig.b2PricePerTb),
     modelConfig,
   );
+  // Re-derive toggles from the tiers that selection actually produced (a stored toggle for a tier
+  // that no longer exists is dropped), and stamp the current version so future loads skip
+  // re-normalization. See TIER_SELECTION_VERSION for the gate.
   const nextModelConfig: ModelConfig = {
     ...modelConfig,
     tierToggles: Object.fromEntries(tiers.map((tier) => [tier.id, tier.migrateToB2])),
@@ -118,6 +121,8 @@ export function computeAnalysisView({
   return { costModel, projections, pricingDetection, migratedTiers, migratedStorageGb };
 }
 
+// Coerce a stored value to a positive number, falling back when it's missing, non-numeric, zero, or
+// negative. Guards against legacy/corrupt configs feeding a 0 price or term into the cost model.
 function readPositiveNumber(value: unknown, fallback: number): number {
   const numeric = Number(value);
   return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback;

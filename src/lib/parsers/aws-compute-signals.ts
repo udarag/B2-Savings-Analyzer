@@ -1,21 +1,31 @@
 import type { ComputeSignal, ComputeSignalConfidence, ComputeSignalType } from '@/types/analysis';
 
+/** A raw non-storage AWS service line, fed in from either PDF parser, to be classified as a compute signal. */
 export interface AwsComputeSignalInput {
   name: string;
   amountUsd: number;
   regions?: string[];
+  /** Human-readable provenance lines shown in the dashboard so an AE can justify the signal. */
   evidence?: string[];
 }
 
 interface AwsComputeSignalRule {
   service: string;
   signalType: ComputeSignalType;
+  /** Conversation prompt for the AE: what to confirm about this workload's storage/egress relationship to B2. */
   egressHint: string;
   confidence: ComputeSignalConfidence;
 }
 
+// Cap the dashboard at the dozen highest-spend signals so the "what else lives near the data"
+// panel stays scannable rather than mirroring the whole bill.
 const MAX_COMPUTE_SIGNALS = 12;
 
+/**
+ * Roll up non-storage AWS spend into ranked "compute signals" — evidence of workloads sitting next
+ * to the customer's object data — used to frame the migration conversation, not the B2 savings math.
+ * De-dupes by canonical service, summing cost and merging regions/evidence across input lines.
+ */
 export function buildAwsComputeSignals(inputs: AwsComputeSignalInput[]): ComputeSignal[] {
   const signals = new Map<string, ComputeSignal>();
 
@@ -28,6 +38,8 @@ export function buildAwsComputeSignals(inputs: AwsComputeSignalInput[]): Compute
     const regions = input.regions?.filter(Boolean) || [];
 
     if (existing) {
+      // Same service seen again (e.g. across regions): accumulate cost and keep a bounded sample of
+      // regions/evidence so the card stays compact. Confidence only ever ratchets up.
       existing.costUsd += input.amountUsd;
       existing.regions = mergeUnique(existing.regions || [], regions).slice(0, 5);
       existing.evidence = mergeUnique(existing.evidence, evidence).slice(0, 4);
@@ -57,10 +69,18 @@ export function buildAwsComputeSignals(inputs: AwsComputeSignalInput[]): Compute
     .slice(0, MAX_COMPUTE_SIGNALS);
 }
 
+/**
+ * Canonical signal-service name for a raw bill line, or null if the line isn't a tracked compute
+ * signal. The detail parser uses this as a cheap pre-filter while scanning the "Charges by service"
+ * block, before committing to building a full signal.
+ */
 export function getAwsComputeSignalService(rawName: string): string | null {
   return classifyAwsComputeSignal(rawName)?.service || null;
 }
 
+// Maps a raw AWS service name to a signal rule. Most branches require an EXACT (lowercased) match
+// because AWS service names are stable and an exact match avoids misclassifying, say, "Elastic
+// Container Registry" as "Elastic Container Service".
 function classifyAwsComputeSignal(rawName: string): AwsComputeSignalRule | null {
   const name = rawName.trim();
   const lower = name.toLowerCase();
@@ -110,6 +130,8 @@ function classifyAwsComputeSignal(rawName: string): AwsComputeSignalRule | null 
     };
   }
 
+  // Bedrock model-marketplace lines name the vendor/model (e.g. "...Claude...") rather than
+  // "Bedrock", so substring-match those into a single AI/ML signal instead of an exact name.
   if (lower === 'sagemaker' || lower === 'bedrock' || lower.includes('claude') || lower.includes('anthropic')) {
     return {
       service: lower.includes('claude') || lower.includes('anthropic') ? 'Bedrock Marketplace AI' : titleCaseService(name),
@@ -158,6 +180,7 @@ function classifyAwsComputeSignal(rawName: string): AwsComputeSignalRule | null 
   return null;
 }
 
+// Title-case a service name for display, preserving short all-caps tokens (EMR, EC2) as acronyms.
 function titleCaseService(name: string): string {
   return name
     .split(/\s+/)

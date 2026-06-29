@@ -1,3 +1,8 @@
+/**
+ * Classifies a GCP storage location label as regional / dual-region / multi-region.
+ * The distinction drives durability matching: multi/dual-region GCP data implies a B2 second-region
+ * copy (~2x storage) so the migration comparison stays apples-to-apples on geo-redundancy.
+ */
 export const GCP_LOCATION_TYPES: Record<string, string> = {
   'US Multi-region': 'multi-region',
   'EU Multi-region': 'multi-region',
@@ -31,6 +36,11 @@ export const GCP_LOCATION_TYPES: Record<string, string> = {
   Toronto: 'regional',
 };
 
+/**
+ * Maps the abbreviated region prefixes AWS embeds in usage-type SKUs (e.g. "USE1-TimedStorage…")
+ * to canonical region ids. AWS omits the prefix for us-east-1, so a SKU with no code falls back to
+ * us-east-1 at the call site — that fallback lives there, not here.
+ */
 export const AWS_REGION_CODES: Record<string, string> = {
   USE1: 'us-east-1',
   USE2: 'us-east-2',
@@ -61,6 +71,11 @@ export const AWS_REGION_CODES: Record<string, string> = {
   APE2: 'ap-east-2',
 };
 
+/**
+ * Maps AWS S3 TimedStorage usage-type tokens to a human storage-class name. Several distinct SKUs
+ * collapse to one class on purpose: e.g. the "-SmObjects" small-object variants bill separately but
+ * are the same tier, and staging SKUs name the Glacier tier they stage for.
+ */
 export const AWS_SKU_STORAGE_CLASS: Record<string, string> = {
   'TimedStorage-ByteHrs': 'Standard',
   'TimedStorage-SIA-ByteHrs': 'Standard-IA',

@@ -1,6 +1,14 @@
 import type { ParsedBill, BillType, Provider } from '@/types/analysis';
 import { detectCustomPricing } from '@/lib/pricing/detection';
 
+// Scores how trustworthy a savings case built from this bill would be, for the AE's eyes only. It
+// rewards detail the model can stand on (parsed GB usage, storage classes, regions, egress volume,
+// clear pricing terms, account allocation) and flags gaps that make numbers directional or unusable.
+// A central concern is pricing honesty: a deeply-discounted bill that looks like list price would
+// overstate B2 savings, so unconfirmed below-list rates are surfaced as attention items, not wins.
+// This output is internal; the customer-facing report must not echo these warnings verbatim.
+
+/** Overall verdict on whether the bill can back a credible B2 savings conversation. */
 export type ReadinessStatus = 'ready' | 'directional' | 'needs-detail' | 'not-useful';
 export type ReadinessCheckTone = 'good' | 'warning' | 'missing' | 'neutral';
 export type ReadinessCheckId =
@@ -10,6 +18,8 @@ export type ReadinessCheckId =
   | 'pricing-terms'
   | 'workload-targeting';
 
+/** One scorecard row shown to the AE. `action` drives an inline CTA (the only one today is the
+ *  AE attesting that detected below-list rates are a real customer discount). */
 export interface ReadinessCheck {
   id: ReadinessCheckId;
   label: string;
@@ -20,9 +30,12 @@ export interface ReadinessCheck {
   actionLabel?: string;
 }
 
+/** Full readiness result: headline status/score plus the supporting signals, gaps, next steps, and
+ *  per-dimension scorecard the dashboard renders. */
 export interface ReadinessAssessment {
   status: ReadinessStatus;
   label: string;
+  /** 0-100 confidence-in-the-data score; thresholds map it to status in classifyReadiness. */
   score: number;
   summary: string;
   trustedSignals: string[];
@@ -32,6 +45,8 @@ export interface ReadinessAssessment {
 }
 
 interface ReadinessOptions {
+  /** AE has attested that detected below-list storage rates are a real customer discount; flips
+   *  the pricing check from a risk flag to a trusted signal. */
   pricingDiscountConfirmed?: boolean;
 }
 
@@ -61,6 +76,8 @@ function sumCost(items: ParsedBill['lineItems']): number {
   return items.reduce((sum, item) => sum + item.costUsd, 0);
 }
 
+// A region counts as "known" only if it's a specific locale. Placeholders like unknown/global/all
+// regions can't anchor a provider-rate comparison, so they don't earn region-coverage credit.
 function hasKnownRegion(region: string): boolean {
   const normalized = region.toLowerCase();
   return Boolean(region) &&
@@ -69,6 +86,8 @@ function hasKnownRegion(region: string): boolean {
     normalized !== 'all regions';
 }
 
+// The concrete export to ask the customer for when a bill is too thin, tailored per provider so the
+// AE can copy a precise request rather than a generic "send more detail".
 function providerDetailRequest(provider?: Provider): string {
   switch (provider) {
     case 'aws':
@@ -84,6 +103,9 @@ function providerDetailRequest(provider?: Provider): string {
   }
 }
 
+// Map the numeric score to a status band. No addressable spend (or score < 40) is unsellable
+// regardless of other detail; 82+/65+ gate "ready" and "directional". Tune bands here, not at call
+// sites.
 function classifyReadiness(score: number, hasAddressableSpend: boolean): Pick<ReadinessAssessment, 'status' | 'label' | 'summary'> {
   if (!hasAddressableSpend || score < 40) {
     return {
@@ -116,12 +138,17 @@ function classifyReadiness(score: number, hasAddressableSpend: boolean): Pick<Re
   };
 }
 
+/** Assess how ready a parsed bill is to support a B2 savings case. `provider`/`billType` tailor the
+ *  next-step asks and scoring; `options.pricingDiscountConfirmed` reflects the AE's discount
+ *  attestation. Returns the internal scorecard — never surface its warnings to the customer. */
 export function assessReadiness(
   parsed: ParsedBill,
   billType?: BillType,
   provider?: Provider,
   options: ReadinessOptions = {},
 ): ReadinessAssessment {
+  // "Addressable" = the categories a B2 migration can actually change. Other/out-of-scope spend is
+  // excluded so the opportunity size reflects storage-scope, not the whole bill.
   const storageItems = parsed.lineItems.filter((item) => item.category === 'storage');
   const egressItems = parsed.lineItems.filter((item) => item.category === 'egress');
   const operationsItems = parsed.lineItems.filter((item) => item.category === 'operations');
@@ -137,8 +164,12 @@ export function assessReadiness(
   const egressSpend = sumCost(egressItems);
   const operationsRetrievalSpend = sumCost(operationsItems) + sumCost(retrievalItems);
   const addressableSpend = sumCost(addressableItems);
+  // Require real storage spend, not just any addressable spend — a bill with only egress/ops can't
+  // anchor a storage-migration case.
   const hasAddressableSpend = addressableSpend > 0 && storageSpend > 0;
 
+  // A summary invoice has no per-SKU detail (all storage is estimated/placeholder), which caps
+  // several scores below — savings off a summary bill are directional at best.
   const isSummaryBill = billType === 'summary-invoice' ||
     parsed.lineItems.some((item) => item.sku === 'SUMMARY') ||
     (storageItems.length > 0 && storageItems.every((item) => item.isEstimate));
@@ -160,6 +191,9 @@ export function assessReadiness(
   const matchesPublishedPricing = hasPublishedRateComparison && listPriceTierCount === tierPricingResults.length;
   const detectedDiscountTierCount = discountedTierCount + customPricingTierCount;
   const hasDetectedStorageDiscount = detectedDiscountTierCount > 0;
+  // A tier billed 50%+ below published pricing is the single biggest risk to an honest savings case:
+  // if it's really a deep discount and we compare B2 against list, savings are wildly overstated.
+  // Pick the worst such tier to flag until the AE confirms it.
   const severeDiscountResult = tierPricingResults
     .filter((result) => result.discountPercent >= 50)
     .sort((a, b) => b.discountPercent - a.discountPercent)[0];
@@ -182,10 +216,16 @@ export function assessReadiness(
   const knownRegionCoverage = percentOf(knownRegionSpend, storageSpend);
   const egressUsageCoverage = percentOf(egressUsageSpend, egressSpend);
 
+  // Each dimension contributes to a 0-100 total; the max weights below are the relative importance
+  // of each kind of detail. Granularity is the parse-quality base (up to 25), then capped hard when
+  // the bill is a summary or its totals didn't reconcile, since neither can be trusted at face value.
   let granularityScore = parsed.lineItems.length === 0 ? 0 : Math.round(parsed.parseConfidence * 25);
   if (isSummaryBill) granularityScore = Math.min(granularityScore, 10);
   if (hasReconciliationWarning) granularityScore = Math.min(granularityScore, 17);
 
+  // Storage detail (up to 25): GB usage present (12) weighted most, then *actual* (non-estimated)
+  // usage (6), storage-class mapping (4), and known region (3). Each term is its weight times the
+  // share of storage spend that has that detail.
   const storageScore = storageSpend > 0
     ? Math.round(
       (12 * storageUsageCoverage) +
@@ -226,6 +266,8 @@ export function assessReadiness(
         ? 4
         : 3;
 
+  // Sum the dimensions, then hard-cap at 30 when there's no addressable storage spend so a
+  // detail-rich but non-storage bill can't read as sellable. Clamp to 0-100.
   let score = granularityScore + storageScore + pricingScore + egressScore + operationsScore + accountScore;
   if (!hasAddressableSpend) score = Math.min(score, 30);
   score = Math.max(0, Math.min(100, score));
@@ -268,6 +310,9 @@ export function assessReadiness(
     attentionItems.push('No egress spend was detected; confirm whether the export excludes data transfer or the customer has low/no egress.');
   }
 
+  // Ordered best-to-worst pricing certainty: explicit named discounts and confirmed/matched list
+  // pricing are trusted; an unconfirmed below-list rate is an attention item (severe ones called out
+  // by magnitude); only after all those does "terms unclear" apply. Order is the priority.
   if ((parsed.discounts?.length || 0) > 0) {
     trustedSignals.push('Named discounts were detected, so savings can be compared against discounted spend.');
   } else if (matchesPublishedPricing) {
@@ -398,6 +443,9 @@ export function assessReadiness(
             ? 'good'
             : 'warning',
       },
+      // Tone escalates with risk: a severe unconfirmed discount reads as 'missing' (treat the case
+      // as high-risk), a milder one as 'warning', and the 'confirm-discount' action lets the AE
+      // attest the rates are real. Detail strings stay AE-facing and never ship to the customer.
       {
         id: 'pricing-terms',
         label: 'Pricing terms',

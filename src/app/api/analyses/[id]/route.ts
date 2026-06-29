@@ -12,6 +12,7 @@ import { getSessionUser } from '@/lib/auth/session';
 import { storageErrorResponse } from '@/lib/api/route-helpers';
 import type { ModelConfig } from '@/types/analysis';
 
+/** Load one analysis in full: metadata, parsed bill, and saved model config. */
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -23,6 +24,8 @@ export async function GET(
   const { id } = await params;
 
   try {
+    // parsed/modelConfig may be null for a freshly created analysis with no bill yet; only missing
+    // metadata counts as a 404.
     const [meta, parsed, modelConfig] = await Promise.all([
       getAnalysisMeta(userEmail, id),
       getParsedBill(userEmail, id),
@@ -39,6 +42,11 @@ export async function GET(
   }
 }
 
+/**
+ * Partially update an analysis. Each of `meta`, `parsed`, and `modelConfig` in the body is optional
+ * and applied independently, so the client can save just the slice it changed (e.g. an edited tier
+ * selection) without resending the rest.
+ */
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -58,6 +66,8 @@ export async function PATCH(
 
   try {
     if (body.meta) {
+      // Merge onto the stored record (not a blind overwrite) so the client can send only changed
+      // fields; updatedAt is always refreshed and the incoming patch can't override it.
       const existing = await getAnalysisMeta(userEmail, id);
       if (!existing) {
         return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -83,6 +93,7 @@ export async function PATCH(
   }
 }
 
+/** Delete an analysis and all its stored artifacts (bill, config, snapshots, uploaded file). */
 export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },

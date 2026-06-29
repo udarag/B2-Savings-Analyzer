@@ -14,6 +14,12 @@ import { buildTierState, computeAnalysisView, type AnalysisTierState } from './a
 import type { Analysis, ModelConfig, ParsedBill } from '@/types/analysis';
 import type { CostModelResult, ReportSnapshot } from '@/types/model';
 
+// Re-runs stored analyses through the current engine so saved deals pick up parser fixes, pricing
+// updates, and tier-selection version bumps. When the original upload is still on hand it re-parses
+// from the source bytes (the most accurate refresh); otherwise it recomputes from the stored parsed
+// bill. Each run writes a fresh report snapshot, and the model config is re-saved only when it
+// actually changed, to avoid churning storage on no-op reruns.
+
 interface AnalysisModelRun extends AnalysisTierState {
   costModel: CostModelResult;
 }
@@ -26,11 +32,14 @@ interface BuildAnalysisSnapshotOptions {
   now?: Date;
 }
 
+/** Outcome of re-running one stored analysis. `skipped` means there was nothing to recompute;
+ *  `failed` carries the error in `reason`. */
 export interface RerunAnalysisResult {
   analysisId: string;
   prospectName: string;
   status: 'rerun' | 'skipped' | 'failed';
   reason?: string;
+  /** True when the bill was re-parsed from the original upload (vs. reused from storage). */
   parsedUpdated?: boolean;
   modelConfigUpdated?: boolean;
   snapshot?: Pick<
@@ -45,6 +54,7 @@ export interface RerunAnalysisResult {
   >;
 }
 
+/** Aggregate tallies plus per-analysis detail for a full rerun pass. */
 export interface RerunAllAnalysesResult {
   total: number;
   rerun: number;
@@ -53,6 +63,8 @@ export interface RerunAllAnalysesResult {
   results: RerunAnalysisResult[];
 }
 
+/** Build a report snapshot (and the underlying model run) from a parsed bill and its stored config.
+ *  `now` is injectable for deterministic timestamps in tests. */
 export function buildAnalysisSnapshot({
   analysisId,
   parsed,
@@ -86,6 +98,8 @@ export function buildAnalysisSnapshot({
   };
 }
 
+/** Re-run every stored analysis for a user and return aggregate results. Processed sequentially so a
+ *  bulk refresh doesn't hammer storage with concurrent reads/writes. */
 export async function rerunAllAnalyses(userEmail: string): Promise<RerunAllAnalysesResult> {
   const analyses = await listAnalyses(userEmail);
   const results: RerunAnalysisResult[] = [];
@@ -124,6 +138,8 @@ async function rerunStoredAnalysis(userEmail: string, analysis: Analysis): Promi
     let parsedUpdated = false;
     let reason: string | undefined;
 
+    // Prefer re-parsing the original upload: it captures any parser improvements since the bill was
+    // first ingested. Falls through to the stored parsed bill only when no upload was kept.
     if (upload) {
       const parseResult = detectAndParse({
         filename: upload.filename,
@@ -163,6 +179,8 @@ async function rerunStoredAnalysis(userEmail: string, analysis: Analysis): Promi
       trigger: 'analysis-rerun',
     });
 
+    // Re-save the config only when normalization actually changed it (e.g. a tier-selection version
+    // bump or re-derived toggles), so an unchanged rerun doesn't needlessly rewrite storage.
     const modelConfigUpdated = !storedModelConfig || hasModelConfigChanged(storedModelConfig, modelRun.modelConfig);
     if (modelConfigUpdated) {
       await saveModelConfig(userEmail, analysis.id, modelRun.modelConfig);
@@ -210,6 +228,8 @@ function buildAnalysisModel(parsed: ParsedBill, storedModelConfig?: ModelConfig 
   return { tiers, modelConfig, costModel };
 }
 
+// Field-by-field equality check (nested objects compared via JSON) to decide whether a rerun's
+// normalized config differs from what's stored — used to skip redundant writes.
 function hasModelConfigChanged(previous: ModelConfig, next: ModelConfig): boolean {
   return (
     previous.tierSelectionVersion !== next.tierSelectionVersion ||
