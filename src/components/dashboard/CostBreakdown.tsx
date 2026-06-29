@@ -6,6 +6,7 @@ import type { CostModelResult } from '@/types/model';
 import { getStorageScopeCurrentMonthly, getStorageScopeReplacementMonthly } from '@/lib/engine/cost-model';
 import { formatCurrency } from '../shared/FormatCurrency';
 import { AnimatedMetricValue } from '../shared/AnimatedMetricValue';
+import { Collapse } from '../shared/Collapse';
 
 interface CostBreakdownProps {
   result: CostModelResult;
@@ -158,7 +159,7 @@ export function CostBreakdown({ result, provider }: CostBreakdownProps) {
             </span>
           </button>
 
-          {detailsOpen && (
+          <Collapse open={detailsOpen}>
             <div className="border-t border-gray-200 bg-gray-50 p-4">
               <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                 <div>
@@ -223,7 +224,7 @@ export function CostBreakdown({ result, provider }: CostBreakdownProps) {
                 </div>
               </div>
             </div>
-          )}
+          </Collapse>
         </div>
       </div>
     </div>

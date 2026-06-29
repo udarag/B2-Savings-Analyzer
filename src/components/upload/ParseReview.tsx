@@ -1,9 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import type { ParsedBill, Category, BillType, Provider } from '@/types/analysis';
 import type { ReadinessCheckTone, ReadinessStatus } from '@/lib/analysis/readiness';
 import { assessReadiness } from '@/lib/analysis/readiness';
 import { formatCurrency } from '../shared/FormatCurrency';
+import { Collapse } from '../shared/Collapse';
+
+const EXPANDED_STORAGE_KEY = 'b2-savings-parse-review-expanded';
 
 interface ParseReviewProps {
   parsed: ParsedBill;
@@ -107,6 +111,30 @@ export function ParseReview({
   pricingDiscountConfirmed = false,
   onPricingDiscountConfirmedChange,
 }: ParseReviewProps) {
+  // Restore the saved open/closed preference (collapsed by default). This card
+  // renders only client-side, after the dashboard fetch resolves, so reading
+  // localStorage during init is safe and avoids a hydration mismatch.
+  const [expanded, setExpanded] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem(EXPANDED_STORAGE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleExpanded = () => {
+    setExpanded((value) => {
+      const next = !value;
+      try {
+        window.localStorage.setItem(EXPANDED_STORAGE_KEY, next ? '1' : '0');
+      } catch {
+        // Ignore blocked storage; the toggle still works for this session.
+      }
+      return next;
+    });
+  };
+
   const categorySums = new Map<Category, { count: number; total: number }>();
 
   for (const item of parsed.lineItems) {
@@ -148,154 +176,185 @@ export function ParseReview({
     }))
     .filter((item) => item.count > 0 || item.total > 0);
 
+  const noteCount = parserWarnings.length + commercialSignals.length;
+
   return (
     <div className="bg-white rounded-lg shadow">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Parse Review</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              {parsed.lineItems.length} line items parsed. Grand total: {formatCurrency(parsed.grandTotal)}.
-              {addressableLabel}: {formatCurrency(addressable)}.
+      <button
+        type="button"
+        onClick={toggleExpanded}
+        aria-expanded={expanded}
+        className="flex w-full items-start justify-between gap-4 px-6 py-4 text-left"
+      >
+        <div className="min-w-0">
+          <h3 className="text-lg font-semibold text-gray-900">Parse Review</h3>
+          <p className="text-sm text-gray-500 mt-1">
+            {parsed.lineItems.length} line items parsed. Grand total: {formatCurrency(parsed.grandTotal)}.{' '}
+            {addressableLabel}: {formatCurrency(addressable)}.
+          </p>
+          {!expanded && noteCount > 0 && (
+            <p className="mt-1 text-xs font-medium text-amber-700">
+              {noteCount} {noteCount === 1 ? 'note' : 'notes'} to review — expand for details
             </p>
-          </div>
-          <div className="flex shrink-0 flex-col items-end gap-1">
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          <div className="flex flex-col items-end gap-1">
             <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold ring-1 ${readinessStyle.badge}`}>
               <span className={`h-2.5 w-2.5 rounded-full ${readinessStyle.dot}`} />
               {readiness.label}
             </span>
             <span className="text-xs text-gray-500">{readiness.score}/100 readiness</span>
           </div>
+          <svg
+            className={`h-5 w-5 shrink-0 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+          </svg>
         </div>
-        {parserWarnings.length > 0 && (
-          <div className="mt-3 p-3 bg-amber-50 rounded-lg">
-            {parserWarnings.map((w, i) => (
-              <p key={i} className="text-sm text-amber-800">{w}</p>
-            ))}
-          </div>
-        )}
-        {commercialSignals.length > 0 && (
-          <div className="mt-3 p-3 bg-sky-50 rounded-lg dark:bg-sky-950/20">
-            {commercialSignals.map((signal, i) => (
-              <p key={i} className="text-sm text-sky-900 dark:text-sky-200">{signal}</p>
-            ))}
-          </div>
-        )}
-      </div>
-      <div className="p-6">
-        <div className={`mb-5 rounded-lg border p-4 ${readinessStyle.panel}`}>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0">
-              <p className={`text-sm font-semibold ${readinessStyle.text}`}>Bill Savings Report Readiness</p>
-              <p className="mt-1 max-w-4xl text-sm leading-6 text-gray-700 dark:text-gray-300">{readiness.summary}</p>
-            </div>
-            <div className="rounded-md bg-white/70 px-3 py-2 ring-1 ring-black/5 dark:bg-[#11141a] dark:ring-white/10">
-              <p className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Readiness Score</p>
-              <p className="mt-0.5 text-lg font-semibold text-gray-900 dark:text-gray-100">{readiness.score}/100</p>
-            </div>
-          </div>
+      </button>
 
-          <div className="mt-4">
-            <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">Readiness Checks</p>
-            <div className="mt-2 overflow-hidden rounded-md bg-white/70 ring-1 ring-black/5 divide-y divide-gray-200 dark:bg-[#11141a] dark:ring-white/10 dark:divide-gray-800">
-              {readiness.checks.map((check) => (
-                <ReadinessCheckRow
-                  key={check.label}
-                  label={check.label}
-                  value={check.value}
-                  detail={check.detail}
-                  tone={check.tone}
-                  action={check.action}
-                  actionLabel={check.actionLabel}
-                  actionChecked={pricingDiscountConfirmed}
-                  onActionChange={onPricingDiscountConfirmedChange}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-4 grid gap-3 lg:grid-cols-3">
-            <ReadinessList title="Reliable Signals" items={readiness.trustedSignals} empty="No strong reliability signals yet." />
-            <ReadinessList title="Gaps to Understand" items={readiness.attentionItems} empty="No major bill-detail gaps detected." />
-            <ReadinessList title="AE Next Steps" items={readiness.nextSteps} empty="Confirm assumptions before sharing externally." />
-          </div>
-
-          <div className="mt-3 border-t border-black/10 pt-3 text-xs text-gray-500 dark:border-white/10 dark:text-gray-400">
-            Parser confidence: {Math.round(parsed.parseConfidence * 100)}%. Readiness scores whether the bill has enough commercial detail to sell B2 against it.
-          </div>
-        </div>
-
-        {isGcp && gcpCostMix.length > 0 && (
-          <div className="mb-4 border-y border-gray-200 py-3 dark:border-gray-800">
-            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">GCS Cost Mix</p>
-            <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {gcpCostMix.map((item) => (
-                <div key={item.category} className="min-w-0">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">{item.label}</p>
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                      {addressable > 0 ? `${Math.round((item.total / addressable) * 100)}%` : '0%'}
-                    </p>
-                  </div>
-                  <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(item.total)}</p>
-                  <p className="mt-0.5 text-xs leading-4 text-gray-500 dark:text-gray-400">{item.detail}</p>
+      <Collapse open={expanded}>
+        <div className="border-t border-gray-200">
+          {(parserWarnings.length > 0 || commercialSignals.length > 0) && (
+            <div className="px-6 pt-4">
+              {parserWarnings.length > 0 && (
+                <div className="p-3 bg-amber-50 rounded-lg">
+                  {parserWarnings.map((w, i) => (
+                    <p key={i} className="text-sm text-amber-800">{w}</p>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-3">
-          {CATEGORY_ORDER.map((cat) => {
-            const data = categorySums.get(cat);
-            if (!data) return null;
-            return (
-              <div key={cat} className="flex items-center justify-between gap-2 p-3 rounded-lg bg-gray-50">
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${CATEGORY_COLORS[cat]}`}>
-                    {categoryLabels[cat]}
-                  </span>
-                  <span className="text-sm text-gray-500 shrink-0">{data.count} Items</span>
+              )}
+              {commercialSignals.length > 0 && (
+                <div className="mt-3 p-3 bg-sky-50 rounded-lg dark:bg-sky-950/20">
+                  {commercialSignals.map((signal, i) => (
+                    <p key={i} className="text-sm text-sky-900 dark:text-sky-200">{signal}</p>
+                  ))}
                 </div>
-                <span className="text-sm font-semibold text-gray-900 shrink-0">{formatCurrency(data.total)}</span>
-              </div>
-            );
-          })}
-        </div>
-
-        {parsed.discounts && parsed.discounts.length > 0 && (
-          <div className="mt-4 pt-4 border-t">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Named Discounts</h4>
-            {parsed.discounts.map((d, i) => (
-              <div key={i} className="flex justify-between text-sm py-1">
-                <span className="text-gray-600">{d.name}</span>
-                <span className="text-green-700 font-medium">-{formatCurrency(d.amountUsd)}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {parsed.accounts && parsed.accounts.length > 0 && !parsed.accountServiceBreakdowns && (
-          <div className="mt-4 pt-4 border-t">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">
-              Linked Accounts ({parsed.accounts.length})
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-              {parsed.accounts.slice(0, 10).map((acct) => (
-                <div key={acct.accountId} className="flex justify-between py-1">
-                  <span className="text-gray-600 truncate mr-2">{acct.accountName}</span>
-                  <span className="text-gray-900 font-medium shrink-0">{formatCurrency(acct.amountUsd)}</span>
-                </div>
-              ))}
-              {parsed.accounts.length > 10 && (
-                <p className="text-xs text-gray-400 col-span-2">
-                  +{parsed.accounts.length - 10} More Accounts
-                </p>
               )}
             </div>
+          )}
+          <div className="p-6">
+            <div className={`mb-5 rounded-lg border p-4 ${readinessStyle.panel}`}>
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <p className={`text-sm font-semibold ${readinessStyle.text}`}>Bill Savings Report Readiness</p>
+                  <p className="mt-1 max-w-4xl text-sm leading-6 text-gray-700 dark:text-gray-300">{readiness.summary}</p>
+                </div>
+                <div className="rounded-md bg-white/70 px-3 py-2 ring-1 ring-black/5 dark:bg-[#11141a] dark:ring-white/10">
+                  <p className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Readiness Score</p>
+                  <p className="mt-0.5 text-lg font-semibold text-gray-900 dark:text-gray-100">{readiness.score}/100</p>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">Readiness Checks</p>
+                <div className="mt-2 overflow-hidden rounded-md bg-white/70 ring-1 ring-black/5 divide-y divide-gray-200 dark:bg-[#11141a] dark:ring-white/10 dark:divide-gray-800">
+                  {readiness.checks.map((check) => (
+                    <ReadinessCheckRow
+                      key={check.label}
+                      label={check.label}
+                      value={check.value}
+                      detail={check.detail}
+                      tone={check.tone}
+                      action={check.action}
+                      actionLabel={check.actionLabel}
+                      actionChecked={pricingDiscountConfirmed}
+                      onActionChange={onPricingDiscountConfirmedChange}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                <ReadinessList title="Reliable Signals" items={readiness.trustedSignals} empty="No strong reliability signals yet." />
+                <ReadinessList title="Gaps to Understand" items={readiness.attentionItems} empty="No major bill-detail gaps detected." />
+                <ReadinessList title="AE Next Steps" items={readiness.nextSteps} empty="Confirm assumptions before sharing externally." />
+              </div>
+
+              <div className="mt-3 border-t border-black/10 pt-3 text-xs text-gray-500 dark:border-white/10 dark:text-gray-400">
+                Parser confidence: {Math.round(parsed.parseConfidence * 100)}%. Readiness scores whether the bill has enough commercial detail to sell B2 against it.
+              </div>
+            </div>
+
+            {isGcp && gcpCostMix.length > 0 && (
+              <div className="mb-4 border-y border-gray-200 py-3 dark:border-gray-800">
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">GCS Cost Mix</p>
+                <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {gcpCostMix.map((item) => (
+                    <div key={item.category} className="min-w-0">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">{item.label}</p>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                          {addressable > 0 ? `${Math.round((item.total / addressable) * 100)}%` : '0%'}
+                        </p>
+                      </div>
+                      <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(item.total)}</p>
+                      <p className="mt-0.5 text-xs leading-4 text-gray-500 dark:text-gray-400">{item.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {CATEGORY_ORDER.map((cat) => {
+                const data = categorySums.get(cat);
+                if (!data) return null;
+                return (
+                  <div key={cat} className="flex items-center justify-between gap-2 p-3 rounded-lg bg-gray-50">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${CATEGORY_COLORS[cat]}`}>
+                        {categoryLabels[cat]}
+                      </span>
+                      <span className="text-sm text-gray-500 shrink-0">{data.count} Items</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900 shrink-0">{formatCurrency(data.total)}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {parsed.discounts && parsed.discounts.length > 0 && (
+              <div className="mt-4 pt-4 border-t">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Named Discounts</h4>
+                {parsed.discounts.map((d, i) => (
+                  <div key={i} className="flex justify-between text-sm py-1">
+                    <span className="text-gray-600">{d.name}</span>
+                    <span className="text-green-700 font-medium">-{formatCurrency(d.amountUsd)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {parsed.accounts && parsed.accounts.length > 0 && !parsed.accountServiceBreakdowns && (
+              <div className="mt-4 pt-4 border-t">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">
+                  Linked Accounts ({parsed.accounts.length})
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                  {parsed.accounts.slice(0, 10).map((acct) => (
+                    <div key={acct.accountId} className="flex justify-between py-1">
+                      <span className="text-gray-600 truncate mr-2">{acct.accountName}</span>
+                      <span className="text-gray-900 font-medium shrink-0">{formatCurrency(acct.amountUsd)}</span>
+                    </div>
+                  ))}
+                  {parsed.accounts.length > 10 && (
+                    <p className="text-xs text-gray-400 col-span-2">
+                      +{parsed.accounts.length - 10} More Accounts
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      </Collapse>
     </div>
   );
 }
