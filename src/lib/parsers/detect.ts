@@ -1,8 +1,9 @@
 import Papa from 'papaparse';
 import type { ParserOptions, ParseResult } from './types';
 import { parseGcpCsv } from './gcp-csv';
-import { parseAwsDetailPdf } from './aws-detail-pdf';
-import { parseAwsSummaryPdf, isSummaryInvoice } from './aws-summary-pdf';
+import { parseAwsDetailPdfText } from './aws-detail-pdf';
+import { parseAwsSummaryPdfText, isSummaryInvoice } from './aws-summary-pdf';
+import { extractPdfText } from './pdf-text';
 import { parseAwsCostCsv } from './aws-cost-csv';
 import { parseAwsLongCsv } from './aws-long-csv';
 import { parseGenericTabularCsv } from './generic-csv';
@@ -162,19 +163,22 @@ function detectCsvProvider(text: string): ParseResult {
 }
 
 function detectPdfType(buffer: Buffer): ParseResult {
-  if (isSummaryInvoice(buffer)) {
-    const result = parseAwsSummaryPdf(buffer);
+  // Extract the PDF text ONCE and thread it through detection + both parsers.
+  const text = extractPdfText(buffer);
+
+  if (isSummaryInvoice(text)) {
+    const result = parseAwsSummaryPdfText(text);
     result.detectionSignals = [
       'PDF format: AWS summary invoice (no per-SKU detail)',
     ];
     return result;
   }
 
-  const result = parseAwsDetailPdf(buffer);
+  const result = parseAwsDetailPdfText(text);
 
   // If the detail parser found nothing, try summary parser as fallback
   if (result.parsedBill.lineItems.length === 0) {
-    const summaryResult = parseAwsSummaryPdf(buffer);
+    const summaryResult = parseAwsSummaryPdfText(text);
     if (summaryResult.parsedBill.lineItems.length > 0) {
       summaryResult.detectionSignals = [
         'PDF format: fell back to summary invoice parser (detail parser found 0 items)',

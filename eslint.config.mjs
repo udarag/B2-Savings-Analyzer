@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local-only build/sync artifacts that aren't source. ".next/**" matches only the top-level
+    // build dir, so nested build output inside ignored worktrees would otherwise flood the lint
+    // run with thousands of phantom errors.
+    ".claude/**",
+    "**/.next/**",
   ]),
 ]);
 
