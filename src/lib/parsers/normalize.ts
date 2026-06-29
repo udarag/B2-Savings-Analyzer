@@ -53,16 +53,34 @@ export function parseLocaleNumber(raw: string | null | undefined): number {
   let s = String(raw).trim();
   if (s === '') return 0;
 
+  // Accounting parentheses denote a negative value: (1,234.56) -> -1234.56
   let negative = false;
   if (/^\(.*\)$/.test(s)) {
     negative = true;
-    s = s.slice(1, -1);
+    s = s.slice(1, -1).trim();
   }
-  if (/[-−]/.test(s)) negative = true;
 
-  // Drop everything except digits and the two possible separators (removes currency symbols,
-  // regular/NBSP/narrow-NBSP spaces, and the already-captured sign/parentheses).
-  const digitsOnly = s.replace(/[^0-9.,]/g, '');
+  // Drop currency symbols and grouping spaces (incl. NBSP/narrow NBSP) but keep digits, the two
+  // separators, sign characters, and the exponent letter so scientific notation survives.
+  const cleaned = s.replace(/[^0-9.,+\-eE−]/g, '');
+  if (cleaned === '') return 0;
+
+  // Only a LEADING sign means negative — an embedded '-' (the exponent in "9.4e-7", or a hyphen
+  // in a leaked SKU/date cell like "2025-08-01") must not flip the sign.
+  if (/^[-−]/.test(cleaned)) negative = true;
+  const unsigned = cleaned.replace(/−/g, '-').replace(/^[+-]+/, '');
+
+  // A well-formed numeric token — including scientific notation and lone decimals — is parsed
+  // directly, exactly like the legacy parseFloat path. This keeps US-format input byte-identical
+  // and fixes sci-notation; only ambiguous grouped numbers fall through to separator resolution.
+  if (/^\d*\.?\d+([eE][+-]?\d+)?$/.test(unsigned)) {
+    const direct = parseFloat(unsigned);
+    return isNaN(direct) ? 0 : negative ? -direct : direct;
+  }
+
+  // Drop the exponent letters/sign now that we know this is a grouped number, leaving only digits
+  // and the two separators.
+  const digitsOnly = unsigned.replace(/[^0-9.,]/g, '');
   if (digitsOnly === '') return 0;
 
   const hasComma = digitsOnly.includes(',');

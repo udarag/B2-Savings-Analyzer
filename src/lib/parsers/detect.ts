@@ -11,19 +11,37 @@ import { detectProviderFromContent } from './provider-detection';
 // Trailing currency/unit marker on an AWS cost-export SKU column header, e.g. "($)" / " (USD)".
 const COST_COLUMN_SUFFIX = /\s*\((?:\$|usd|eur|gbp|€|£)?\)\s*$/i;
 
+// Decode CSV bytes, honoring a UTF-16 BOM (common from Excel/Sheets "Unicode Text" exports).
+// A UTF-16 file decoded as UTF-8 has a NUL between every character, which breaks all header
+// detection and yields a misleading "unknown format" error.
+function decodeCsv(content: Buffer | string): string {
+  if (typeof content === 'string') return content;
+  if (content.length >= 2) {
+    if (content[0] === 0xff && content[1] === 0xfe) return content.toString('utf16le');
+    if (content[0] === 0xfe && content[1] === 0xff) {
+      const swapped = Buffer.from(content); // copy so we don't mutate the caller's buffer
+      swapped.swap16();
+      return swapped.toString('utf16le');
+    }
+  }
+  return content.toString('utf-8');
+}
+
 export function detectAndParse(options: ParserOptions): ParseResult {
   const { filename, content, mimeType } = options;
   const lower = filename.toLowerCase();
 
   // CSV
   if (lower.endsWith('.csv') || mimeType === 'text/csv') {
-    const text = typeof content === 'string' ? content : content.toString('utf-8');
-    return detectCsvProvider(text);
+    return detectCsvProvider(decodeCsv(content));
   }
 
   // PDF
   if (lower.endsWith('.pdf') || mimeType === 'application/pdf') {
     const buffer = typeof content === 'string' ? Buffer.from(content) : Buffer.from(content);
+    if (buffer.subarray(0, 5).toString('latin1') !== '%PDF-') {
+      throw new Error('File does not look like a valid PDF (missing %PDF header).');
+    }
     return detectPdfType(buffer);
   }
 
@@ -38,14 +56,22 @@ export function detectAndParse(options: ParserOptions): ParseResult {
 function detectCsvProvider(text: string): ParseResult {
   const contentDetection = detectProviderFromContent(text);
 
+  // Run a chosen parser but fall through (rather than hard-fail) if it throws, so a near-miss of
+  // a known shape still gets a shot at the generic fallback instead of a 422.
+  const attempt = (parse: () => ParseResult, signal: string): ParseResult | null => {
+    try {
+      const result = parse();
+      result.detectionSignals = [signal, ...contentDetection.signals];
+      return result;
+    } catch {
+      return null;
+    }
+  };
+
   // GCP cost-table CSV has "Service description" and "SKU description" columns
   if (text.includes('Service description') && text.includes('SKU description') && text.includes('SKU ID')) {
-    const result = parseGcpCsv(text);
-    result.detectionSignals = [
-      'CSV format: GCP billing export (Service description, SKU description columns)',
-      ...contentDetection.signals,
-    ];
-    return result;
+    const r = attempt(() => parseGcpCsv(text), 'CSV format: GCP billing export (Service description, SKU description columns)');
+    if (r) return r;
   }
 
   // AWS CUR format
@@ -55,12 +81,8 @@ function detectCsvProvider(text: string): ParseResult {
 
   // AWS S3 usage-type cost CSV (pivoted: SKUs as columns, months as rows)
   if (text.includes('Usage type') && text.includes('Total costs($)') && text.includes('TimedStorage')) {
-    const result = parseAwsCostCsv(text);
-    result.detectionSignals = [
-      'CSV format: AWS S3 cost export (Usage type, Total costs columns, TimedStorage SKUs)',
-      ...contentDetection.signals,
-    ];
-    return result;
+    const r = attempt(() => parseAwsCostCsv(text), 'CSV format: AWS S3 cost export (Usage type, Total costs columns, TimedStorage SKUs)');
+    if (r) return r;
   }
 
   // Alias-based header detection for exports renamed/re-cased enough to miss the literal checks
@@ -74,17 +96,15 @@ function detectCsvProvider(text: string): ParseResult {
     resolveColumn(probeFields, ['SKU description', 'SKU desc']) &&
     resolveColumn(probeFields, ['Service description', 'Service'])
   ) {
-    const result = parseGcpCsv(text);
-    result.detectionSignals = ['CSV format: GCP billing export (header alias match)', ...contentDetection.signals];
-    return result;
+    const r = attempt(() => parseGcpCsv(text), 'CSV format: GCP billing export (header alias match)');
+    if (r) return r;
   }
   if (
     resolveColumn(probeFields, ['Usage type', 'UsageType']) &&
     probeFields.some((h) => COST_COLUMN_SUFFIX.test(h))
   ) {
-    const result = parseAwsCostCsv(text);
-    result.detectionSignals = ['CSV format: AWS cost export (header alias match)', ...contentDetection.signals];
-    return result;
+    const r = attempt(() => parseAwsCostCsv(text), 'CSV format: AWS cost export (header alias match)');
+    if (r) return r;
   }
 
   // Fallback: try content-based detection

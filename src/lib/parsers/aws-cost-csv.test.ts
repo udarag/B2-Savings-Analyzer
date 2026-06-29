@@ -35,6 +35,33 @@ describe('parseAwsCostCsv', () => {
     expect(result.parsedBill.warnings.some((w) => /could not extract/i.test(w))).toBe(false);
   });
 
+  it('flags a blocking warning when SKU columns do not reconcile to the reported period total', () => {
+    // Latest-month SKU columns sum to 100, but the month's own "Total costs($)" says 999.
+    const csv = [
+      'Usage type,USE1-TimedStorage-ByteHrs($),Total costs($)',
+      '2026-03-01,"100.00","999.00"',
+      'Usage type total,"100.00","999.00"',
+    ].join('\n');
+
+    const result = parseAwsCostCsv(csv);
+    expect(result.parsedBill.warnings.some((w) => /differs from the reported period total/i.test(w))).toBe(true);
+    expect(result.parsedBill.parseConfidence).toBeCloseTo(0.7, 5); // 0.85 baseline minus blocking penalty
+  });
+
+  it('picks the latest month by date even when rows are listed newest-first', () => {
+    const csv = [
+      'Usage type,USE1-TimedStorage-ByteHrs($),Total costs($)',
+      '2026-03-01,"300.00","300.00"',
+      '2026-01-01,"100.00","100.00"',
+      'Usage type total,"400.00","400.00"',
+    ].join('\n');
+
+    const result = parseAwsCostCsv(csv);
+    // March is the latest; its $300 should be used, not January's $100.
+    expect(result.parsedBill.grandTotal).toBeCloseTo(300, 2);
+    expect(result.billingPeriod).toBe('2026-01-01 to 2026-03-01');
+  });
+
   it('tolerates a space before the currency suffix and European-formatted amounts', () => {
     // " ($)" suffix, re-cased "Usage Type", semicolon delimiter, EU 1.234,56 amounts.
     const csv = [

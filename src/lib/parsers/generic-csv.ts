@@ -17,10 +17,18 @@ const GENERIC_BASELINE_CONFIDENCE = 0.4;
 const COST_HEADER = /cost|amount|charge|total|price|spend/i;
 const DESC_HEADER = /desc|sku|service|item|usage|product|meter|resource|name/i;
 
-// Signals that a table is plausibly a cloud-storage/billing export. The fallback refuses to
-// guess on anything without at least one of these (or a provider-specific signal).
-const BILLING_KEYWORDS =
-  /storage|egress|bucket|object|operation|request|retrieval|transfer|glacier|nearline|coldline|blob|bandwidth|download|cloud storage|\bs3\b|\bgcs\b|provisioned/i;
+// Tokens that signal a table is plausibly a cloud-storage/billing export. The fallback refuses to
+// guess unless it sees a provider signal OR at least two distinct tokens — a single incidental
+// keyword (e.g. one "transfer" cell) is not enough to start inventing line items.
+const BILLING_KEYWORD_TOKENS = [
+  'storage', 'egress', 'bucket', 'object', 'operation', 'request', 'retrieval', 'transfer',
+  'glacier', 'nearline', 'coldline', 'blob', 'bandwidth', 'download', 'provisioned', 's3', 'gcs',
+];
+
+function billingKeywordHits(text: string): number {
+  const lower = text.toLowerCase();
+  return BILLING_KEYWORD_TOKENS.filter((token) => lower.includes(token)).length;
+}
 
 function classifyGenericCategory(description: string): { category: Category; storageClass?: string } {
   const l = description.toLowerCase();
@@ -115,8 +123,8 @@ export function parseGenericTabularCsv(text: string): ParseResult | null {
   if (!descCol) return null;
 
   const detection = detectProviderFromContent(text);
-  const hasBillingSignal = detection.confidence > 0 || BILLING_KEYWORDS.test(text);
-  // Refuse to default to a provider for a table with no billing/storage/provider signal at all.
+  const hasBillingSignal = detection.confidence > 0 || billingKeywordHits(text) >= 2;
+  // Refuse to guess on a table with no provider signal and fewer than two billing keywords.
   if (!hasBillingSignal) return null;
 
   const provider = detection.confidence > 0 ? detection.provider : 'aws';

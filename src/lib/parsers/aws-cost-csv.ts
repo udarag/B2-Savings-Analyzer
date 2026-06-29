@@ -147,9 +147,11 @@ export function parseAwsCostCsv(text: string): ParseResult {
 
   const grandTotal = parseLocaleNumber((totalCol ? totalsRow[totalCol] : undefined) || '0');
 
-  const monthRows = rows.filter(
-    (r) => usageLabel(r) && usageLabel(r) !== 'Usage type total' && /^\d{4}-\d{2}-\d{2}$/.test(usageLabel(r)),
-  );
+  // Sort by the ISO date label (lexical == chronological) so "latest" is the most recent month
+  // regardless of row order — some exports list newest-first.
+  const monthRows = rows
+    .filter((r) => usageLabel(r) && usageLabel(r) !== 'Usage type total' && /^\d{4}-\d{2}-\d{2}$/.test(usageLabel(r)))
+    .sort((a, b) => usageLabel(a).localeCompare(usageLabel(b)));
 
   const latestMonth = monthRows.length > 0 ? monthRows[monthRows.length - 1] : totalsRow;
 
@@ -204,6 +206,7 @@ export function parseAwsCostCsv(text: string): ParseResult {
   }
 
   const parsedMonthlyTotal = lineItems.reduce((s, i) => s + i.costUsd, 0);
+  let hasBlockingWarning = false;
 
   // Advisory only — selecting the latest month is expected behavior, not a parse problem.
   if (monthRows.length > 1) {
@@ -211,6 +214,20 @@ export function parseAwsCostCsv(text: string): ParseResult {
       `CSV contains ${monthRows.length} months of data ($${grandTotal.toFixed(2)} total). ` +
       `Using latest month for analysis ($${parsedMonthlyTotal.toFixed(2)}).`,
     );
+  }
+
+  // Reconcile the summed SKU columns against the selected period's own "Total costs" cell — this
+  // is the backstop that catches a column-detection miss or a number-parse error (e.g. an
+  // unhandled value format) that would otherwise report full confidence with a silently wrong total.
+  const reportedSelectedTotal = monthRows.length > 0
+    ? parseLocaleNumber((totalCol ? latestMonth[totalCol] : undefined) || '0')
+    : grandTotal;
+  if (reportedSelectedTotal > 0 && Math.abs(parsedMonthlyTotal - reportedSelectedTotal) > reportedSelectedTotal * 0.02) {
+    warnings.push(
+      `Parsed SKU total ($${parsedMonthlyTotal.toFixed(2)}) differs from the reported period total ` +
+      `($${reportedSelectedTotal.toFixed(2)}) by more than 2%; some columns may not have parsed.`,
+    );
+    hasBlockingWarning = true;
   }
 
   // Recognized structure = at least one SKU cost column. Columns present but all zero (or all
@@ -232,7 +249,7 @@ export function parseAwsCostCsv(text: string): ParseResult {
     parsedBill: {
       lineItems,
       grandTotal: Math.round(parsedMonthlyTotal * 100) / 100,
-      parseConfidence: computeParseConfidence({ baseline: 0.85, outcome, hasBlockingWarning: false }),
+      parseConfidence: computeParseConfidence({ baseline: 0.85, outcome, hasBlockingWarning }),
       warnings,
     },
   };

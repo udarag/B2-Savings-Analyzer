@@ -340,6 +340,20 @@ export function parseAwsDetailPdf(pdfBuffer: Buffer): ParseResult {
     const payerMatch = text.match(/Payable by Account ID:\s*\{?(\d{12})/);
     if (payerMatch) accountId = payerMatch[1];
   }
+  // Column-layout fallback: real statements print "Account ID" as a column header with the value
+  // on the following line among other columns, so the abutting-value regex above misses it.
+  if (!accountId) {
+    const headerIdx = lines.findIndex((l) => /Account\s*ID/i.test(l));
+    if (headerIdx >= 0) {
+      for (let j = headerIdx; j < Math.min(headerIdx + 3, lines.length); j++) {
+        const m = lines[j].match(/\b(\d{12})\b/);
+        if (m) {
+          accountId = m[1];
+          break;
+        }
+      }
+    }
+  }
 
   // Extract grand total
   const totalMatch = text.match(/Grand\s+total:\s*USD\s+([\d,.]+)/i);
