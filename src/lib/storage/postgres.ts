@@ -1,3 +1,7 @@
+// Postgres-backed storage backend, used when DATABASE_URL is configured. Mirrors the
+// B2 object-store backend in storage.ts; the two are kept interchangeable so an analysis
+// behaves the same whichever backend is active. Each entity is one row keyed by
+// (user_email, id/analysis_id); writes upsert so re-saving is idempotent.
 import { dbQuery, dbTransaction, isDatabaseStorageEnabled } from '@/lib/db/client';
 import type { Analysis, ModelConfig, ParsedBill } from '@/types/analysis';
 import type { ReportSnapshot } from '@/types/model';
@@ -5,12 +9,16 @@ import type { UserProfile } from './storage';
 
 export { isDatabaseStorageEnabled };
 
+/** Pointer to a stored upload's bytes (which live in B2), resolved from the DB upload record. */
 export interface DatabaseStoredUploadReference {
   filename: string;
   objectKey: string;
   contentType: string;
 }
 
+// A jsonb column may come back already-parsed (object) or as a raw string depending on
+// driver/column config, so every payload field is typed `T | string` and run through
+// parseJson() rather than assumed to be one or the other.
 interface JsonRow<T> {
   body?: T | string;
   meta?: T | string;
@@ -26,6 +34,7 @@ interface UploadRow {
   content_type: string | null;
 }
 
+/** Lists a user's analyses (metadata only), newest first. */
 export async function listDatabaseAnalyses(userEmail: string): Promise<Analysis[]> {
   const { rows } = await dbQuery<JsonRow<Analysis>>(
     `
@@ -54,6 +63,11 @@ export async function getDatabaseAnalysisMeta(userEmail: string, id: string): Pr
   return rows[0] ? parseJson<Analysis>(rows[0].meta) : null;
 }
 
+/**
+ * Upserts an analysis's metadata. created_at/updated_at are driven by the caller's
+ * meta object (not now()) so the app stays the source of truth for those timestamps
+ * and re-saving doesn't reset the original creation time.
+ */
 export async function saveDatabaseAnalysisMeta(userEmail: string, id: string, meta: Analysis): Promise<void> {
   await dbQuery(
     `
@@ -135,6 +149,10 @@ export async function saveDatabaseModelConfig(userEmail: string, id: string, con
   );
 }
 
+/**
+ * Records (or refreshes) the DB pointer to an uploaded bill. The bytes live in B2 at
+ * objectKey; this row just indexes them. createdAt is optional and defaults to now().
+ */
 export async function recordDatabaseUpload(options: {
   userEmail: string;
   analysisId: string;
@@ -175,6 +193,7 @@ export async function recordDatabaseUpload(options: {
   );
 }
 
+/** Returns the pointer to the most recently uploaded bill for an analysis, or null if none. */
 export async function getLatestDatabaseUpload(
   userEmail: string,
   id: string,
@@ -196,6 +215,7 @@ export async function getLatestDatabaseUpload(
   return {
     filename: row.filename,
     objectKey: row.object_key,
+    // Older rows may have a null content_type; fall back to a guess from the extension.
     contentType: row.content_type || guessContentType(row.filename),
   };
 }
@@ -210,6 +230,7 @@ export async function deleteDatabaseAnalysis(userEmail: string, id: string): Pro
   );
 }
 
+/** Upserts a report snapshot (the immutable rendered state behind a customer report/PDF). */
 export async function saveDatabaseReportSnapshot(
   userEmail: string,
   id: string,
@@ -300,12 +321,16 @@ export async function saveDatabaseUserProfile(userEmail: string, profile: UserPr
   );
 }
 
+// Normalizes a jsonb payload that the driver may return either as a raw string or
+// as an already-parsed object (see JsonRow). undefined means the SELECT didn't include
+// the column — a programming error, so we throw rather than return a bogus value.
 function parseJson<T>(value: T | string | undefined): T {
   if (typeof value === 'string') return JSON.parse(value) as T;
   if (value === undefined) throw new Error('Database row did not include expected JSON payload.');
   return value;
 }
 
+// Last-resort content type from the filename extension, for upload rows missing one.
 function guessContentType(filename: string): string {
   const lower = filename.toLowerCase();
   if (lower.endsWith('.pdf')) return 'application/pdf';

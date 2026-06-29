@@ -9,6 +9,7 @@ import { formatCurrency, formatNumber } from '../shared/FormatCurrency';
 
 type StorageUnit = 'GB' | 'TB' | 'PB';
 const UNIT_ORDER: StorageUnit[] = ['GB', 'TB', 'PB'];
+// Decimal (SI) divisors, not binary GiB/TiB — cloud bills price storage on a 1000-based GB.
 const UNIT_DIVISOR: Record<StorageUnit, number> = { GB: 1, TB: 1_000, PB: 1_000_000 };
 
 function formatStorage(gb: number, unit: StorageUnit): string {
@@ -17,6 +18,8 @@ function formatStorage(gb: number, unit: StorageUnit): string {
   return value.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 });
 }
 
+// Re-express a $/TB-month rate in the currently selected unit so the "Effective" column tracks the
+// GB/TB/PB toggle (e.g. $6/TB shows as $0.006/GB).
 function formatRatePerUnit(perTb: number, unit: StorageUnit): string {
   const perGb = perTb / 1_000;
   const value = perGb * UNIT_DIVISOR[unit];
@@ -41,6 +44,7 @@ function UnitToggle({ label, onClick }: { label: string; onClick: () => void }) 
 interface TierInventoryProps {
   tiers: TierInventoryRow[];
   onToggle: (tierId: string, migrateToB2: boolean) => void;
+  /** Optional per-account spend rows, keyed by storage class, used to show account allocation within a tier. */
   accountBreakdowns?: AccountServiceBreakdown[];
 }
 
@@ -57,6 +61,9 @@ interface TierGroup {
   accounts: AccountServiceBreakdown[];
 }
 
+// Display order from hottest to coldest tier, so the inventory reads top-down by access temperature.
+// Equivalent classes across providers (AWS / GCP / Azure) deliberately share a rank — e.g. AWS
+// Standard, Azure Hot-*, and the S3 summary row all rank 0 — so cross-provider bills interleave sensibly.
 const TIER_ORDER: Record<string, number> = {
   Standard: 0,
   'S3 (Summary)': 0,
@@ -90,10 +97,13 @@ const TIER_ORDER: Record<string, number> = {
   'Archive-RA-GRS': 13,
 };
 
+// Unknown/unmapped tiers sort after every known one (rank 50) but before any explicit higher rank.
 function tierRank(storageClass: string): number {
   return TIER_ORDER[storageClass] ?? 50;
 }
 
+// Coarse hot/warm/cool badge for the tier. "Warm" keys off the infrequent-access markers each provider
+// uses (AWS *-IA, GCP Nearline, Azure Cool); anything colder than that falls through to "Cooler".
 function tierTemperature(storageClass: string): { label: string; className: string } {
   if (isHotStorageTier(storageClass)) {
     return { label: 'Hot', className: 'bg-red-50 text-red-700 ring-red-100' };
@@ -104,6 +114,8 @@ function tierTemperature(storageClass: string): { label: string; className: stri
   return { label: 'Cooler', className: 'bg-blue-50 text-blue-700 ring-blue-100' };
 }
 
+// Blended $/TB-month across all regions in a group: weight by GB so the group rate reflects where the
+// data actually sits, rather than a flat average of per-region rates.
 function weightedRatePerTb(group: TierGroup): number {
   return group.gbStored > 0 ? (group.monthlyStorageCost / group.gbStored) * 1000 : 0;
 }
@@ -143,6 +155,8 @@ function GroupCheckbox({
     <input
       type="checkbox"
       checked={checked}
+      // `indeterminate` is a DOM-only property with no React prop, so it must be set imperatively
+      // via the ref. Drives the dash state when only some regions in a group are selected.
       ref={(input) => {
         if (input) input.indeterminate = indeterminate;
       }}
@@ -153,10 +167,17 @@ function GroupCheckbox({
   );
 }
 
+/**
+ * Storage-tier inventory table: the AE's primary control for choosing which tiers migrate to B2.
+ * Rows group per-region tiers by storage class (sorted hot→cold), with an expandable region-level and
+ * per-account breakdown. Toggling a tier feeds the cost model; this component only presents and selects.
+ */
 export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInventoryProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [storageUnit, setStorageUnit] = useState<StorageUnit>('TB');
 
+  // Totals span the whole bill, but savings nets out only what migrates: tiers left behind keep their
+  // current cost (totalRemaining) and so contribute nothing to the savings figure in the footer.
   const totalCurrent = tiers.reduce((s, t) => s + t.totalTrueCost, 0);
   const totalB2 = tiers.filter((t) => t.migrateToB2).reduce((s, t) => s + t.modeledB2Cost, 0);
   const totalRemaining = tiers.filter((t) => !t.migrateToB2).reduce((s, t) => s + t.totalTrueCost, 0);
@@ -193,6 +214,7 @@ export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInvent
       };
     })
     .sort((a, b) => {
+      // Primary order is access temperature (hot→cold); within an equal rank, costliest tier first.
       const rankDiff = tierRank(a.storageClass) - tierRank(b.storageClass);
       if (rankDiff !== 0) return rankDiff;
       return b.totalTrueCost - a.totalTrueCost;
@@ -217,6 +239,8 @@ export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInvent
     });
   };
 
+  // Apply a group-level checkbox to all its region rows, skipping rows already in the target state so
+  // we don't fire redundant onToggle calls (each is a separate state update upstream).
   const toggleGroup = (group: TierGroup, migrateToB2: boolean) => {
     for (const row of group.rows) {
       if (row.migrateToB2 !== migrateToB2) {
@@ -390,6 +414,9 @@ export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInvent
                               Account Allocation
                             </div>
                             {group.accounts.map((acct) => {
+                              // Bills give per-account dollars but not per-account GB, so apportion the
+                              // group's stored bytes by each account's share of spend. Approximate (and
+                              // labeled "~") since it assumes a uniform per-GB rate across accounts.
                               const estimatedGb = group.monthlyStorageCost > 0
                                 ? Math.round((acct.costUsd / group.monthlyStorageCost) * group.gbStored)
                                 : 0;
@@ -423,6 +450,8 @@ export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInvent
                 </span>
               </td>
               <td className="px-4 py-3 text-right text-green-700">
+                {/* Savings = current spend on migrated tiers minus their B2 cost. Subtracting
+                    totalRemaining strips out tiers left behind, which keep their current cost. */}
                 {formatCurrency(totalCurrent - totalB2 - totalRemaining)}
               </td>
             </tr>

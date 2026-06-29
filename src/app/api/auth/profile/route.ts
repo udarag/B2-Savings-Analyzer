@@ -3,6 +3,7 @@ import { getSessionUser } from '@/lib/auth/session';
 import { getStorageErrorDetails, getUserProfile, saveUserProfile } from '@/lib/storage/storage';
 import type { UserProfile } from '@/lib/storage/storage';
 
+/** Loads the signed-in AE's saved profile (display name / title) used to personalize generated reports. */
 export async function GET() {
   const userEmail = await getSessionUser();
   if (!userEmail) {
@@ -14,6 +15,8 @@ export async function GET() {
     profile = await getUserProfile(userEmail);
   } catch (error) {
     console.error('Failed to load user profile:', error);
+    // Storage being down should not block the app: return 200 with a soft profileUnavailable flag
+    // so the UI degrades to defaults rather than treating it as an auth/validation failure.
     const details = getStorageErrorDetails(error);
     return NextResponse.json({
       profile: null,
@@ -26,6 +29,7 @@ export async function GET() {
   return NextResponse.json({ profile });
 }
 
+/** Updates the signed-in AE's profile; merges the patch over existing values so omitted fields are preserved. */
 export async function PATCH(req: Request) {
   const userEmail = await getSessionUser();
   if (!userEmail) {
@@ -35,6 +39,8 @@ export async function PATCH(req: Request) {
   const body = await req.json() as Partial<UserProfile>;
 
   try {
+    // Read-modify-write: only fields present in the patch override stored values; the rest fall back
+    // to what's already saved (displayName further falls back to '' since it's required).
     const existing = await getUserProfile(userEmail);
     const updated: UserProfile = {
       displayName: body.displayName ?? existing?.displayName ?? '',

@@ -4,10 +4,16 @@ import { useState, useCallback } from 'react';
 
 interface FileUploadProps {
   analysisId: string;
+  /** Receives the parse response from the upload endpoint on success. */
   onUploadComplete: (data: unknown) => void;
   onError: (error: string) => void;
 }
 
+/**
+ * Drag-and-drop / click-to-pick uploader for a customer's cloud bill (AWS or GCP,
+ * as PDF/CSV/Excel). Validates the file type client-side, then POSTs it to the
+ * analysis upload endpoint where the server-side parser does the real work.
+ */
 export function FileUpload({ analysisId, onUploadComplete, onError }: FileUploadProps) {
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -23,6 +29,9 @@ export function FileUpload({ analysisId, onUploadComplete, onError }: FileUpload
     const validExts = ['.pdf', '.csv', '.xlsx', '.xls'];
     const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
 
+    // Accept on EITHER a known MIME type or a known extension: browsers and OSes
+    // report inconsistent (or empty) MIME types for CSV/Excel, so the extension
+    // is the reliable fallback. Server-side detection is the real gate.
     if (!validTypes.includes(file.type) && !validExts.includes(ext)) {
       onError('Unsupported file type. Please upload a PDF, CSV, or Excel file.');
       return;

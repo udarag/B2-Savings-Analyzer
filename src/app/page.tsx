@@ -34,6 +34,7 @@ function formatGb(gb: number): string {
   return `${Math.round(gb)} GB`;
 }
 
+// Storage is tracked in GB internally; display as TB (÷1000, decimal not binary) for portfolio rollups.
 function formatModeledStorage(gb: number): string {
   return `${(gb / 1000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} TB`;
 }
@@ -53,6 +54,10 @@ const PIPELINE_FILTERS: Array<{ id: PipelineFilter; label: string }> = [
 ];
 const OPPORTUNITIES_LOAD_TIMEOUT_MS = 60000;
 
+// Estimate total contract value of the B2 *storage* line over the deal term (not full-bill TCV):
+// sum each month's projected stored TB times the modeled B2 $/TB-month. Growth is compounded per
+// month via the same projection helper the dashboard uses, so the list-view number matches the
+// dashboard's. Defaults (12-month term, snapshot price) cover snapshots saved before those fields existed.
 function estimateStorageTcv(snapshot: SummarySnapshot): number {
   const termMonths = Math.max(1, Math.round(snapshot.termMonths || 12));
   const pricePerTb = Math.max(0, snapshot.b2PricePerTb || 0);
@@ -125,6 +130,10 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString();
 }
 
+/**
+ * Opportunities list: the AE's landing page. Loads all analyses, shows portfolio rollups (scoped to
+ * open deals), and supports filtering/sorting, pipeline status changes, delete, and a bulk reparse.
+ */
 export default function HomePage() {
   useDocumentTitle('Opportunities');
 
@@ -169,6 +178,8 @@ export default function HomePage() {
     }
     return tcvById;
   }, [analyses]);
+  // Rollups intentionally cover only OPEN opportunities, so closed-won/lost deals don't inflate the
+  // pipeline metrics shown at the top of the page.
   const portfolioStats = useMemo(() => {
     const reportReady = openAnalyses.filter((analysis) => analysis.latestSnapshot).length;
     const potentialTcv = openAnalyses.reduce((sum, analysis) => (
@@ -238,6 +249,9 @@ export default function HomePage() {
         const aborted = error instanceof DOMException && error.name === 'AbortError';
         const currentRequest = requestId === loadRequestIdRef.current;
 
+        // Suppress the error banner when (a) a newer load has superseded this one, or (b) the abort
+        // was a deliberate unmount/refresh rather than the timeout, or (c) the timeout fired but we
+        // already have data to keep showing. Only a timeout with nothing on screen surfaces an error.
         if (!currentRequest || (aborted && (!didTimeout() || analysesRef.current.length > 0))) {
           return;
         }
@@ -255,6 +269,8 @@ export default function HomePage() {
       })
   ), []);
 
+  // Kick off a load guarded by a monotonic request id (so a stale in-flight response can't clobber a
+  // newer one) and a timeout that aborts the fetch. Returns a cleanup that cancels both.
   const beginAnalysesFetch = useCallback(() => {
     const requestId = loadRequestIdRef.current + 1;
     loadRequestIdRef.current = requestId;
@@ -298,6 +314,8 @@ export default function HomePage() {
     }
   };
 
+  // Optimistically move the card to its new pipeline status (and reorder by the bumped updatedAt),
+  // then roll the whole list back to its prior state if the PATCH fails.
   const handlePipelineStatusChange = async (id: string, pipelineStatus: PipelineStatus) => {
     const previousAnalyses = analyses;
     const updatedAt = new Date().toISOString();
@@ -324,6 +342,8 @@ export default function HomePage() {
     }
   };
 
+  // Bulk-reparse every stored bill and regenerate snapshots with the current analysis logic — used
+  // after the model/parsers change so existing opportunities pick up the new numbers in one click.
   const handleRerunAll = async () => {
     setRerunning(true);
     setRerunMessage(null);
@@ -514,6 +534,8 @@ export default function HomePage() {
             </div>
           )}
           {filteredAnalyses.map((a) => {
+            // Readiness is independent of pipeline status: a deal progresses draft (no bill) →
+            // active (bill uploaded, not yet modeled) → reported (has a saved snapshot).
             const readinessStatus = a.latestSnapshot ? 'reported' : a.hasBill ? 'active' : 'draft';
             const pipelineStatus = getPipelineStatus(a);
             const storageTcv = analysisTcvById.get(a.id) ?? 0;
@@ -688,6 +710,7 @@ export default function HomePage() {
   );
 }
 
+/** A single portfolio rollup tile with an animated value. `tone="pipeline"` tints revenue figures. */
 function PortfolioMetric({
   label,
   value,
@@ -714,6 +737,7 @@ function PortfolioMetric({
   );
 }
 
+/** Icon-only row action (won/lost/reopen/trash) with a hover tooltip. `label` doubles as aria-label. */
 function OpportunityActionButton({
   label,
   children,

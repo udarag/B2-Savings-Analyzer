@@ -1,11 +1,18 @@
+// Builds and delivers the email sign-in (magic link) message via Resend.
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createMagicLinkToken } from './tokens';
 import { getAppBaseUrl } from '@/lib/app-base-url';
 
+// The logo is attached inline and referenced by this Content-ID (cid:) from the HTML, so it
+// renders in clients that block remote images.
 const BACKBLAZE_LOGO_CONTENT_ID = 'backblaze-logo-white';
 const BACKBLAZE_EMAIL_LOGO_FILENAME = 'backblaze-logo-white-email.png';
 
+/**
+ * Email a sign-in link to `email`. With RESEND_API_KEY set it sends via Resend; without one
+ * (local dev) it prints the link to the console so you can still sign in without a mail provider.
+ */
 export async function sendMagicLink(email: string): Promise<void> {
   const url = await createMagicLinkUrl(email);
 
@@ -36,6 +43,7 @@ export async function sendMagicLink(email: string): Promise<void> {
   }
 }
 
+/** Build the absolute verify URL carrying a fresh magic-link token; baseUrl is overridable for tests. */
 export async function createMagicLinkUrl(email: string, baseUrl = getAppBaseUrl()): Promise<string> {
   const token = await createMagicLinkToken(email);
   return `${baseUrl}/api/auth/verify?token=${token}`;
@@ -45,6 +53,8 @@ function getEmailSender(): string {
   const configuredSender = process.env.EMAIL_FROM?.trim();
   if (configuredSender) return configuredSender;
 
+  // In production a verified sender domain is mandatory; the resend.dev shared sandbox address
+  // only works for dev/testing and would be rejected (or land in spam) for real recipients.
   if (process.env.NODE_ENV === 'production') {
     throw new Error('EMAIL_FROM is required in production and must use a verified Resend domain.');
   }
@@ -63,6 +73,7 @@ function buildMagicLinkHtml(url: string): string {
     <title>Sign in to B2 Savings Analyzer</title>
   </head>
   <body style="margin:0; padding:0; background:#f4f6fb; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; color:#111827;">
+    <!-- Hidden preheader: the snippet inboxes show next to the subject; kept off-screen in the body. -->
     <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent;">
       Your secure B2 Savings Analyzer sign-in link expires in 15 minutes.
     </div>
@@ -142,6 +153,8 @@ async function getBackblazeLogoAttachment() {
   };
 }
 
+// Escape the token-bearing URL before interpolating it into the HTML email so a crafted token
+// can't break out of the attribute and inject markup.
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')

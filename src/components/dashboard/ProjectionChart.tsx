@@ -7,13 +7,20 @@ import { formatCurrency } from '../shared/FormatCurrency';
 import { AnimatedMetricValue } from '../shared/AnimatedMetricValue';
 
 interface ProjectionChartProps {
+  /** One entry per projected month; assumed ordered month 1..termMonths. */
   points: ProjectionPoint[];
   termMonths: number;
   onTermChange: (months: number) => void;
+  /** Human-readable growth assumption (e.g. "10%/yr growth"), shown in the subheader. */
   growthLabel: string;
+  /** Label for the customer's existing provider line; falls back to a generic name when unknown. */
   providerLabel?: string;
 }
 
+/**
+ * Multi-year cost-projection chart: customer-provider vs. B2 monthly cost over the term, with a
+ * cumulative-savings area and break-even marker. Term length is selectable (12/24/36/60 months).
+ */
 export function ProjectionChart({
   points,
   termMonths,
@@ -21,6 +28,7 @@ export function ProjectionChart({
   growthLabel,
   providerLabel = 'Current Provider',
 }: ProjectionChartProps) {
+  // Break-even = first month cumulative savings turn non-negative (repaid the one-time migration cost).
   const breakEven = points.find((p) => p.cumulativeSavings >= 0);
   const finalPoint = points[points.length - 1];
   const totalSavings = finalPoint?.cumulativeSavings ?? 0;
@@ -95,6 +103,8 @@ export function ProjectionChart({
                 tickLine={false}
                 tickFormatter={formatMonthTick}
               />
+              {/* Two independent scales: monthly cost on the left, cumulative savings on the right,
+                  so the cost lines and the savings area each fill the plot rather than one dwarfing the other. */}
               <YAxis
                 yAxisId="cost"
                 axisLine={false}
@@ -206,6 +216,7 @@ function formatShortTerm(months: number): string {
   return `${months / 12}Y`;
 }
 
+// Pick a readable set of month ticks scaled to the term so longer projections don't crowd the axis.
 function getXAxisTicks(termMonths: number): number[] {
   if (termMonths <= 12) return [1, 3, 6, 9, 12].filter((month) => month <= termMonths);
   if (termMonths <= 24) return [1, 6, 12, 18, 24].filter((month) => month <= termMonths);
@@ -236,6 +247,7 @@ function formatCompactCurrency(value: number): string {
   return formatCurrency(value, 0);
 }
 
+// Display storage in TB on the app's decimal basis (1 TB = 1000 GB, not GiB).
 function formatStorage(gb: number): string {
   const tb = gb / 1000;
   return `${tb.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} TB`;

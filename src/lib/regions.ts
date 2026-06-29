@@ -1,3 +1,9 @@
+/**
+ * Maps a region identifier to a friendly place name for display. Keys span all providers' native
+ * conventions in one table — AWS ids (us-east-1), GCP location labels (US Multi-region), and Azure
+ * names (eastus) — plus bare GCP city names that show up on some bills, so lookups must tolerate any
+ * of those shapes.
+ */
 export const REGION_LOCATION_LABELS: Record<string, string> = {
   'us-east-1': 'N. Virginia',
   'us-east-2': 'Ohio',
@@ -72,11 +78,13 @@ export const REGION_LOCATION_LABELS: Record<string, string> = {
   eastasia: 'East Asia',
 };
 
+/** Friendly place name for a region id, or null when the region is missing or unrecognized. */
 export function getRegionLocation(region?: string): string | null {
   if (!region) return null;
   return REGION_LOCATION_LABELS[region] || null;
 }
 
+/** Display string combining a region id with its place name ("us-east-1 · N. Virginia"); degrades gracefully when either is absent. */
 export function formatRegionWithLocation(region?: string): string {
   if (!region) return 'Region unknown';
   const location = getRegionLocation(region);

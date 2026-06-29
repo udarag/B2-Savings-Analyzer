@@ -13,6 +13,11 @@ import {
   NO_STORAGE_SCOPE_WARNING,
 } from './confidence';
 
+/**
+ * Classify a GCP Cloud Storage SKU from its free-text description (GCP exports have no structured
+ * usage-type code like AWS). Order matters: storage is matched before operations/retrieval, and
+ * "worldwide" egress is checked before regional substrings to avoid mislabeling (see below).
+ */
 function classifySku(skuDesc: string): {
   category: Category;
   subcategory?: string;
@@ -91,6 +96,8 @@ function classifySku(skuDesc: string): {
   return { category: 'out-of-scope' };
 }
 
+// Infer the cold storage class for retrieval/early-delete SKUs, which name the class they apply to.
+// Left undefined for Standard, which has no retrieval/early-delete charges.
 function getColdStorageClass(lowerSkuDesc: string): string | undefined {
   if (lowerSkuDesc.includes('archive')) return 'Archive';
   if (lowerSkuDesc.includes('coldline')) return 'Coldline';
@@ -98,6 +105,9 @@ function getColdStorageClass(lowerSkuDesc: string): string | undefined {
   return undefined;
 }
 
+// Derive the storage location from the SKU description. A multi/dual-region result matters
+// downstream: matching that durability on B2 needs a second-region copy (~2x storage), so the cost
+// model must not treat it as a single-region migration.
 function extractRegion(skuDesc: string): string {
   for (const [locationKey] of Object.entries(GCP_LOCATION_TYPES)) {
     if (skuDesc.includes(locationKey)) return locationKey;
@@ -114,6 +124,12 @@ function extractRegion(skuDesc: string): string {
   return 'Unknown';
 }
 
+/**
+ * Parse a GCP billing/cost-table CSV (one row per SKU). Prefers the per-row "Subtotal" over "Cost"
+ * as the charged amount, reconciles against the export's own trailer total, and flags list-price
+ * spend when a present Savings-programs column is all zeros. Usage is normalized to the app's
+ * GB-month basis (GCP storage rates are quoted per GiB-month) via normalizeUnit.
+ */
 export function parseGcpCsv(content: string): ParseResult {
   const parsed = Papa.parse<Record<string, string>>(content, {
     header: true,
@@ -156,11 +172,15 @@ export function parseGcpCsv(content: string): ParseResult {
     if (isTrailerRow(row)) continue;
     if (!skuDesc) continue;
 
+    // Subtotal is the post-rounding charged amount and the figure the trailer total sums to; fall
+    // back to the raw "Cost" column only when the export omits Subtotal.
     const costUsd = parseLocaleNumber(cell(row, cols.subtotal) || cell(row, cols.cost) || '0');
     const usageAmount = parseLocaleNumber(cell(row, cols.usageAmount) || '0');
     const usageUnit = cell(row, cols.usageUnit);
     const savingsProgram = parseLocaleNumber(cell(row, cols.savings) || '0');
 
+    // Convert GCP's reported unit (e.g. gibibyte-month) to the app's GB-month basis; multiplier
+    // carries the GiB→GB factor so unitRate below comes out as $/GB-month, comparable to B2.
     const { unit: normalizedUnit, multiplier } = normalizeUnit(usageUnit);
     const normalizedUsage = usageAmount * multiplier;
 

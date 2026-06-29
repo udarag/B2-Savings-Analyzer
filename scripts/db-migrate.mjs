@@ -1,3 +1,5 @@
+// Applies pending SQL migrations from migrations/ in filename order, tracking what's been run in a
+// schema_migrations table so reruns are idempotent. Each migration runs in its own transaction.
 import nextEnv from '@next/env';
 import { promises as fs, readFileSync } from 'fs';
 import path from 'path';
@@ -5,6 +7,7 @@ import { Pool } from 'pg';
 
 const { loadEnvConfig } = nextEnv;
 
+// Load .env(.local) the same way Next does so DATABASE_URL etc. resolve identically to the app.
 loadEnvConfig(process.cwd());
 
 const migrationsDir = path.join(process.cwd(), 'migrations');
@@ -30,6 +33,8 @@ async function runMigrations() {
       )
     `);
 
+    // Lexicographic sort defines apply order, so migration files must be named to sort
+    // chronologically (e.g. a numeric/date prefix). The version key is just the filename sans .sql.
     const files = (await fs.readdir(migrationsDir))
       .filter((file) => file.endsWith('.sql'))
       .sort();
@@ -48,6 +53,8 @@ async function runMigrations() {
 
       const sql = await fs.readFile(path.join(migrationsDir, file), 'utf8');
       console.log(`Applying ${file}`);
+      // Run the migration and record its version atomically: a failure rolls back both so the
+      // migration is never marked applied without its schema change actually landing.
       await client.query('BEGIN');
       try {
         await client.query(sql);
@@ -75,6 +82,9 @@ function parsePoolMax(value) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 5;
 }
 
+// SSL is opt-in: undefined (the pg default of no TLS) unless DATABASE_SSL is explicitly truthy.
+// When on, certs are verified by default; only a deliberate "false" disables verification (e.g.
+// a managed DB with a self-signed chain). An optional CA file pins a custom root.
 function getSslConfig() {
   const flag = process.env.DATABASE_SSL?.trim().toLowerCase();
   if (!flag || flag === 'false' || flag === '0' || flag === 'off') return undefined;

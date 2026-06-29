@@ -15,11 +15,18 @@ import {
   NO_STORAGE_SCOPE_WARNING,
 } from './confidence';
 
+/**
+ * Map an AWS S3 usage-type/SKU to our spend category (storage, egress, operations, etc.).
+ * Shared by both the pivoted cost-CSV and the row-per-line-item (CUR) parsers so classification
+ * stays consistent across formats. The order of checks matters: more specific suffixes must be
+ * tested before the broad `Requests-`/fallthrough buckets at the end.
+ */
 export function classifySku(sku: string): {
   category: Category;
   subcategory?: string;
   storageClass?: string;
 } {
+  // Strip the leading region/AZ code (e.g. "USE1-", "EUW2-") so the suffix can be matched directly.
   const suffix = sku.replace(/^[A-Z]{2,4}\d?-/, '');
 
   if (suffix in AWS_SKU_STORAGE_CLASS) {
@@ -100,19 +107,27 @@ export function classifySku(sku: string): {
   return { category: 'operations', subcategory: 'Other S3' };
 }
 
+/**
+ * Back out approximate stored GB-month from a line's cost when the export gives cost but no usage
+ * quantity, by dividing by the AWS list rate ($/GB-month) for that storage class + region. Returns
+ * undefined when no rate is known, so the caller can leave usage blank rather than fabricate it.
+ */
 export function estimateGbFromCost(costUsd: number, storageClass: string, region: string): number | undefined {
   const rate = getListRate('aws', storageClass, region);
   if (!rate || rate <= 0) return undefined;
   return costUsd / rate;
 }
 
+/** Resolve the AWS region for a SKU from its leading region code, with sensible fallbacks. */
 export function extractRegion(sku: string): string {
   const match = sku.match(/^([A-Z]{2,4}\d?)-/);
   if (!match) {
+    // SKUs with no region prefix (cross-region transfer, global services) aren't tied to one region.
     if (sku.startsWith('Global-') || sku.startsWith('DataTransfer-')) return 'global';
     return 'unknown';
   }
   const code = match[1];
+  // Legacy bare "EU" prefix predates AWS's numbered codes; it maps to eu-west-1 (Ireland).
   if (code === 'EU') return AWS_REGION_CODES['EUW1'] || 'eu-west-1';
   return AWS_REGION_CODES[code] || code.toLowerCase();
 }
@@ -120,6 +135,11 @@ export function extractRegion(sku: string): string {
 // Trailing currency/unit marker on a cost column header, e.g. "($)", " ($)", "(USD)", "(€)".
 const CURRENCY_SUFFIX = /\s*\((?:\$|usd|eur|gbp|€|£)?\)\s*$/i;
 
+/**
+ * Parse AWS's pivoted S3 cost export — SKUs as currency-suffixed columns, one row per month plus a
+ * "Usage type total" totals row. Models the latest month (most recent ISO-dated row) since that is
+ * the representative monthly spend; multi-month files surface an advisory, not an error.
+ */
 export function parseAwsCostCsv(text: string): ParseResult {
   const parsed = Papa.parse(text, { header: true, skipEmptyLines: true, transformHeader });
   const rows = parsed.data as Record<string, string>[];

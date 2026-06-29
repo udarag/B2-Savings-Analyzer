@@ -12,15 +12,23 @@ import {
 } from './ThemeController';
 
 interface UserProfile {
+  /** AE name shown on customer-facing reports. */
   displayName: string;
+  /** AE title (e.g. "Solutions Engineer") shown on reports; optional. */
   title?: string;
 }
 
 interface ProfileResponse {
   profile?: UserProfile | null;
+  /** Set when the profile store couldn't be reached, so we suppress the first-login setup prompt rather than nagging on a transient error. */
   profileUnavailable?: boolean;
 }
 
+/**
+ * Header account control: avatar/name button opening a panel with the dark-mode
+ * toggle, profile editing, and sign-out, plus a first-login profile setup prompt.
+ * Renders nothing until the signed-in email is known.
+ */
 export function UserMenu() {
   const [email, setEmail] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -48,6 +56,9 @@ export function UserMenu() {
         setNameInput(prof.profile.displayName);
         setTitleInput(prof.profile.title || '');
       } else if (userEmail && !prof.profileUnavailable) {
+        // Signed in but no profile yet: prompt setup so reports get a real AE
+        // name. Pre-fill a guess from the email local part. Skip on a fetch
+        // failure (profileUnavailable) to avoid prompting on a transient error.
         setShowSetup(true);
         setNameInput(emailToDisplayName(userEmail));
       }
@@ -124,6 +135,7 @@ export function UserMenu() {
     setThemePreference(nextTheme);
   }
 
+  // Fall back to the email local part for the header label before a profile exists.
   const displayName = profile?.displayName || email.split('@')[0];
   const initials = displayName.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   const darkMode = theme === 'dark';
@@ -298,6 +310,9 @@ export function UserMenu() {
   );
 }
 
+// Best-effort human name from an email local part: split on common separators
+// and title-case each part (e.g. "jane.doe" -> "Jane Doe"). Just a pre-fill the
+// AE can correct, not authoritative.
 function emailToDisplayName(email: string): string {
   const local = email.split('@')[0];
   return local

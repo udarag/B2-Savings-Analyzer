@@ -1,5 +1,12 @@
 import type { ComputeSignal, EgressProfileMetric, EgressProfileSuggestion, ParsedLineItem } from '@/types/analysis';
 
+// Infers a starting egress profile for the model from what the bill can actually prove. A cloud
+// bill never states "GB sent from EC2 to S3", so this deliberately distinguishes hard volume
+// evidence (internet data-transfer-out, which we pre-fill) from mere activity signals (request
+// counts, retrieval, compute services) that justify pre-*selecting* a workflow shape but NOT
+// pre-filling any GB. The conservative default is to leave compute-to-B2 GB at 0 until the customer
+// supplies telemetry, so the savings case never rests on an invented transfer volume.
+
 interface Aggregate {
   costUsd: number;
   gb: number;
@@ -10,6 +17,9 @@ interface QuantityAggregate {
   quantity: number;
 }
 
+/** Build a suggested egress profile (metrics, evidence, assumptions, open questions, and a
+ *  pre-filled config) from a parsed bill plus detected compute signals. Returns undefined when the
+ *  bill shows no compute and no egress at all, so there's nothing to suggest. */
 export function buildEgressProfileSuggestion(
   lineItems: ParsedLineItem[],
   computeSignals: ComputeSignal[] = [],
@@ -17,6 +27,8 @@ export function buildEgressProfileSuggestion(
   const internet = aggregateItems(lineItems, (item) =>
     item.category === 'egress' && item.subcategory === 'Internet Egress'
   );
+  // Count only the OUT side of region-to-region transfer; the matching In-Bytes row is the same
+  // bytes billed on the receiving region and would double the volume if also summed.
   const interRegionOut = aggregateItems(lineItems, (item) =>
     item.category === 'egress' &&
     item.subcategory === 'Inter-region Transfer' &&
@@ -32,6 +44,8 @@ export function buildEgressProfileSuggestion(
   const s3Retrieval = aggregateItems(lineItems, (item) =>
     isS3Service(item.service) && item.category === 'retrieval'
   );
+  // S3-managed data movement (Select/Tables/Vectors). Evidence of an active read/processing path,
+  // but it stays inside AWS — it is NOT EC2-to-S3 transfer and must not pre-fill compute-to-B2 GB.
   const s3ManagedProcessing = aggregateItems(lineItems, (item) => {
     const text = `${item.sku} ${item.description}`.toLowerCase();
     return isS3Service(item.service) && (
@@ -60,6 +74,8 @@ export function buildEgressProfileSuggestion(
   const hasCompute = computeSignals.some((signal) =>
     ['compute', 'container', 'serverless', 'ai-ml', 'analytics', 'database'].includes(signal.signalType)
   );
+  // Narrower than hasCompute: signals that imply an active data pipeline moving bytes to/from
+  // storage. Bare VMs/databases alone don't suggest a compute-to-storage workflow.
   const hasDataPipelineSignals = computeSignals.some((signal) =>
     ['container', 'serverless', 'ai-ml', 'analytics'].includes(signal.signalType)
   );
@@ -68,10 +84,14 @@ export function buildEgressProfileSuggestion(
     item.description.toLowerCase().includes('cloudfront')
   );
   const likelyStorageReadOrProcessingGb = s3Retrieval.gb + s3ManagedProcessing.gb + analyticsScan.gb;
+  // Thresholds are intentionally coarse "is there real activity here" gates, not precise volumes:
+  // 100k requests/mo or >100 GB read/processed clears noise from incidental usage. A workflow is
+  // only inferred when a data-pipeline service AND read/write activity both appear.
   const hasWriteRequestSignal = writeRequests.quantity >= 100_000;
   const hasReadOrProcessingSignal = likelyStorageReadOrProcessingGb > 100 || readRequests.quantity >= 100_000;
   const likelyComputeStorageWorkflow = hasDataPipelineSignals && (hasWriteRequestSignal || hasReadOrProcessingSignal);
 
+  // Nothing to suggest if the bill has neither compute nor any outbound transfer volume.
   if (!hasCompute && internet.gb <= 0 && interRegionOut.gb <= 0) {
     return undefined;
   }
@@ -169,6 +189,8 @@ export function buildEgressProfileSuggestion(
   ];
 
   return {
+    // Highest confidence we offer is 'medium', and only when there's hard egress volume alongside
+    // compute — the bill can never fully prove a compute-to-storage transfer on its own.
     confidence: internet.gb > 0 && hasCompute ? 'medium' : 'low',
     summary: buildSummary(
       internet,
@@ -183,7 +205,9 @@ export function buildEgressProfileSuggestion(
       hyperscalerComputeFeedsStorage: likelyComputeStorageWorkflow,
       computeStaysInHyperscaler: likelyComputeStorageWorkflow,
       computeMovingToPartner: false,
+      // Always 0: the bill can't prove compute-to-B2 transfer volume, so we never pre-fill it.
       gbPerMonthHyperscalerToB2: 0,
+      // Pre-filled only from billable internet data-transfer-out, the one volume we can trust.
       gbPerMonthServedToUsers: Math.round(internet.gb * 100) / 100,
       usesPartnerCdn: false,
     },
@@ -261,6 +285,9 @@ function isRequestUnit(unit?: string): boolean {
   return unit?.toLowerCase() === 'requests' || unit?.toLowerCase() === 'request';
 }
 
+// Normalize a usage quantity to GB. Only byte-volume units convert; anything else (requests, hours,
+// objects) returns 0 so non-volume rows never leak into GB totals. Uses the app's decimal basis
+// (1 TB = 1000 GB), matching the rest of the model rather than binary GiB.
 function quantityToGb(quantity: number, unit?: string): number {
   const normalized = unit?.toLowerCase();
   if (normalized === 'gb') return quantity;

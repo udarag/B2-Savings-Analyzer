@@ -1,10 +1,15 @@
 import type { PricingFreshnessWarning as PricingFreshnessWarningData } from '@/lib/pricing/freshness';
 
 interface PricingFreshnessWarningProps {
+  /** Null when the cached B2/provider pricing is current; renders nothing in that case. */
   warning: PricingFreshnessWarningData | null;
   className?: string;
 }
 
+/**
+ * Internal banner shown when the pricing data backing the model may be stale. Surfaces the last
+ * verified/refresh dates so an AE knows whether to trust the numbers; never shown to customers.
+ */
 export function PricingFreshnessWarning({ warning, className = '' }: PricingFreshnessWarningProps) {
   if (!warning) return null;
 

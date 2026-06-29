@@ -4,13 +4,20 @@ import { useState, useRef, useEffect } from 'react';
 
 interface InlineEditTextProps {
   value: string;
+  /** Fired only on a real, non-empty change (trimmed value differs from current). */
   onSave: (value: string) => void;
   placeholder?: string;
   className?: string;
+  /** Render a textarea (Cmd/Ctrl+Enter to save) instead of a single-line input (Enter to save). */
   multiline?: boolean;
   maxLength?: number;
 }
 
+/**
+ * Click-to-edit text used for AE-editable report fields (customer name, notes, etc.).
+ * Displays the value with a hover pencil; clicking swaps to an input/textarea that
+ * commits on blur or Enter and discards on Escape.
+ */
 export function InlineEditText({
   value,
   onSave,
@@ -31,6 +38,8 @@ export function InlineEditText({
   }, [editing]);
 
   const save = () => {
+    // Skip onSave when the draft is empty or unchanged, so blurring a field the
+    // AE only glanced at doesn't clobber it with a blank or fire a no-op write.
     const trimmed = draft.trim();
     if (trimmed && trimmed !== value) onSave(trimmed);
     setEditing(false);

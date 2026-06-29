@@ -17,6 +17,7 @@ interface TransactionAnalysisProps {
   lineItems: ParsedLineItem[];
 }
 
+/** A leaf transaction type within a class — one or more bill lines collapsed by subcategory/storage class/signal. */
 interface TransactionTypeGroup {
   id: string;
   label: string;
@@ -31,12 +32,14 @@ interface TransactionTypeGroup {
   usageUnit?: string;
 }
 
+/** A top-level B2 transaction class with its source-bill total and the leaf types rolled up under it. */
 interface TransactionClassGroup {
   id: B2TransactionClassId;
   label: string;
   description: string;
   b2Mapping: string;
   b2CostLabel: string;
+  /** How savings are counted: 'free' rows are eliminated on B2; 'usage-based'/'review' need AE judgment, not auto-credit. */
   savingsMode: 'free' | 'usage-based' | 'review';
   cost: number;
   count: number;
@@ -44,9 +47,15 @@ interface TransactionClassGroup {
   children: TransactionTypeGroup[];
 }
 
+// Render/rollup order for the classes. Fixed rather than data-driven so the table reads writes → reads →
+// listing → combined → usage-based → other regardless of what the bill happens to contain.
 const CLASS_ORDER: B2TransactionClassId[] = ['class-a', 'class-b', 'class-c', 'class-a-c', 'class-d', 'other'];
 const CALLOUT_GRID_CLASS = 'grid gap-3 md:grid-cols-[minmax(0,1fr)_170px_240px_260px] md:items-center';
 
+// Static copy for each B2 transaction class: how source charges map onto B2 and whether that mapping is
+// free. B2 standard transactions (Class A writes, B reads, C listing) are free, which is the whole point
+// of this view; only Class D and unmappable "other" charges carry over. `class-a-c` is the special case
+// where a hyperscaler bills PUT and LIST together in one line that spans free A and C classes on B2.
 const CLASS_DEFINITIONS: Record<B2TransactionClassId, Omit<TransactionClassGroup, 'cost' | 'count' | 'usageQuantity' | 'children'>> = {
   'class-a': {
     id: 'class-a',
@@ -119,6 +128,8 @@ function groupLabel(subcategory: string): string {
   }
 }
 
+// Roll the bill's operations line items up into B2 transaction classes and the leaf types beneath them.
+// Classes are pre-seeded in CLASS_ORDER so ordering is stable, then empty ones are dropped at the end.
 function buildTransactionGroups(lineItems: ParsedLineItem[]): TransactionClassGroup[] {
   const classMap = new Map<B2TransactionClassId, TransactionClassGroup>();
 
@@ -136,11 +147,17 @@ function buildTransactionGroups(lineItems: ParsedLineItem[]): TransactionClassGr
   const opsItems = lineItems.filter((item) => item.category === 'operations');
 
   for (const item of opsItems) {
+    // Review-only subcategories are forced into 'other' so they never get auto-credited as B2 savings,
+    // even if they would otherwise classify as a free A/B/C transaction.
     const classId = isReviewOnlyOperation(item.subcategory) ? 'other' : classifyTransactionClass(item);
     const subcategory = item.subcategory || 'Other';
+    // PUT/GET signals only mean something for the free standard classes; suppress them for class-d and
+    // 'other' so the callouts don't imply those charges vanish on B2.
     const putRelated = classId !== 'other' && classId !== 'class-d' && isPutRelatedTransaction(item);
     const getRelated = classId !== 'other' && classId !== 'class-d' && isGetRelatedTransaction(item);
     const coldTierAccess = isColdTierAccessItem(item);
+    // Composite key that defines a leaf row: lines sharing class, subcategory, storage class, and all
+    // three signal flags collapse into one TransactionTypeGroup so the detail table stays readable.
     const childKey = `${classId}|${subcategory}|${item.storageClass || ''}|${putRelated ? 'put-related' : 'standard'}|${getRelated ? 'get-related' : 'standard'}|${coldTierAccess ? 'cold-access' : 'standard'}`;
     const usageQuantity = item.usageQuantity || 0;
     const parent = classMap.get(classId);
@@ -174,6 +191,7 @@ function buildTransactionGroups(lineItems: ParsedLineItem[]): TransactionClassGr
     }
   }
 
+  // Emit only classes that actually accrued cost, preserving CLASS_ORDER; leaf rows sort costliest-first.
   return CLASS_ORDER
     .map((id) => classMap.get(id))
     .filter((group): group is TransactionClassGroup => group !== undefined && group.cost > 0)
@@ -191,6 +209,11 @@ function buildTransactionGroups(lineItems: ParsedLineItem[]): TransactionClassGr
     }));
 }
 
+/**
+ * Maps the customer's current API/operation charges onto B2 transaction classes to show how much of that
+ * spend B2 eliminates (standard A/B/C transactions are free). Renders nothing when the bill has no
+ * operations charges. Charges that don't map cleanly are surfaced as "Review", never auto-credited.
+ */
 export function TransactionAnalysis({ lineItems }: TransactionAnalysisProps) {
   const groups = buildTransactionGroups(lineItems);
   const [expanded, setExpanded] = useState<Set<B2TransactionClassId>>(new Set());
@@ -200,6 +223,8 @@ export function TransactionAnalysis({ lineItems }: TransactionAnalysisProps) {
   const actionCosts = getOperationActionCostSummary(lineItems);
   const { putRelated, getRelated, coldTierAccess } = actionCosts;
 
+  // Split the headline number from the caveat: only 'free' classes count as eliminated savings;
+  // usage-based and review classes are tallied separately and flagged for the AE rather than promised.
   const mappedSavings = groups
     .filter((group) => group.savingsMode === 'free')
     .reduce((sum, group) => sum + group.cost, 0);

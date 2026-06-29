@@ -1,5 +1,11 @@
 'use client';
 
+// AE-facing form that captures the egress assumptions the cost model can't read off the bill:
+// whether hyperscaler compute sits in the storage path (creating new B2<->hyperscaler transfer),
+// how much data is served to end users, and whether a partner CDN/compute alliance applies.
+// Volumes are entered in TB but the EgressConfig and cost model work in GB, so inputs are scaled
+// by 1000 on the way in and divided by 1000 for display throughout this file.
+
 import { useState } from 'react';
 import Image from 'next/image';
 import type { ComputeSignal, EgressConfig, EgressProfileSuggestion } from '@/types/analysis';
@@ -12,11 +18,15 @@ interface EgressQuestionnaireProps {
   config: EgressConfig;
   onChange: (config: EgressConfig) => void;
   partnerComputeScenario?: PartnerComputeScenario | null;
+  /** B2's free egress headroom in GB (3x migrated storage); overage above it is what the model charges for. */
   b2FreeAllowanceGb?: number;
+  /** Compute/delivery services spotted in the bill, surfaced as clues to help the AE answer these questions. */
   computeSignals?: ComputeSignal[];
+  /** Bill-derived starting point for the egress config, which the AE can apply and then refine. */
   egressProfileSuggestion?: EgressProfileSuggestion;
 }
 
+/** Egress-assumptions questionnaire that drives the cross-cloud and B2 outbound costs in the savings model. */
 export function EgressQuestionnaire({
   config,
   onChange,
@@ -25,6 +35,9 @@ export function EgressQuestionnaire({
   computeSignals = [],
   egressProfileSuggestion,
 }: EgressQuestionnaireProps) {
+  // Two mutually exclusive shapes once compute exists: a pipeline that writes processed data back
+  // to storage (new chargeable hyperscaler->B2 egress), versus a training/inference workflow where
+  // results stay in compute and the only B2 traffic is reads pulled out for each run.
   const hasPipelineStorageWrite = config.hasHyperscalerCompute && config.hyperscalerComputeFeedsStorage;
   const isTrainingWorkflow = config.hasHyperscalerCompute && !config.hyperscalerComputeFeedsStorage;
 
@@ -133,6 +146,9 @@ export function EgressQuestionnaire({
                   type="radio"
                   name="hyperscalerComputeFeedsStorage"
                   checked={!config.hyperscalerComputeFeedsStorage}
+                  // Switching to the training workflow clears the writeback/partner fields and
+                  // repoints served-to-users at the derived training read volume; CDN is forced off
+                  // because training reads land in compute, not a CDN.
                   onChange={() => onChange({
                     ...config,
                     hyperscalerComputeFeedsStorage: false,
@@ -193,6 +209,9 @@ export function EgressQuestionnaire({
               </div>
             </label>
 
+            {/* Three states: the partner write path is baked into the primary model; it's quantified
+                as optional upside (volume known but path not yet committed); or we still need the
+                volume before either egress drag or upside can be sized. */}
             {config.computeMovingToPartner ? (
               <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-400/30 dark:bg-green-950/30">
                 <p className="text-sm font-semibold text-green-900 dark:text-green-200">Partner compute modeled in primary savings</p>
@@ -272,6 +291,8 @@ export function EgressQuestionnaire({
   );
 }
 
+// Surfaces the bill-derived egress guess: a plain-language summary up top with a one-click apply,
+// plus expandable detail separating what came from the bill from what the AE still needs to confirm.
 function EgressStarterProfilePanel({
   suggestion,
   onApply,
@@ -352,6 +373,8 @@ function EgressStarterProfilePanel({
   );
 }
 
+// Turns the raw suggestion into one AE-readable sentence, deliberately hedged ("appears to",
+// "starting point") so the inferred numbers are never presented to the AE as fact.
 function buildAeFriendlySuggestionSummary(suggestion: EgressProfileSuggestion): string {
   const servedGb = suggestion.suggestedConfig.gbPerMonthServedToUsers || 0;
   const foundCompute = Boolean(suggestion.suggestedConfig.hasHyperscalerCompute);
@@ -387,6 +410,8 @@ function StarterProfileList({ title, items }: { title: string; items: string[] }
   );
 }
 
+// Read-only panel listing compute/delivery services found in the bill as hints for answering the
+// questionnaire. Caps the detail view at 6 signals to keep it scannable, noting how many are hidden.
 function ComputeSignalsPanel({ signals }: { signals: ComputeSignal[] }) {
   const [expanded, setExpanded] = useState(false);
   const visibleSignals = signals.slice(0, 6);
@@ -512,6 +537,8 @@ type FlowStep =
   | { kind: 'node'; node: FlowNode; sequence: number }
   | { kind: 'edge'; edge: FlowEdge; sequence: number };
 
+// Live node-and-edge diagram of the data path implied by the current answers, so the AE can see at
+// a glance which transfers are free vs. chargeable before trusting the savings number.
 function DataFlowPreview({
   config,
   partnerComputeScenario,
@@ -564,6 +591,9 @@ function DataFlowPreview({
   );
 }
 
+// Keeps the diagram centered regardless of how many steps a case has. Shorter flows (3 nodes /
+// 2 edges = 5 steps) get narrow spacer tracks on each side so they don't stretch full width;
+// the 7-step flow fills the grid edge to edge.
 function getFlowGridLayout(stepCount: number): { templateColumns: string; startColumn: number } {
   const nodeTrack = 'minmax(0,1.25fr)';
   const edgeTrack = 'minmax(0,0.58fr)';
@@ -750,6 +780,10 @@ function FlowEdgePill({
   );
 }
 
+// Builds the node/edge diagram for the current answers. The branch order matters: it mirrors the
+// form's gating (no compute -> direct write; compute without writeback -> training reads; compute
+// with writeback -> partner alliance vs. chargeable hyperscaler egress) so the picture always
+// matches the case the cost model is scoring.
 function getDataFlow(config: EgressConfig, partnerComputeScenario?: PartnerComputeScenario | null, b2FreeAllowanceGb = 0): DataFlow {
   const animationKey = getFlowAnimationKey(config);
   const b2OutboundEdge = getB2OutboundEdge(config, b2FreeAllowanceGb);
@@ -852,6 +886,8 @@ function getDataFlow(config: EgressConfig, partnerComputeScenario?: PartnerCompu
   };
 }
 
+// The B2 -> users edge: free over a partner CDN, free while served volume stays under the 3x
+// allowance, otherwise priced at the B2 overage rate. Same allowance logic the cost model applies.
 function getB2OutboundEdge(config: EgressConfig, b2FreeAllowanceGb: number): FlowEdge {
   if (config.usesPartnerCdn) {
     return { label: 'Partner CDN', detail: 'Free egress', tone: 'free' };
@@ -893,6 +929,7 @@ function getFlowAnimationKey(config: EgressConfig): string {
   ].join('-');
 }
 
+// Staggered reveal of each step; clamped at 6 because that's the last delay class defined in CSS.
 function flowDelayClass(sequence: number): string {
   return `egress-flow-delay-${Math.min(sequence, 6)}`;
 }
@@ -942,6 +979,8 @@ function formatVolume(value: number): string {
   return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)));
 }
 
+// Shows served-to-users volume against the 3x free allowance and, when over, the resulting overage
+// (which the cost model already folds into the savings summary, hence the reassurance in the copy).
 function B2OutboundAllowanceSummary({
   monthlyEgressGb,
   b2FreeAllowanceGb,
@@ -952,6 +991,7 @@ function B2OutboundAllowanceSummary({
   const monthlyEgressTb = monthlyEgressGb / 1000;
   const freeAllowanceTb = b2FreeAllowanceGb / 1000;
   const overageTb = Math.max(0, monthlyEgressTb - freeAllowanceTb);
+  // Display math is in TB; convert the overage back to GB because the cost helper is priced per GB.
   const overageCost = getB2EgressOverageCost(overageTb * 1000);
   const hasEgressInput = monthlyEgressGb > 0;
 
@@ -994,6 +1034,9 @@ function B2OutboundAllowanceSummary({
   );
 }
 
+// Inputs for the training/inference case: runs/month and data/run, from which monthly B2 read
+// egress is derived and checked against the free allowance. The derived volume is mirrored into
+// gbPerMonthServedToUsers so the rest of the model treats training reads as the served volume.
 function TrainingEgressInputs({
   config,
   b2FreeAllowanceGb,
@@ -1083,6 +1126,8 @@ function TrainingEgressInputs({
   );
 }
 
+// Reusable numeric field for the volume inputs. Parses to a non-negative number and reports it via
+// onValueChange; the unit shown is cosmetic, so callers handle any TB<->GB scaling themselves.
 function VolumeInput({
   label,
   unit,
@@ -1098,6 +1143,8 @@ function VolumeInput({
   helperText: string;
   onValueChange: (value: number) => void;
 }) {
+  // While focused, show the user's raw keystrokes (the draft) so in-progress entries like "1." or
+  // "0.0" aren't clobbered by reformatting; on blur, fall back to the canonical formatted value.
   const [focused, setFocused] = useState(false);
   const [draft, setDraft] = useState(() => formatVolumeInput(value));
   const displayValue = focused ? draft : formatVolumeInput(value);
@@ -1149,10 +1196,14 @@ function formatVolumeInput(value: number): string {
   return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(3)));
 }
 
+// Training reads the full dataset once per run, so monthly B2 egress = runs x data/run (TB->GB).
+// Negatives are floored to 0 to keep half-entered inputs from producing nonsense volumes.
 function getTrainingEgressGb(trainingRunsPerMonth: number, trainingDataTbPerRun: number): number {
   return Math.max(0, trainingRunsPerMonth) * Math.max(0, trainingDataTbPerRun) * 1000;
 }
 
+// Prices only the GB above the free allowance at B2's per-GB overage rate; the allowance itself
+// is netted out by the caller. Mirrors the cost model so the diagram and savings summary agree.
 function getB2EgressOverageCost(overageGb: number): number {
   return Math.max(0, overageGb) * b2Pricing.egress.overagePerGb;
 }

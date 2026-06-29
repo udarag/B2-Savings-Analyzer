@@ -3,6 +3,14 @@ import type { CostModelResult, EliminatedFee, B2CostBreakdown, CostBreakdown } f
 import { computeEgressModel } from './egress-model';
 import b2Pricing from '../pricing/b2.json';
 
+// Core economics: turn the parsed bill plus the AE's tier selection into the current-vs-B2
+// comparison the dashboard and customer report render. Savings are scoped to the migrated
+// (addressable storage-scope) tiers only — this is not a full cloud-bill replacement model.
+
+/**
+ * Build the full current-vs-B2 cost comparison for the tiers the AE chose to migrate.
+ * @param b2PricePerTb Negotiated B2 storage rate in $/TB-month (internally divided by 1000 to GB-month).
+ */
 export function computeCostModel(
   lineItems: ParsedLineItem[],
   tiers: TierInventoryRow[],
@@ -192,10 +200,15 @@ export function computeCostModel(
   };
 }
 
+/**
+ * Today's monthly spend within the addressable storage scope — the sum of fees migration
+ * eliminates, which by construction is exactly the storage-scope slice of the current bill.
+ */
 export function getStorageScopeCurrentMonthly(result: Pick<CostModelResult, 'eliminatedFees'>): number {
   return round2(result.eliminatedFees.reduce((sum, fee) => sum + fee.amountUsd, 0));
 }
 
+/** The B2 replacement spend for that same storage scope: B2 charges plus any new costs migration introduces. */
 export function getStorageScopeReplacementMonthly(result: Pick<CostModelResult, 'b2Monthly' | 'newCosts'>): number {
   return round2(
     result.b2Monthly.total + result.newCosts.reduce((sum, cost) => sum + cost.amountUsd, 0),

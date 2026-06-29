@@ -12,6 +12,8 @@ import {
   NO_STORAGE_SCOPE_WARNING,
 } from './confidence';
 
+// Deliberately low ceiling: a guessed-shape parse should never read as a confident extraction, so
+// the AE knows to eyeball the categorization before quoting from it.
 const GENERIC_BASELINE_CONFIDENCE = 0.4;
 
 const COST_HEADER = /cost|amount|charge|total|price|spend/i;
@@ -30,6 +32,9 @@ function billingKeywordHits(text: string): number {
   return BILLING_KEYWORD_TOKENS.filter((token) => lower.includes(token)).length;
 }
 
+// Best-effort category from free text alone (no provider SKU schema to lean on). Order matters:
+// retrieval/egress/operations are matched before the broad storage bucket so a "data transfer"
+// or "request" line isn't swept into storage.
 function classifyGenericCategory(description: string): { category: Category; storageClass?: string } {
   const l = description.toLowerCase();
   if (/retriev|restore|early delet/.test(l)) return { category: 'retrieval' };
@@ -50,6 +55,9 @@ function positiveNumericCount(rows: Record<string, string>[], col: string): numb
   return count;
 }
 
+// Count cells that are genuine text (not numbers, currency, or punctuation), used to find the
+// description column. The regex rejects anything made up purely of digits/currency/separators so a
+// formatted-number column doesn't masquerade as descriptive text.
 function nonNumericTextCount(rows: Record<string, string>[], col: string): number {
   let count = 0;
   for (const row of rows) {
@@ -127,6 +135,8 @@ export function parseGenericTabularCsv(text: string): ParseResult | null {
   // Refuse to guess on a table with no provider signal and fewer than two billing keywords.
   if (!hasBillingSignal) return null;
 
+  // Default to 'aws' only as a label when content detection is silent — at this point the table
+  // already cleared the billing-signal gate, and the provider tag is informational, not pricing.
   const provider = detection.confidence > 0 ? detection.provider : 'aws';
   const lineItems: ParsedLineItem[] = [];
   let totalSpend = 0;

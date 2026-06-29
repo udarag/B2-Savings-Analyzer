@@ -1,19 +1,31 @@
+// 1 GiB = 1.073741824 GB. GCP's storage API rates and quantities are billed in gibibyte(-month)
+// units; the cost model works in decimal GB(-month), so everything must be normalized to GB before
+// it can be compared against B2's $/TB pricing. Forgetting this conversion overstates GCP volume
+// (and thus savings) by ~7.4%.
 const GIB_TO_GB = 1.073741824;
 
+/** Convert a binary-gibibyte quantity to decimal gigabytes (the app's storage basis). */
 export function gibibytesToGigabytes(gib: number): number {
   return gib * GIB_TO_GB;
 }
 
+/** Convert a GiB-month quantity to the app's GB-month basis (used for GCP storage line items). */
 export function gibibyteMonthsToGbMonths(gibMonths: number): number {
   return gibMonths * GIB_TO_GB;
 }
 
+/**
+ * Parse a US-format number that may carry thousands commas/spaces (e.g. "1,234 567").
+ * Assumes the US convention (comma = thousands); use `parseLocaleNumber` for locale-ambiguous CSV
+ * cells. Returns 0 rather than NaN so a bad cell can't poison downstream sums.
+ */
 export function parseFormattedNumber(s: string): number {
   const cleaned = s.replace(/,/g, '').replace(/\s/g, '');
   const num = parseFloat(cleaned);
   return isNaN(num) ? 0 : num;
 }
 
+/** Parse a USD money string, stripping the currency markers ($/USD) and grouping. Returns 0 on failure. */
 export function parseUsdAmount(s: string): number {
   const cleaned = s.replace(/[USD$,\s]/g, '');
   const num = parseFloat(cleaned);
@@ -105,8 +117,15 @@ export function parseLocaleNumber(raw: string | null | undefined): number {
   return negative ? -num : num;
 }
 
+/** Canonical unit a raw billing-line unit string maps to once normalized. */
 export type NormalizedUnit = 'GB-Mo' | 'GB' | 'requests' | 'objects' | 'tags' | 'other';
 
+/**
+ * Map a provider's raw unit string to a canonical unit plus the multiplier needed to convert the
+ * raw quantity into that unit's basis. Gibibyte inputs carry the `GIB_TO_GB` multiplier so callers
+ * land on decimal GB(-month); already-decimal and non-byte units pass through with multiplier 1.
+ * Unknown units fall back to `other` so they're carried but excluded from storage math.
+ */
 export function normalizeUnit(rawUnit: string): { unit: NormalizedUnit; multiplier: number } {
   const lower = rawUnit.toLowerCase().trim();
 

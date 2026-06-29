@@ -1,5 +1,8 @@
 'use client';
 
+// Customer-facing savings report (the screen an AE shares and the source the PDF route renders).
+// Everything here is shown to the prospect, so it must stay free of internal warnings, env-var
+// names, and file paths — only the modeled storage-scope economics and published B2 pricing.
 import { Suspense, useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -25,12 +28,15 @@ import { formatCurrency, formatNumber, formatPercent } from '@/components/shared
 import { useDocumentTitle } from '@/components/shared/useDocumentTitle';
 import b2Pricing from '@/lib/pricing/b2.json';
 
+// Account-executive attribution shown in the report footer ("Prepared by ...").
 interface AEInfo {
   name: string;
   email: string;
   title?: string;
 }
 
+// Derive a presentable name from an email local part when no display name is configured,
+// e.g. "jane.doe@" -> "Jane Doe". Best-effort only; a real display name always wins.
 function emailToDisplayName(email: string): string {
   const local = email.split('@')[0];
   return local
@@ -39,6 +45,8 @@ function emailToDisplayName(email: string): string {
     .join(' ');
 }
 
+// Render an internal GB amount as TB for the customer. The app's basis is GB (1 TB = 1000 GB,
+// decimal — not GiB), so this is a plain /1000 with no binary conversion.
 function formatReportStorage(gb: number): string {
   const tb = gb / 1000;
   return `${tb.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} TB`;
@@ -48,6 +56,8 @@ function formatEffectiveRate(perTb: number): string {
   return `${formatCurrency(perTb)}/TB`;
 }
 
+// Join non-null phrases into a grammatical, Oxford-comma list for inline prose. Nulls are dropped
+// so callers can pass conditionally-present clauses without pre-filtering.
 function formatPhraseList(items: Array<string | null>): string {
   const phrases = items.filter((item): item is string => Boolean(item));
   if (phrases.length === 0) return '';
@@ -65,6 +75,8 @@ function formatProviderName(provider: Analysis['provider']): string {
   }
 }
 
+// Prefer a years label for whole-year terms ("3 Years"), otherwise fall back to months so odd
+// projection terms (e.g. 18 months) still read sensibly.
 function formatTermLabel(months: number): string {
   const years = months / 12;
   if (Number.isInteger(years)) return `${years} Year${years === 1 ? '' : 's'}`;
@@ -85,6 +97,7 @@ function BackblazeLogo({ compact = false }: { compact?: boolean }) {
   );
 }
 
+/** Route entry for the customer report. Wraps the content in Suspense because it reads useSearchParams. */
 export default function ReportPage() {
   return (
     <Suspense fallback={<ReportLoading />}>
@@ -118,8 +131,11 @@ function ReportPageContent() {
     };
   }, [searchParams]);
 
+  // URL params (used by the PDF route, which renders this page with explicit ?ae=... attribution)
+  // take precedence over the signed-in AE's profile.
   const aeInfo = aeInfoFromParams || profileAeInfo;
 
+  // Only fall back to the logged-in user's identity when the URL didn't pin an AE.
   useEffect(() => {
     if (aeInfoFromParams) return;
 
@@ -176,7 +192,9 @@ function ReportPageContent() {
   const projections = view?.projections ?? [];
   const pricingDetection = view?.pricingDetection ?? [];
 
-  // Save a snapshot when the report is viewed
+  // Persist a point-in-time snapshot the first time a viable model is computed, so the figures the
+  // customer saw are recoverable even if pricing/config later changes. Depends on `!!costModel`
+  // (not the object) so it fires once on first render rather than on every recompute.
   useEffect(() => {
     if (!costModel || !modelConfig || !egressConfig || !tiers.length) return;
     fetch(`/api/analyses/${id}/snapshot`, {
@@ -199,11 +217,15 @@ function ReportPageContent() {
     );
   }
 
+  // The report only ever speaks to the storage scope the AE selected for migration, never the
+  // whole bill. Everything downstream sums/compares against these migrated tiers.
   const migratedTiers = tiers.filter((t) => t.migrateToB2);
   const migratedStorageGb = migratedTiers.reduce((s, t) => s + t.gbStored, 0);
   const modeledB2Monthly = getStorageScopeReplacementMonthly(costModel);
   const modeledCurrentMonthly = getStorageScopeCurrentMonthly(costModel);
   const customerMigrationCost = costModel.migrationCost.total;
+  // The egress + restore cost Backblaze absorbs under UDM; shown as the "covered" amount and
+  // distinct from `customerMigrationCost`, which is $0 when UDM is enabled.
   const migrationCostCovered = costModel.migrationCost.egressCost + costModel.migrationCost.restoreCost;
   const totalSavings = projections.length > 0 ? projections[projections.length - 1].cumulativeSavings : 0;
   const endingProjectedStorageGb = projections.length > 0 ? projections[projections.length - 1].storageGb : migratedStorageGb;
@@ -213,6 +235,8 @@ function ReportPageContent() {
     annualGrowthPercent: egressConfig.dataGrowthRatePercent,
     fixedGrowthTbPerMonth: egressConfig.dataGrowthFixedTbPerMonth,
   });
+  // With a non-zero migration cost the story is "break-even at month N"; with $0 cost (e.g. UDM)
+  // savings begin immediately, so the timing framing switches to "Day 1" throughout.
   const hasCustomerMigrationPayback = customerMigrationCost > 0;
   const savingsTimingLabel = hasCustomerMigrationPayback ? 'Break-Even' : 'Savings Start';
   const savingsTimingSummaryLabel = hasCustomerMigrationPayback ? 'Break-Even Timing' : 'Savings Start';
@@ -224,6 +248,9 @@ function ReportPageContent() {
   const providerLabel = formatProviderName(meta.provider);
   const reportCompanyName = meta.companyName || meta.prospectName;
   const b2StorageRateLabel = `${formatCurrency(modelConfig.b2PricePerTb)}/TB/month`;
+  // Per-operation fees on the source bill (PUT/GET request charges, cold-tier access/restore) that
+  // B2 removes — standard B2 transactions are free and B2 has no retrieval/restore fees. These are
+  // surfaced as a separate savings narrative on top of the raw storage-rate delta.
   const actionCostSummary = getOperationActionCostSummary(parsed.lineItems);
   const coldTierAccess = actionCostSummary.coldTierAccess;
   const actionFeePhrases = formatPhraseList([
@@ -252,6 +279,8 @@ function ReportPageContent() {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
+      // This alert is on the no-print AE toolbar, never the customer-facing report body, so the
+      // Playwright hint is fine to surface here.
       alert('PDF generation failed. Make sure Playwright is installed.');
     } finally {
       setDownloadingPdf(false);
@@ -296,6 +325,9 @@ function ReportPageContent() {
       </div>
 
       <div className="report-container report-compact max-w-4xl mx-auto bg-white print:max-w-none">
+      {/* Inline styles, not Tailwind utilities, because the PDF route renders this page in a
+          headless browser: the print/page-size rules and the .report-compact size overrides must
+          travel with the markup and survive print-to-PDF. */}
       <style>{`
         .report-compact .text-xs { font-size: 0.68rem !important; line-height: 1.35; }
         .report-compact .text-sm { font-size: 0.8rem !important; line-height: 1.4; }
@@ -534,6 +566,9 @@ function ReportPageContent() {
 
           <PartnerScenarioComparison costModel={costModel} />
 
+          {/* Surface negotiated/committed-use discounts detected on the source bill so the customer
+              sees the comparison is against their real (already-discounted) rate, not list price —
+              otherwise the savings look inflated and the prospect distrusts the whole report. */}
           {(() => {
             const programs = pricingDetection.filter(r => r.category === 'discount-program');
             if (programs.length === 0) return null;
@@ -635,6 +670,9 @@ function ReportPageContent() {
           </tfoot>
         </table>
 
+        {/* UDM on: present the egress/restore cost as covered by Backblaze ($0 to the customer).
+            UDM off but a real migration cost exists: show it as a one-time charge. Otherwise (no
+            migration cost) render nothing. */}
         {costModel.udmEnabled ? (
           <div className="mt-8 keep-together">
             <h3 className="text-sm font-semibold mb-3 border-l-4 border-bb-red pl-3">Data Migration</h3>
@@ -732,6 +770,8 @@ function ReportPageContent() {
             </tr>
           </thead>
           <tbody className="divide-y">
+            {/* Show month 1, every 6th month, and the final month — a readable subset of the full
+                monthly projection rather than dozens of rows. */}
             {projections
               .filter((_, i) => i === 0 || (i + 1) % 6 === 0 || i === projections.length - 1)
               .map((p) => (
@@ -856,6 +896,7 @@ function ReportPageContent() {
   );
 }
 
+/** A single headline stat tile in the executive summary. `tone="green"` flags a favorable value. */
 function OutcomeMetric({
   label,
   value,
@@ -875,6 +916,10 @@ function OutcomeMetric({
   );
 }
 
+/**
+ * "Action Fees B2 Removes" panel: itemizes per-operation charges on the source bill (PUT/GET
+ * requests, cold-tier access/restore) that B2 eliminates. Renders nothing when none are present.
+ */
 function ActionCostSignalSection({
   actionCostSummary,
   providerLabel,
@@ -1029,12 +1074,18 @@ function formatActionSignal(detail: ActionCostDetail): string {
   return formatLineUsageSignal(detail.lineCount, detail.usageQuantity, detail.usageUnit);
 }
 
+// "Signal" = evidence shown to the customer for an action-fee row: how many bill lines it spans and
+// the underlying usage quantity, e.g. "3 lines - 1,200,000 requests". Usage is omitted when unknown.
 function formatLineUsageSignal(lineCount: number, usageQuantity: number, usageUnit?: string): string {
   const lineLabel = `${lineCount} line${lineCount === 1 ? '' : 's'}`;
   if (usageQuantity <= 0) return lineLabel;
   return `${lineLabel} - ${formatNumber(usageQuantity, 0)}${usageUnit ? ` ${usageUnit}` : ''}`;
 }
 
+/**
+ * "Where the Savings Come From" — a two-column bar comparison of current monthly fees removed
+ * versus the recurring B2 replacement cost that takes their place.
+ */
 function SavingsDrivers({
   costModel,
   modeledCurrentMonthly,
@@ -1048,6 +1099,8 @@ function SavingsDrivers({
     { description: 'Backblaze B2 replacement cost', amountUsd: costModel.b2Monthly.total },
     ...costModel.newCosts,
   ].filter((row) => row.amountUsd > 0);
+  // Single scale shared across both columns so bar lengths are visually comparable side to side;
+  // floored at 1 to avoid divide-by-zero when there are no fees.
   const maxAmount = Math.max(
     1,
     ...costModel.eliminatedFees.map((fee) => fee.amountUsd),
@@ -1123,6 +1176,7 @@ function SavingsDriverRow({
   maxAmount: number;
   tone: 'savings' | 'cost';
 }) {
+  // Clamp to a 5%–100% bar so even a tiny non-zero amount stays visible rather than collapsing.
   const width = `${Math.max(5, Math.min(100, (amount / maxAmount) * 100))}%`;
   const barColor = tone === 'savings' ? 'bg-green-600' : 'bg-bb-red';
   const amountColor = tone === 'savings' ? 'text-green-700' : 'text-bb-red-dark';
@@ -1140,10 +1194,15 @@ function SavingsDriverRow({
   );
 }
 
+/**
+ * Optional upside panel: if the write path later moves to a B2 bandwidth-alliance compute partner,
+ * additional hyperscaler egress is avoided. Hidden unless the model produced this scenario.
+ */
 function PartnerScenarioComparison({ costModel }: { costModel: CostModelResult }) {
   if (!costModel.partnerComputeScenario) return null;
 
   const scenario = costModel.partnerComputeScenario;
+  // Incremental savings over the primary case — what the partner-compute path adds on top.
   const addedMonthlyValue = scenario.monthlySavings - costModel.monthlySavings;
 
   return (
@@ -1178,6 +1237,11 @@ function ScenarioMetric({
   );
 }
 
+/**
+ * Hand-rolled SVG line chart of the projected monthly cost curves (current vs. B2) with the savings
+ * gap shaded and the break-even / savings-start moment marked. Built inline (no chart library) so it
+ * renders identically in the browser and the print-to-PDF path.
+ */
 function ProjectionGraph({
   points,
   providerLabel,
@@ -1195,6 +1259,7 @@ function ProjectionGraph({
 }) {
   if (points.length === 0) return null;
 
+  // SVG viewBox geometry, in user units. left/bottom are larger to leave room for axis labels.
   const width = 760;
   const height = 310;
   const left = 68;
@@ -1217,6 +1282,8 @@ function ProjectionGraph({
   const gapPath = buildAreaPath(currentCoords, b2Coords);
   const ticks = getProjectionTicks(termMonths);
   const yTicks = [0, maxCost / 2, maxCost];
+  // The marked moment: first month cumulative savings turn non-negative (break-even) when there's a
+  // migration cost, otherwise month 1 (savings from day one).
   const timingPoint = hasCustomerMigrationPayback
     ? points.find((point) => point.cumulativeSavings >= 0)
     : points[0];
@@ -1225,6 +1292,8 @@ function ProjectionGraph({
     ? `${savingsTimingLabel}: ${timingMonthLabel}`
     : savingsTimingLabel;
   const timingX = timingPoint ? xForMonth(timingPoint.month, termMonths, left, chartWidth) : 0;
+  // Keep the dashed marker line and its label box inside the plot area regardless of where the
+  // timing point falls (e.g. break-even at month 1 or near the end of the term).
   const timingLineX = Math.max(left + 2, Math.min(left + chartWidth - 2, timingX));
   const timingLabelWidth = hasCustomerMigrationPayback ? 134 : 146;
   const timingLabelX = Math.min(
@@ -1331,6 +1400,7 @@ function GraphLegend({ colorClass, label }: { colorClass: string; label: string 
   );
 }
 
+/** Compact grid of the headline modeling assumptions, shown above the full assumptions table. */
 function AssumptionSnapshot({
   providerLabel,
   meta,
@@ -1376,6 +1446,7 @@ function AssumptionItem({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** One cell in the Decision Summary grid. `emphasis` tints the value green (good) or B2 red (B2 figure). */
 function DecisionMetric({
   label,
   value,
@@ -1399,6 +1470,8 @@ function DecisionMetric({
   );
 }
 
+// Pick a readable set of x-axis month ticks scaled to the term length (denser for short terms,
+// sparser past a few years), always clamped to months that actually exist in the projection.
 function getProjectionTicks(termMonths: number): number[] {
   if (termMonths <= 12) return [1, 3, 6, 9, 12].filter((month) => month <= termMonths);
   if (termMonths <= 24) return [1, 6, 12, 18, 24].filter((month) => month <= termMonths);
@@ -1411,6 +1484,8 @@ function formatProjectionMonthTick(value: number): string {
   return `M${value}`;
 }
 
+// Abbreviated currency for axis labels and end-of-line callouts (e.g. $1.2M, $850k). Fewer decimals
+// at larger magnitudes to keep tick labels short; falls back to full formatting under $1k.
 function formatCompactCurrency(value: number): string {
   const sign = value < 0 ? '-' : '';
   const abs = Math.abs(value);
@@ -1428,6 +1503,8 @@ function formatCompactCurrency(value: number): string {
   return formatCurrency(value, 0);
 }
 
+// Round a max value up to a "nice" round number (1/2/5 x a power of ten) so the y-axis top and its
+// half-way tick land on clean figures instead of an arbitrary peak cost.
 function getNiceChartMax(value: number): number {
   const safeValue = Math.max(value, 1);
   const magnitude = Math.pow(10, Math.floor(Math.log10(safeValue)));
@@ -1436,6 +1513,8 @@ function getNiceChartMax(value: number): number {
   return niceNormalized * magnitude;
 }
 
+// Map a 1-based month onto an x pixel. A single-month term has no span to divide by, so pin to the
+// left edge to avoid a NaN coordinate.
 function xForMonth(month: number, termMonths: number, left: number, chartWidth: number): number {
   if (termMonths <= 1) return left;
   return left + ((month - 1) / (termMonths - 1)) * chartWidth;
@@ -1451,6 +1530,8 @@ function buildLinePath(coords: { x: number; y: number }[]): string {
     .join(' ');
 }
 
+// Build the closed polygon for the shaded savings gap: trace the top (current-cost) line forward,
+// then the bottom (B2) line in reverse so the path closes cleanly into a filled band.
 function buildAreaPath(topCoords: { x: number; y: number }[], bottomCoords: { x: number; y: number }[]): string {
   if (topCoords.length === 0 || bottomCoords.length === 0) return '';
 

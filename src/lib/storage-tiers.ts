@@ -1,3 +1,6 @@
+// AE-facing reference copy: plain-language descriptions and docs links for each provider's storage
+// tiers, used to explain in the UI what a customer's bill line actually is. Educational only — none
+// of this feeds the cost model.
 import type { Provider } from '@/types/analysis';
 
 const AWS_STORAGE_CLASSES_URL = 'https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html';
@@ -15,15 +18,18 @@ const STORAGE_TIER_DISPLAY_NAMES: Record<string, string> = {
   'Intelligent-Tiering-DAA': 'Intelligent-Tiering Deep Archive',
 };
 
+/** Tooltip content for a storage tier: a one-line explanation and a link to the provider's docs. */
 export interface StorageTierHelp {
   description: string;
   docsUrl: string;
 }
 
+/** Map a raw bill storage-class token to its display name, falling back to the token itself if unmapped. */
 export function formatStorageTierName(storageClass: string): string {
   return STORAGE_TIER_DISPLAY_NAMES[storageClass] || storageClass;
 }
 
+/** Resolve help text for a storage class, dispatching by provider; defaults to AWS when provider is unknown. */
 export function getStorageTierHelp(
   storageClass: string,
   provider?: Provider,
@@ -113,6 +119,7 @@ function getGcpTierHelp(storageClass: string): StorageTierHelp {
 }
 
 function getAzureTierHelp(storageClass: string): StorageTierHelp {
+  // Azure storage classes arrive as "<Tier>-<redundancy>" (e.g. "Hot-LRS"), so match on the tier prefix.
   if (storageClass.startsWith('Hot-')) {
     return {
       description: 'Azure Blob hot access tier. Best for active data with frequent reads or writes; highest storage cost, lowest access cost.',

@@ -8,6 +8,7 @@ import { useDocumentTitle } from '@/components/shared/useDocumentTitle';
 const BUILD_NUMBER = process.env.NEXT_PUBLIC_BUILD_NUMBER ?? 'local';
 const GITHUB_REPO_URL = 'https://github.com/udarag/B2-Savings-Analyzer';
 
+/** Magic-link sign-in page. Wraps the form in Suspense because LoginForm reads search params. */
 export default function LoginPage() {
   useDocumentTitle('Sign in');
 
@@ -47,6 +48,8 @@ function LoginForm() {
         throw new Error(data.error || 'Failed to send link');
       }
 
+      // In local dev the API returns the magic link in the response instead of emailing it, so we
+      // follow it straight away rather than telling the user to check an inbox no one is watching.
       if (isLocalDevMagicLink(data.devMagicLink)) {
         window.location.assign(data.devMagicLink);
         return;
@@ -158,6 +161,8 @@ function LoginForm() {
   );
 }
 
+// Guard before auto-following a dev magic link: only same-origin /api/auth/verify URLs that carry a
+// token, so a malformed or attacker-influenced devMagicLink value can't redirect us off-site.
 function isLocalDevMagicLink(value: unknown): value is string {
   if (typeof value !== 'string') return false;
 
@@ -182,6 +187,8 @@ function LoginFrame({ children }: { children: ReactNode }) {
   );
 }
 
+// Footer build stamp. Links the commit SHA to GitHub when running a real build; shows a bare
+// "local" (no link) during local dev where BUILD_NUMBER is unset.
 function BuildNumber() {
   const hasCommit = BUILD_NUMBER !== 'local';
   return (

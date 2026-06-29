@@ -5,6 +5,11 @@ import { useRouter } from 'next/navigation';
 import { FileUpload } from '@/components/upload/FileUpload';
 import { useDocumentTitle } from '@/components/shared/useDocumentTitle';
 
+/**
+ * Two-step "new opportunity" flow: first create the analysis record (POST /api/analyses), then,
+ * once we have an id, swap the form for the bill uploader. We create up front rather than on upload
+ * so the file has an analysis to attach to.
+ */
 export default function NewAnalysisPage() {
   const router = useRouter();
   const [prospectName, setProspectName] = useState('');
@@ -34,6 +39,8 @@ export default function NewAnalysisPage() {
       const data = await res.json();
       setAnalysisId(data.id);
     } catch {
+      // Analyses are persisted to a B2 bucket, so a creation failure is most often a B2
+      // connectivity/credentials problem — point the AE at that rather than a generic error.
       setError('Failed to create opportunity. Check B2 connection.');
     } finally {
       setCreating(false);

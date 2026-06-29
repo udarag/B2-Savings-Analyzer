@@ -24,6 +24,10 @@ export const metadata: Metadata = {
   },
 };
 
+// Inlined and run before first paint (strategy="beforeInteractive") so the stored theme is applied
+// to <html> before React hydrates, avoiding a light-to-dark flash. The customer-facing report
+// (/analyses/[id]/report) is always forced light regardless of the saved preference, since dark
+// styling must never leak into a customer deliverable.
 const themeInitScript = `
 (function(){
   try {
@@ -42,12 +46,15 @@ const themeInitScript = `
 })();
 `;
 
+/** App-wide shell: fonts, theme bootstrap, and the persistent header above all routed pages. */
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
+    // suppressHydrationWarning: themeInitScript mutates <html> before hydration, so the server-rendered
+    // light defaults intentionally differ from the client DOM and must not be treated as a mismatch.
     <html
       lang="en"
       data-theme="light"

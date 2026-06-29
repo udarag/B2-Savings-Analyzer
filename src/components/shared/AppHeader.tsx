@@ -5,9 +5,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserMenu } from '@/components/shared/UserMenu';
 
+/** App-wide top navigation. Hidden on login and on customer-facing report pages. */
 export function AppHeader() {
   const pathname = usePathname();
 
+  // Suppress the internal chrome on the login screen and on the customer-facing
+  // report (the report is shared/printed externally and must stand alone).
   if (pathname === '/login' || /^\/analyses\/[^/]+\/report(?:\/|$)/.test(pathname)) return null;
 
   return (

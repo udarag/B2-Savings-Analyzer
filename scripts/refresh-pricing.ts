@@ -37,6 +37,7 @@ async function fetchJson(url: string): Promise<unknown> {
   return resp.json();
 }
 
+// Follow the Azure Retail Prices API's NextPageLink chain, accumulating every page's Items.
 async function fetchAzureItems<T>(url: string): Promise<T[]> {
   const items: T[] = [];
   let nextUrl: string | undefined = url;
@@ -53,6 +54,7 @@ async function fetchAzureItems<T>(url: string): Promise<T[]> {
   return items;
 }
 
+// GCP money is split into whole `units` plus `nanos` (billionths) of a unit; recombine to a USD float.
 function usdFromGcpUnitPrice(unitPrice: { units?: string | number; nanos?: number } | undefined): number {
   if (!unitPrice) return 0;
   return Number(unitPrice.units || 0) + (unitPrice.nanos || 0) / 1e9;
@@ -83,6 +85,9 @@ function refreshSuccess(provider: string, message: string) {
   };
 }
 
+// Records a non-success refresh outcome. NOTE: `message` and `credentialEnvVar` are internal
+// diagnostics (they name env vars / failure causes) and must never reach the customer-facing
+// report or PDF — only the dashboard/staleness UI should surface them.
 function refreshWarning(
   provider: string,
   status: 'skipped' | 'error',
@@ -128,11 +133,13 @@ const AWS_CLASS_ORDER = [
   'Express One Zone', 'Reduced Redundancy',
 ];
 
-// Skip local zones, GovCloud, and aws-other
+// Keep only commercial regions a customer's storage would realistically live in. Local zones,
+// GovCloud, and the catch-all "aws-other" bucket aren't migration targets we model, and dropping
+// them keeps the region list comparable to what shows up on real bills.
 const AWS_SKIP_REGIONS = new Set(['aws-other']);
 function isAwsStandardRegion(code: string): boolean {
   if (AWS_SKIP_REGIONS.has(code)) return false;
-  if (code.includes('-han-') || code.includes('-ist-')) return false; // local zones
+  if (code.includes('-han-') || code.includes('-ist-')) return false; // local zones (Hanoi, Istanbul)
   if (code.startsWith('us-gov')) return false;
   return true;
 }
@@ -148,6 +155,8 @@ async function refreshAws() {
     regions: Record<string, { regionCode: string; currentVersionUrl: string }>;
   };
 
+  // Report the OLDER of the two feeds' publication dates so "as of" never overstates freshness when
+  // S3 and Glacier Deep Archive were published on different days.
   const version = [index.publicationDate, gdaIndex.publicationDate]
     .map(d => d.slice(0, 10))
     .sort()
@@ -166,6 +175,9 @@ async function refreshAws() {
       terms: { OnDemand: Record<string, Record<string, { priceDimensions: Record<string, { pricePerUnit: { USD: string }; beginRange: string; endRange: string }> }>> };
     };
 
+    // Select only at-rest storage SKUs: TimedStorage*ByteHrs is AWS's GB-month storage meter.
+    // The excluded prefixes are adjacent S3 features (S3 Tables, Files, Vectors, Annotation) that
+    // aren't part of the addressable object-storage spend we model against B2.
     const skus: Record<string, string> = {};
     for (const [sku, prod] of Object.entries(data.products)) {
       const usage = prod.attributes.usagetype || '';
@@ -176,6 +188,10 @@ async function refreshAws() {
       if (mapped) skus[sku] = mapped;
     }
 
+    // Flatten OnDemand price dimensions into volume tiers per storage class. Standard storage is
+    // volume-tiered (cheaper $/GB above 50 TB, 500 TB), so a class can have several rows;
+    // beginRange/endRange are GB boundaries with "Inf" meaning the open-ended top tier.
+    // Zero-priced dimensions are skipped (free-tier rows, not a real rate).
     const prices: Record<string, Array<{ begin: number; end: number | null; price: number }>> = {};
     for (const [sku, className] of Object.entries(skus)) {
       const offers = data.terms.OnDemand[sku];
@@ -192,6 +208,8 @@ async function refreshAws() {
       }
     }
 
+    // Emit a bare number for flat-rate classes and a tier array for volume-tiered ones, iterating
+    // in AWS_CLASS_ORDER so the JSON stays stable/diff-friendly across refreshes.
     const regionData: Record<string, unknown> = {};
     for (const cls of AWS_CLASS_ORDER) {
       const tiers = prices[cls];
@@ -207,6 +225,8 @@ async function refreshAws() {
       }
     }
 
+    // Glacier Deep Archive lives in its own AWS offer file, so fold its single flat rate in here
+    // under the same region. The S3 offer feed doesn't carry a GDA storage class.
     const gdaRegion = gdaIndex.regions[regionCode];
     if (gdaRegion) {
       const gdaUrl = `https://pricing.us-east-1.amazonaws.com${gdaRegion.currentVersionUrl}`;
@@ -216,6 +236,7 @@ async function refreshAws() {
       };
 
       for (const [sku, prod] of Object.entries(gdaData.products)) {
+        // Match the exact GDA storage meter; take the first non-zero rate and stop.
         if (!prod.attributes.usagetype?.endsWith('-TimedStorage-GDA-ByteHrs')) {
           continue;
         }
@@ -236,6 +257,9 @@ async function refreshAws() {
     console.log(` ${Object.keys(regionData).length} classes`);
   }
 
+  // This refresh only re-derives storage rates. Everything else (request, retrieval, egress,
+  // inter-region, monitoring, min-storage-days) is carried over from the committed file, which is
+  // maintained by hand — overwriting it here would wipe those manually-verified values.
   const existing = readPricingFile('aws.json');
   const doc = {
     lastVerified: today,
@@ -288,7 +312,8 @@ function isAzureStandardRegion(code: string): boolean {
 async function refreshAzure() {
   console.log('Azure: Discovering regions...');
 
-  // Get all regions that have Blob Storage
+  // The Retail Prices API has no "list regions" call, so enumerate them by querying one ubiquitous
+  // meter (Hot LRS first tier) across all regions and collecting the distinct armRegionName values.
   const filter = "serviceFamily eq 'Storage' and serviceName eq 'Storage' and priceType eq 'Consumption' " +
     "and contains(productName, 'Blob Storage') and unitOfMeasure eq '1 GB/Month' " +
     "and meterName eq 'Hot LRS Data Stored' and tierMinimumUnits eq 0";
@@ -321,11 +346,15 @@ async function refreshAzure() {
     for (const item of items) {
       const mapped = AZURE_SKU_MAP[item.skuName];
       if (!mapped || item.retailPrice <= 0) continue;
+      // Keep only the at-rest "Data Stored" meter; the same SKU also has write/read/other meters
+      // we don't model here. The meter name is "<SKU> Data Stored".
       if (item.meterName !== `${item.skuName} Data Stored`) continue;
       if (!byClass[mapped]) byClass[mapped] = [];
       byClass[mapped].push({ tierMin: item.tierMinimumUnits, price: item.retailPrice });
     }
 
+    // Azure gives each tier's lower bound (tierMinimumUnits); the file format wants upper bounds, so
+    // a tier's maxGb is the NEXT tier's minimum (null for the open-ended top tier).
     for (const [cls, tiers] of Object.entries(byClass)) {
       tiers.sort((a, b) => a.tierMin - b.tierMin);
       if (tiers.length === 1) {
@@ -373,13 +402,21 @@ async function refreshAzure() {
 // ---------------------------------------------------------------------------
 
 const GCP_CATALOG_API = 'https://cloudbilling.googleapis.com/v1';
+// GCP quotes storage in GiB-month; the app's basis is GB-month. 1 GiB = 1.073741824 GB, so a
+// GiB-month rate is divided by this to normalize. Getting this wrong skews every GCP comparison ~7%.
 const GCP_GIB_TO_GB = 1.073741824;
 const GCP_STORAGE_CLASSES = ['Standard', 'Nearline', 'Coldline', 'Archive'] as const;
+// Location buckets we model. multi-region and dual-region imply geo-redundancy, which downstream
+// means a B2 second-region copy (~2x storage) to match durability — see the cost model.
 const GCP_LOCATION_KEYS = ['regional', 'multi-region', 'asia-multi-region', 'dual-region', 'asia-dual-region'] as const;
 
 type GcpStorageClass = typeof GCP_STORAGE_CLASSES[number];
 type GcpLocationKey = typeof GCP_LOCATION_KEYS[number];
 
+// For each location bucket, the service regions we prefer to source a representative rate from,
+// in priority order (earlier = preferred). GCP storage prices vary by region within a bucket; we
+// pin to a stable, US-centric (or asia for the asia buckets) reference so refreshes are repeatable
+// rather than picking whichever SKU happened to come back first.
 const GCP_PREFERRED_SERVICE_REGIONS: Record<GcpLocationKey, string[]> = {
   regional: ['us-central1', 'us-east1', 'us-east4', 'us-east5', 'us-west1', 'us-west2'],
   'multi-region': ['us', 'eu'],
@@ -420,6 +457,9 @@ function isGcpGibUnit(unit: string): boolean {
   return /giby|gib/i.test(unit);
 }
 
+// Extract a per-GB-month storage rate from a GCP pricing expression, normalizing GiB→GB.
+// Takes the first non-zero tier (GCP often prefixes a $0 free-tier band) and returns 0 for any
+// SKU not denominated in a byte/GB(i) unit so non-storage SKUs are ignored upstream.
 function gcpStoragePricePerGb(expression: GcpPricingExpression | undefined): number {
   const usageUnit = expression?.usageUnit || expression?.baseUnit || '';
   if (!/by|gib|gb/i.test(usageUnit)) return 0;
@@ -432,6 +472,8 @@ function gcpStoragePricePerGb(expression: GcpPricingExpression | undefined): num
   return isGcpGibUnit(usageUnit) ? firstPaidRate / GCP_GIB_TO_GB : firstPaidRate;
 }
 
+// Drop SKUs that aren't a plain at-rest storage rate: Autoclass management fees, early-delete
+// penalties, and Anywhere Cache. Including them would pollute the per-class base storage rate.
 function shouldSkipGcpStorageSku(description: string): boolean {
   const lower = description.toLowerCase();
   return lower.startsWith('autoclass ')
@@ -443,12 +485,23 @@ function isGcpRegionCode(region: string): boolean {
   return /^[a-z]+(?:-[a-z]+)+[0-9]+$/.test(region);
 }
 
+// Rank a SKU's service regions against the preferred list for a bucket: returns the index of the
+// best (lowest) match, or null if none match. Lower is better; the caller keeps the lowest-priority
+// candidate per (bucket, class).
 function preferredGcpRegionPriority(locationKey: GcpLocationKey, serviceRegions: string[]): number | null {
   const preferred = GCP_PREFERRED_SERVICE_REGIONS[locationKey];
   const index = preferred.findIndex(region => serviceRegions.includes(region));
   return index === -1 ? null : index;
 }
 
+/**
+ * Map a GCP storage SKU to one of our location buckets and a selection priority (lower = better).
+ * Order matters: dual-region is checked before multi-region (a dual-region SKU's description can
+ * also trip looser multi-region heuristics), and within each, asia is preferred over us/eu. A
+ * preferred-region match yields its real priority; a description-only/weak match falls back to a
+ * sentinel priority of 100 so an exact preferred-region SKU always wins over it. Returns null when
+ * the SKU isn't recognizably any storage location (e.g. not regional/multi/dual).
+ */
 function classifyGcpLocationKey(sku: GcpSku): { key: GcpLocationKey; priority: number } | null {
   const description = sku.description || '';
   const lower = description.toLowerCase();
@@ -463,12 +516,14 @@ function classifyGcpLocationKey(sku: GcpSku): { key: GcpLocationKey; priority: n
     const priority = preferredGcpRegionPriority('dual-region', serviceRegions);
     if (priority !== null) return { key: 'dual-region', priority };
 
+    // No preferred-region hit: bucket by asia-vs-rest from the regions/description at sentinel priority.
     if (serviceRegions.some(region => region.startsWith('asia')) || lower.includes('asia')) {
       return { key: 'asia-dual-region', priority: 100 };
     }
     return { key: 'dual-region', priority: 100 };
   }
 
+  // 'us'/'eu'/'asia' as a bare service region is GCP's signal for a multi-region location.
   if (hasMultiRegion || serviceRegions.some(region => ['us', 'eu', 'asia'].includes(region))) {
     const asiaPriority = preferredGcpRegionPriority('asia-multi-region', serviceRegions);
     if (asiaPriority !== null) return { key: 'asia-multi-region', priority: asiaPriority };
@@ -483,6 +538,7 @@ function classifyGcpLocationKey(sku: GcpSku): { key: GcpLocationKey; priority: n
   const regionalPriority = preferredGcpRegionPriority('regional', serviceRegions);
   if (regionalPriority !== null) return { key: 'regional', priority: regionalPriority };
 
+  // Any concrete region code (e.g. us-central1) that wasn't in the preferred list still counts as regional.
   if (serviceRegions.some(isGcpRegionCode)) return { key: 'regional', priority: 100 };
 
   return null;
@@ -531,9 +587,12 @@ async function fetchGcpStorageSkus(apiKey: string, serviceId: string): Promise<G
 
 async function refreshGcp() {
   const existing = readPricingFile('gcp.json');
+  // GCP's Cloud Billing Catalog API requires an API key, unlike AWS/Azure's open pricing feeds.
   const apiKey = process.env.GCP_CLOUD_BILLING_API_KEY || process.env.GOOGLE_CLOUD_API_KEY;
 
   if (!apiKey) {
+    // No key: leave committed prices as-is and record a "skipped" outcome so staleness is visible,
+    // rather than failing the whole refresh run.
     console.log('GCP: Skipped API refresh — set GCP_CLOUD_BILLING_API_KEY to use the Cloud Billing Catalog API.');
     console.log('  Existing prices left unchanged. Manual references:');
     console.log('  https://cloud.google.com/storage/pricing');
@@ -556,7 +615,9 @@ async function refreshGcp() {
     const skus = await fetchGcpStorageSkus(apiKey, serviceId);
     console.log(`GCP: Found ${skus.length} Cloud Storage SKUs`);
 
+    // Deep-clone existing storage as the base so any keys we don't recompute survive untouched.
     const storage: Record<string, Record<string, number>> = JSON.parse(JSON.stringify(existing.storage || {}));
+    // For each (location bucket, storage class) keep the single best-priority candidate seen.
     const candidates: Record<string, Record<string, { price: number; priority: number; description: string; serviceRegions: string[] }>> = {};
 
     for (const sku of skus) {
@@ -567,12 +628,14 @@ async function refreshGcp() {
       const location = classifyGcpLocationKey(sku);
       const locationKey = location?.key;
       if (!storageClass || !locationKey) continue;
+      // Guard against e.g. a network/operations SKU whose description happens to say "storage".
       if (sku.category?.resourceFamily !== 'Storage') continue;
 
       const expression = sku.pricingInfo?.[0]?.pricingExpression;
       const price = gcpStoragePricePerGb(expression);
       if (price <= 0) continue;
 
+      // Lower priority wins: a SKU sourced from a preferred region replaces a weaker (sentinel) one.
       candidates[locationKey] = candidates[locationKey] || {};
       const current = candidates[locationKey][storageClass];
       if (!current || location.priority < current.priority) {
@@ -585,6 +648,9 @@ async function refreshGcp() {
       }
     }
 
+    // Require full coverage: every bucket×class must have resolved. A gap means the catalog shape
+    // changed (renamed SKU, new classification) and we'd rather fail loudly than ship partial,
+    // silently-stale GCP pricing. The catch below records this as an error refresh outcome.
     for (const locationKey of GCP_LOCATION_KEYS) {
       for (const storageClass of GCP_STORAGE_CLASSES) {
         const candidate = candidates[locationKey]?.[storageClass];
@@ -624,6 +690,8 @@ async function refreshGcp() {
 // R2
 // ---------------------------------------------------------------------------
 
+// R2 and B2 have no machine-readable pricing feed, so these "refreshes" only print where to verify
+// rates by hand and leave the committed files untouched.
 async function refreshR2() {
   console.log('R2: No stable public pricing API configured.');
   console.log('  Existing prices left unchanged. Verify manually at:');

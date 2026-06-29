@@ -24,6 +24,7 @@ import { formatGrowthAssumption } from '@/lib/engine/projections';
 import b2Pricing from '@/lib/pricing/b2.json';
 import { normalizeEgressConfig } from '@/types/analysis';
 
+/** What GET /api/analyses/[id] returns. `parsed`/`modelConfig` are null until a bill is uploaded. */
 interface AnalysisData {
   meta: Analysis;
   parsed: ParsedBill | null;
@@ -57,6 +58,11 @@ function formatProviderStorageLabel(provider: Provider): string {
   }
 }
 
+/**
+ * Internal analysis dashboard for one opportunity. Loads the parsed bill + saved model config, lets
+ * the AE tune tier toggles / egress / B2 pricing / term, recomputes the cost model live, and
+ * autosaves. This is the internal view; the customer-facing report lives at /analyses/[id]/report.
+ */
 export default function AnalysisDashboard() {
   const params = useParams();
   const id = params.id as string;
@@ -86,6 +92,9 @@ export default function AnalysisDashboard() {
       .then((d: AnalysisData) => {
         setData(d);
         if (d.parsed) {
+          // buildTierState reconciles the saved config against the parsed bill and the current
+          // TIER_SELECTION_VERSION, re-deriving tier toggles when a stale config predates the
+          // current tiering logic. We seed all editable state from its normalized output.
           const { tiers: builtTiers, modelConfig: norm } = buildTierState(d.parsed, d.modelConfig);
           setTiers(builtTiers);
           setEgressConfig(norm.egressConfig);
@@ -107,6 +116,8 @@ export default function AnalysisDashboard() {
         body: JSON.stringify({
           modelConfig: {
             tierToggles: Object.fromEntries(tiers.map((t) => [t.id, t.migrateToB2])),
+            // Stamp the version we saved under so a later load can tell whether the persisted toggles
+            // need re-normalizing against newer tiering logic (see buildTierState).
             tierSelectionVersion: TIER_SELECTION_VERSION,
             egressConfig,
             b2PricePerTb,
@@ -135,6 +146,8 @@ export default function AnalysisDashboard() {
     setEgressConfig((prev) => normalizeEgressConfig({ ...prev, ...updates }));
   }, []);
 
+  // Optimistically merge meta edits (name, company, notes, provider override) into local state, then
+  // persist. No rollback here: these are low-stakes text fields and the inline editors stay editable.
   const patchMeta = useCallback(async (fields: Partial<Analysis>) => {
     setData((prev) => prev ? { ...prev, meta: { ...prev.meta, ...fields } } : prev);
     await fetch(`/api/analyses/${id}`, {
@@ -150,7 +163,8 @@ export default function AnalysisDashboard() {
     setTimeout(() => setLinkCopied(false), 2000);
   }, []);
 
-  // Debounced save
+  // Debounced autosave: every config tweak (tier toggles, egress, pricing, term) schedules a save
+  // 1s later, collapsing rapid edits into one PATCH. Skipped until a bill is parsed.
   useEffect(() => {
     if (!data?.parsed) return;
     const timer = setTimeout(() => saveConfig({}), 1000);
@@ -187,6 +201,8 @@ export default function AnalysisDashboard() {
   const pricingFreshnessWarning = data?.meta.provider
     ? getPricingFreshnessWarning(data.meta.provider)
     : null;
+  // Customer-facing name defaults to the internal opportunity name until the AE sets a distinct
+  // company name (e.g. opportunity "Acme Q3 renewal" vs. report company "Acme Corp").
   const reportCompanyName = data?.meta.companyName || data?.meta.prospectName || '';
 
   if (loading) {
@@ -372,6 +388,8 @@ export default function AnalysisDashboard() {
         </div>
       </div>
 
+      {/* AWS is the most battle-tested parser path; everything else is flagged beta so the AE
+          double-checks the numbers before sharing them with the customer. */}
       {data.meta.provider !== 'aws' && (
         <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
           <span className="mt-0.5 shrink-0 rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold uppercase text-white leading-none">Beta</span>
@@ -461,6 +479,8 @@ export default function AnalysisDashboard() {
             config={egressConfig}
             onChange={handleEgressChange}
             partnerComputeScenario={costModel?.partnerComputeScenario}
+            // B2's free monthly egress allowance is a multiple of the data actually migrated to B2,
+            // so it scales with migrated (not total provider) storage.
             b2FreeAllowanceGb={migratedStorageGb * b2Pricing.egress.freeMultiplier}
             computeSignals={data.parsed.computeSignals}
             egressProfileSuggestion={data.parsed.egressProfileSuggestion}
@@ -468,7 +488,8 @@ export default function AnalysisDashboard() {
           {costModel && <CostBreakdown result={costModel} provider={data.meta.provider} />}
         </div>
 
-        {/* Sidebar — internal only */}
+        {/* Sidebar — internal only. Deal sizing and pricing-detection drivers live here, never in
+            the customer report, so internal pricing levers stay off the customer deliverable. */}
         <div className="space-y-6">
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <p className="text-xs font-semibold text-amber-800">Internal Only</p>
