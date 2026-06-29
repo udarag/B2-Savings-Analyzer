@@ -89,6 +89,23 @@ describe('parseGcpCsv confidence and false-flag guards', () => {
     expect(result.parsedBill.warnings.some((w) => /could not extract/i.test(w))).toBe(true);
   });
 
+  it('runs total reconciliation when the trailer label sits in a non-watched column (real 12-col layout)', () => {
+    // Real GCP exports put the "Subtotal"/"Filtered total" label in "Other savings ($)" (the
+    // export here also carries the trailing "Percent change" column), not "Unrounded subtotal ($)".
+    const headers = ['Service description', 'Service ID', 'SKU description', 'SKU ID', 'Usage amount', 'Usage unit', 'Cost ($)', 'Savings programs ($)', 'Other savings ($)', 'Unrounded subtotal ($)', 'Subtotal ($)', 'Percent change'];
+    const rows = [
+      ['Cloud Storage', 'S1', 'Standard Storage US Multi-region', 'K1', '1000', 'gibibyte month', '100', '0', '0', '100', '100', '5%'],
+      // Reported subtotal is 200 but only 100 of line items parsed -> 50% under-capture.
+      ['', '', '', '', '', '', '', '', 'Subtotal', '200', '200', ''],
+    ];
+    const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
+
+    const result = parseGcpCsv(csv);
+    expect(result.parsedBill.lineItems).toHaveLength(1);
+    expect(result.parsedBill.warnings.some((w) => /differs/i.test(w))).toBe(true);
+    expect(result.parsedBill.parseConfidence).toBeCloseTo(0.8, 5); // baseline 0.95 minus blocking penalty
+  });
+
   it('parses a European-formatted, BOM-prefixed, semicolon-delimited, aliased export', () => {
     // First header carries a BOM; columns are re-cased/renamed; cost is EU 1.234,56.
     const csv = [

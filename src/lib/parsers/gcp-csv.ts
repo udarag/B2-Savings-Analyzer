@@ -55,10 +55,13 @@ function classifySku(skuDesc: string): {
     return { category: 'retrieval', storageClass: coldStorageClass };
   }
 
-  // Egress - internet downloads
+  // Egress - internet downloads. Check "worldwide" first: GCP's "Download Worldwide Destinations
+  // (excluding Asia & Australia)" SKU otherwise matches the bare "australia"/"asia" substring and
+  // gets mislabeled as a regional download.
   if (lower.includes('download')) {
-    let subcategory = 'Internet Egress';
-    if (lower.includes('apac')) subcategory = 'Internet Egress (APAC)';
+    let subcategory: string;
+    if (lower.includes('worldwide')) subcategory = 'Internet Egress (Worldwide)';
+    else if (lower.includes('apac')) subcategory = 'Internet Egress (APAC)';
     else if (lower.includes('china')) subcategory = 'Internet Egress (China)';
     else if (lower.includes('australia')) subcategory = 'Internet Egress (Australia)';
     else subcategory = 'Internet Egress (Worldwide)';
@@ -133,6 +136,11 @@ export function parseGcpCsv(content: string): ParseResult {
   };
   const cell = (row: Record<string, string>, col: string | undefined): string =>
     (col ? row[col] : undefined) ?? '';
+  // The trailing "Subtotal"/"Filtered total" label can land in different columns depending on how
+  // many optional columns the export includes, so detect it by value in ANY cell rather than by a
+  // fixed column — otherwise the reconciliation below silently never runs.
+  const isTrailerRow = (row: Record<string, string>): boolean =>
+    Object.values(row).some((v) => v === 'Subtotal' || v === 'Filtered total' || v === 'Total');
 
   const lineItems: ParsedLineItem[] = [];
   let grandTotal = 0;
@@ -143,10 +151,9 @@ export function parseGcpCsv(content: string): ParseResult {
 
   for (const row of parsed.data) {
     const skuDesc = cell(row, cols.skuDesc);
-    const unrounded = cell(row, cols.unrounded);
     // Skip subtotal/filtered total rows
     if (!skuDesc && !cell(row, cols.serviceDesc)) continue;
-    if (unrounded === 'Subtotal' || unrounded === 'Filtered total') continue;
+    if (isTrailerRow(row)) continue;
     if (!skuDesc) continue;
 
     const costUsd = parseLocaleNumber(cell(row, cols.subtotal) || cell(row, cols.cost) || '0');
@@ -188,12 +195,12 @@ export function parseGcpCsv(content: string): ParseResult {
     commercialSignals.push('All Savings programs values are $0 — customer appears to be paying list price.');
   }
 
-  // Validate total
-  const lastRows = parsed.data.filter(
-    (r) => cell(r, cols.unrounded) === 'Filtered total' || cell(r, cols.unrounded) === 'Subtotal'
-  );
+  // Validate parsed total against the export's own reported subtotal/filtered-total trailer.
+  const lastRows = parsed.data.filter(isTrailerRow);
   if (lastRows.length > 0) {
-    const reportedTotal = parseLocaleNumber(cell(lastRows[0], cols.subtotal) || '0');
+    const reportedTotal = parseLocaleNumber(
+      cell(lastRows[0], cols.subtotal) || cell(lastRows[0], cols.unrounded) || '0',
+    );
     const diff = Math.abs(grandTotal - reportedTotal);
     if (diff > reportedTotal * 0.02) {
       warnings.push(
