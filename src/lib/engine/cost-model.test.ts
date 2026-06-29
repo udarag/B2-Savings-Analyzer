@@ -80,6 +80,46 @@ describe('computeCostModel', () => {
   });
 });
 
+describe('GCP geo-redundancy second-region copy', () => {
+  function gcpMultiRegionTier(overrides: Partial<TierInventoryRow> = {}): TierInventoryRow {
+    return storageTier({
+      id: 'gcp|Standard|US Multi-region',
+      provider: 'gcp',
+      region: 'US Multi-region',
+      gbStored: 1000,
+      monthlyStorageCost: 23,
+      ...overrides,
+    });
+  }
+
+  it('adds a B2 second-region copy cost for migrated GCP multi-region storage', () => {
+    const result = computeCostModel([storageLine()], [gcpMultiRegionTier()], DEFAULT_EGRESS_CONFIG, 6);
+    const repl = result.newCosts.find((c) => /second-region/i.test(c.description));
+    expect(repl?.amountUsd).toBeCloseTo(6, 2); // 1000 GB * (6 / 1000)
+  });
+
+  it('does NOT add it for AWS (cross-region replication already appears as two buckets)', () => {
+    const result = computeCostModel([storageLine()], [storageTier()], DEFAULT_EGRESS_CONFIG, 6);
+    expect(result.newCosts.find((c) => /second-region/i.test(c.description))).toBeUndefined();
+  });
+
+  it('reduces net savings by exactly the second-region copy cost vs an equivalent single-region tier', () => {
+    const single = computeCostModel([storageLine()], [storageTier()], DEFAULT_EGRESS_CONFIG, 6);
+    const geo = computeCostModel([storageLine()], [gcpMultiRegionTier()], DEFAULT_EGRESS_CONFIG, 6);
+    expect(geo.monthlySavings).toBeCloseTo(single.monthlySavings - 6, 2);
+  });
+
+  it('does not apply to GCP single-region storage', () => {
+    const result = computeCostModel(
+      [storageLine()],
+      [gcpMultiRegionTier({ id: 'gcp|Standard|US Regional', region: 'US Regional' })],
+      DEFAULT_EGRESS_CONFIG,
+      6,
+    );
+    expect(result.newCosts.find((c) => /second-region/i.test(c.description))).toBeUndefined();
+  });
+});
+
 describe('storage-scope helpers', () => {
   const result = computeCostModel([storageLine()], [storageTier()], DEFAULT_EGRESS_CONFIG, 6);
 

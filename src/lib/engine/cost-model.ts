@@ -53,6 +53,17 @@ export function computeCostModel(
     0,
   );
 
+  // B2 second-region copy for GCP geo-redundant storage. GCP multi-region/dual-region storage is
+  // billed as a single line but stored redundantly across regions; to match that durability on B2
+  // the data must be replicated to a second region, i.e. stored twice (~2x per-TB). The eliminated
+  // GCP replication egress stays a saving (B2 Cloud Replication transfer is free) — this is the
+  // offsetting ongoing B2 storage cost. Scoped to GCP because AWS cross-region replication already
+  // appears as two separate buckets in the bill, so doubling it here would double-count.
+  const geoRedundantGb = migratedTiers
+    .filter((t) => t.provider === 'gcp' && /multi[\s-]?region|dual[\s-]?region/i.test(t.region))
+    .reduce((sum, t) => sum + t.gbStored, 0);
+  const b2ReplicationStorageCost = round2(geoRedundantGb * (b2PricePerTb / 1000));
+
   const b2Monthly: B2CostBreakdown = {
     storage: round2(b2StorageCost),
     egress: egress.b2EgressCost,
@@ -122,6 +133,12 @@ export function computeCostModel(
     newCosts.push({
       description: 'Hyperscaler to B2 processed-data egress',
       amountUsd: egress.newEgressCost,
+    });
+  }
+  if (b2ReplicationStorageCost > 0) {
+    newCosts.push({
+      description: 'B2 second-region copy to match GCP geo-redundancy',
+      amountUsd: b2ReplicationStorageCost,
     });
   }
 
