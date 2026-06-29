@@ -36,13 +36,54 @@ describe('detectAndParse — CSV routing', () => {
     expect(r.parsedBill.parseConfidence).toBe(0.4);
   });
 
-  it('still hard-fails an AWS CUR file (not implemented)', () => {
-    const text = ['lineItem/UsageType,lineItem/BlendedCost', 'USE1-TimedStorage-ByteHrs,1.00'].join('\n');
-    expect(() => detectAndParse(csv(text))).toThrow(/CUR/i);
+  it('parses an AWS CUR file (row-per-line-item), filtering to S3 by product code', () => {
+    const text = [
+      'lineItem/ProductCode,lineItem/UsageType,lineItem/UnblendedCost',
+      'AmazonS3,USE1-TimedStorage-ByteHrs,100.00',
+      'AmazonS3,USE1-Requests-Tier1,5.00',
+      'AmazonEC2,BoxUsage:t3.large,999.00',
+    ].join('\n');
+    const r = detectAndParse(csv(text));
+    expect(r.provider).toBe('aws');
+    expect(r.billType).toBe('sku-export');
+    expect(r.parsedBill.lineItems.some((i) => i.category === 'storage')).toBe(true);
+    // The EC2 row is excluded by the product filter, so only the S3 storage + request rows count.
+    expect(r.parsedBill.grandTotal).toBeCloseTo(105, 2);
+  });
+
+  it('parses a long-format Cost Explorer export (usage-type rows + a single cost column)', () => {
+    const text = [
+      'Usage type,Cost($)',
+      'USW2-TimedStorage-ByteHrs,200.00',
+      'USW2-DataTransfer-Out-Bytes,50.00',
+    ].join('\n');
+    const r = detectAndParse(csv(text));
+    expect(r.provider).toBe('aws');
+    expect(r.parsedBill.grandTotal).toBeCloseTo(250, 2);
+    expect(r.parsedBill.lineItems.some((i) => i.category === 'storage')).toBe(true);
+    expect(r.parsedBill.lineItems.some((i) => i.category === 'egress')).toBe(true);
   });
 
   it('still throws on a non-billing junk CSV', () => {
     const text = ['Name,Score', 'Alice,90'].join('\n');
     expect(() => detectAndParse(csv(text))).toThrow(/Could not detect CSV format/i);
+  });
+
+  it('picks the billing data sheet of an Excel workbook by content, not a prose cover sheet', async () => {
+    const XLSX = await import('xlsx');
+    const wb = XLSX.utils.book_new();
+    // A prose cover sheet first — the old name/first-sheet heuristic would pick this and 422.
+    const cover = XLSX.utils.aoa_to_sheet([['Billing Summary'], ['Prepared for ACME'], ['See the next tab for detail']]);
+    XLSX.utils.book_append_sheet(wb, cover, 'Cover');
+    const data = XLSX.utils.aoa_to_sheet([
+      ['Service description', 'SKU description', 'SKU ID', 'Subtotal ($)'],
+      ['Cloud Storage', 'Standard Storage US Multi-region', 'AAA', '100.00'],
+    ]);
+    XLSX.utils.book_append_sheet(wb, data, 'Sheet2');
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    const r = detectAndParse({ filename: 'bill.xlsx', content: buf as Buffer, mimeType: '' });
+    expect(r.provider).toBe('gcp');
+    expect(r.parsedBill.grandTotal).toBeCloseTo(100, 2);
   });
 });

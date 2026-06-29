@@ -100,13 +100,13 @@ export function classifySku(sku: string): {
   return { category: 'operations', subcategory: 'Other S3' };
 }
 
-function estimateGbFromCost(costUsd: number, storageClass: string, region: string): number | undefined {
+export function estimateGbFromCost(costUsd: number, storageClass: string, region: string): number | undefined {
   const rate = getListRate('aws', storageClass, region);
   if (!rate || rate <= 0) return undefined;
   return costUsd / rate;
 }
 
-function extractRegion(sku: string): string {
+export function extractRegion(sku: string): string {
   const match = sku.match(/^([A-Z]{2,4}\d?)-/);
   if (!match) {
     if (sku.startsWith('Global-') || sku.startsWith('DataTransfer-')) return 'global';

@@ -83,7 +83,6 @@ function estimateStorageGb(costUsd: number, storageClass: string | undefined): n
 
 function parseServiceEntries(text: string): ServiceEntry[] {
   const lines = text.split('\n');
-  const entries: ServiceEntry[] = [];
 
   // Match service line: indented service name followed by dollar amount
   // e.g. "    Amazon Simple Storage Service                 $116,349.79"
@@ -98,90 +97,73 @@ function parseServiceEntries(text: string): ServiceEntry[] {
     'estimated us sales tax', 'credits', 'tax',
   ]);
 
-  let currentEntry: ServiceEntry | null = null;
-  let inConsolidatedBill = false;
+  // Collect service entries from the section that begins at the first line matching `shouldStart`.
+  const collect = (shouldStart: (line: string) => boolean): ServiceEntry[] => {
+    const entries: ServiceEntry[] = [];
+    let currentEntry: ServiceEntry | null = null;
+    let inSection = false;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    if (line.includes('Detail for Consolidated Bill')) {
-      inConsolidatedBill = true;
-      continue;
-    }
-
-    // Stop at linked account sections — we only want the consolidated view
-    if (line.includes('LINKED ACCOUNT ALLOCATION') || line.includes('Activity By Account')) {
-      break;
-    }
-
-    if (!inConsolidatedBill) continue;
-
-    // Check sub-item patterns BEFORE the service line pattern,
-    // since "Charges $144,208.65" also matches the service line shape.
-    if (currentEntry) {
-      const chargesMatch = line.match(chargesPattern);
-      if (chargesMatch) {
-        currentEntry.charges = parseFormattedNumber(chargesMatch[1]);
+    for (const line of lines) {
+      if (!inSection) {
+        if (shouldStart(line)) inSection = true;
         continue;
       }
 
-      const discountMatch = line.match(discountPattern);
-      if (discountMatch) {
-        currentEntry.discounts.push({
-          name: discountMatch[1],
-          amount: parseFormattedNumber(discountMatch[2]),
-        });
-        continue;
+      // Stop at linked-account sections — we only want the rolled-up service view
+      if (line.includes('LINKED ACCOUNT ALLOCATION') || line.includes('Activity By Account')) {
+        break;
       }
 
-      const spMatch = line.match(savingsPlanPattern);
-      if (spMatch) {
-        currentEntry.discounts.push({
-          name: 'Savings Plans',
-          amount: parseFormattedNumber(spMatch[1]),
-        });
-        continue;
-      }
-    }
-
-    // Try to match a service line
-    const svcMatch = line.match(serviceLinePattern);
-    if (svcMatch) {
-      const name = svcMatch[1].trim();
-      const amount = parseFormattedNumber(svcMatch[2]);
-
-      // Skip sub-item labels that might match the pattern
-      const lowerName = name.toLowerCase();
-      if (subItemLabels.has(lowerName) || lowerName.startsWith('discount') ||
-          lowerName.startsWith('savings plan') || lowerName.startsWith('vat') ||
-          lowerName.startsWith('gst') || lowerName.startsWith('estimated') ||
-          lowerName.startsWith('credits') || lowerName === 'ct' ||
-          lowerName === 'tax') {
-        continue;
-      }
-
-      // Save previous entry
+      // Check sub-item patterns BEFORE the service line pattern,
+      // since "Charges $144,208.65" also matches the service line shape.
       if (currentEntry) {
-        entries.push(currentEntry);
+        const chargesMatch = line.match(chargesPattern);
+        if (chargesMatch) {
+          currentEntry.charges = parseFormattedNumber(chargesMatch[1]);
+          continue;
+        }
+        const discountMatch = line.match(discountPattern);
+        if (discountMatch) {
+          currentEntry.discounts.push({ name: discountMatch[1], amount: parseFormattedNumber(discountMatch[2]) });
+          continue;
+        }
+        const spMatch = line.match(savingsPlanPattern);
+        if (spMatch) {
+          currentEntry.discounts.push({ name: 'Savings Plans', amount: parseFormattedNumber(spMatch[1]) });
+          continue;
+        }
       }
 
-      currentEntry = {
-        name,
-        netTotal: amount,
-        charges: 0,
-        discounts: [],
-      };
-      continue;
+      const svcMatch = line.match(serviceLinePattern);
+      if (svcMatch) {
+        const name = svcMatch[1].trim();
+        const amount = parseFormattedNumber(svcMatch[2]);
+        const lowerName = name.toLowerCase();
+        if (subItemLabels.has(lowerName) || lowerName.startsWith('discount') ||
+            lowerName.startsWith('savings plan') || lowerName.startsWith('vat') ||
+            lowerName.startsWith('gst') || lowerName.startsWith('estimated') ||
+            lowerName.startsWith('credits') || lowerName === 'ct' || lowerName === 'tax') {
+          continue;
+        }
+        if (currentEntry) entries.push(currentEntry);
+        currentEntry = { name, netTotal: amount, charges: 0, discounts: [] };
+        continue;
+      }
     }
 
-  }
+    if (currentEntry) entries.push(currentEntry);
+    return entries;
+  };
 
-  // Don't forget the last entry
-  if (currentEntry) {
-    entries.push(currentEntry);
-  }
+  // Primary path: the consolidated-bill service breakdown.
+  const consolidated = collect((line) => line.includes('Detail for Consolidated Bill'));
+  if (consolidated.length > 0) return consolidated;
 
-  return entries;
+  // Fallback for single-account / non-consolidated invoices, which have no "Detail for
+  // Consolidated Bill" section but list service charges under "Invoice Summary" / "Detail for
+  // Account". Only runs when the consolidated path found nothing, so it cannot affect consolidated
+  // bills. (Synthetic-tested; validate against a real single-account invoice when one is available.)
+  return collect((line) => /Invoice Summary|Detail for Account\b/i.test(line));
 }
 
 function parseLinkedAccounts(text: string): AccountBreakdown[] {
