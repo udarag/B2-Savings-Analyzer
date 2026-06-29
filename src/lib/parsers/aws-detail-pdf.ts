@@ -1,8 +1,4 @@
-import { execSync } from 'child_process';
 import { v4 as uuid } from 'uuid';
-import { writeFileSync, unlinkSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
 import type { ParsedLineItem, AccountBreakdown, Category, NamedDiscount } from '@/types/analysis';
 import type { ParseResult } from './types';
 import { parseFormattedNumber, parseUsdAmount } from './normalize';
@@ -13,22 +9,11 @@ import {
   unsupportedLayoutWarning,
   NO_STORAGE_SCOPE_WARNING,
 } from './confidence';
+import { extractPdfText } from './pdf-text';
 import { AWS_REGION_CODES, AWS_SKU_STORAGE_CLASS } from '../categories/types';
 import { buildAwsComputeSignals, getAwsComputeSignalService, type AwsComputeSignalInput } from './aws-compute-signals';
 import { classifyS3Suffix } from './aws-s3-classify';
 import { buildEgressProfileSuggestion } from '@/lib/analysis/egress-profile-suggestion';
-
-function extractText(pdfBuffer: Buffer): string {
-  const tmpPath = join(tmpdir(), `bill-${Date.now()}.pdf`);
-  try {
-    writeFileSync(tmpPath, pdfBuffer);
-    return execSync(`pdftotext -layout "${tmpPath}" -`, {
-      maxBuffer: 50 * 1024 * 1024,
-    }).toString('utf-8');
-  } finally {
-    try { unlinkSync(tmpPath); } catch { /* ignore */ }
-  }
-}
 
 function resolveRegionCode(code: string): string {
   return AWS_REGION_CODES[code] || code;
@@ -309,7 +294,10 @@ export function classifyGrandTotalReconciliation(
 }
 
 export function parseAwsDetailPdf(pdfBuffer: Buffer): ParseResult {
-  const text = extractText(pdfBuffer);
+  return parseAwsDetailPdfText(extractPdfText(pdfBuffer));
+}
+
+export function parseAwsDetailPdfText(text: string): ParseResult {
   const lines = text.split('\n');
 
   const lineItems: ParsedLineItem[] = [];

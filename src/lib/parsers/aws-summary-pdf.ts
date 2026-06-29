@@ -1,7 +1,3 @@
-import { execSync } from 'child_process';
-import { writeFileSync, unlinkSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
 import { v4 as uuid } from 'uuid';
 import type { ParsedLineItem, AccountBreakdown, AccountServiceBreakdown, Category, NamedDiscount } from '@/types/analysis';
 import type { ParseResult } from './types';
@@ -15,18 +11,7 @@ import {
   sumAddressableCost,
   NO_STORAGE_SCOPE_WARNING,
 } from './confidence';
-
-function extractText(pdfBuffer: Buffer): string {
-  const tmpPath = join(tmpdir(), `bill-${Date.now()}.pdf`);
-  try {
-    writeFileSync(tmpPath, pdfBuffer);
-    return execSync(`pdftotext -layout "${tmpPath}" -`, {
-      maxBuffer: 50 * 1024 * 1024,
-    }).toString('utf-8');
-  } finally {
-    try { unlinkSync(tmpPath); } catch { /* ignore */ }
-  }
-}
+import { extractPdfText } from './pdf-text';
 
 interface ServiceEntry {
   name: string;
@@ -294,7 +279,10 @@ function parseAccountServiceBreakdowns(text: string, accounts: AccountBreakdown[
 }
 
 export function parseAwsSummaryPdf(pdfBuffer: Buffer): ParseResult {
-  const text = extractText(pdfBuffer);
+  return parseAwsSummaryPdfText(extractPdfText(pdfBuffer));
+}
+
+export function parseAwsSummaryPdfText(text: string): ParseResult {
 
   const serviceEntries = parseServiceEntries(text);
   const accounts = parseLinkedAccounts(text);
@@ -440,20 +428,13 @@ export function parseAwsSummaryPdf(pdfBuffer: Buffer): ParseResult {
   };
 }
 
-export function isSummaryInvoice(pdfBuffer: Buffer): boolean {
-  const tmpPath = join(tmpdir(), `detect-${Date.now()}.pdf`);
-  try {
-    writeFileSync(tmpPath, pdfBuffer);
-    const text = execSync(`pdftotext -layout "${tmpPath}" - | head -500`, {
-      maxBuffer: 10 * 1024 * 1024,
-    }).toString('utf-8');
+// Operates on already-extracted text (the caller extracts once). Structural rather than
+// position-bounded: a detail statement is identified by per-SKU rate codes appearing ANYWHERE in
+// the document, not just the first 500 lines.
+export function isSummaryInvoice(text: string): boolean {
+  const hasConsolidatedBill = /Detail for Consolidated Bill/i.test(text);
+  const hasInvoiceSummary = /Invoice Summary/i.test(text);
+  const hasSkuCodes = /[A-Z]{2,4}\d?-TimedStorage|[A-Z]{2,4}\d?-Requests-Tier/i.test(text);
 
-    const hasConsolidatedBill = /Detail for Consolidated Bill/i.test(text);
-    const hasInvoiceSummary = /Invoice Summary/i.test(text);
-    const hasSkuCodes = /[A-Z]{2,4}\d?-TimedStorage|[A-Z]{2,4}\d?-Requests-Tier/i.test(text);
-
-    return (hasConsolidatedBill || hasInvoiceSummary) && !hasSkuCodes;
-  } finally {
-    try { unlinkSync(tmpPath); } catch { /* ignore */ }
-  }
+  return (hasConsolidatedBill || hasInvoiceSummary) && !hasSkuCodes;
 }
