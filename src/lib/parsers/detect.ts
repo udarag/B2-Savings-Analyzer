@@ -4,6 +4,7 @@ import { parseGcpCsv } from './gcp-csv';
 import { parseAwsDetailPdf } from './aws-detail-pdf';
 import { parseAwsSummaryPdf, isSummaryInvoice } from './aws-summary-pdf';
 import { parseAwsCostCsv } from './aws-cost-csv';
+import { parseAwsLongCsv } from './aws-long-csv';
 import { parseGenericTabularCsv } from './generic-csv';
 import { transformHeader, resolveColumn } from './csv-utils';
 import { detectProviderFromContent } from './provider-detection';
@@ -74,9 +75,10 @@ function detectCsvProvider(text: string): ParseResult {
     if (r) return r;
   }
 
-  // AWS CUR format
+  // AWS CUR (row-per-line-item with lineItem/* columns)
   if (text.includes('lineItem/UsageType') || text.includes('lineItem/BlendedCost')) {
-    throw new Error('AWS CUR/Cost Explorer CSV parsing not yet implemented');
+    const r = attempt(() => parseAwsLongCsv(text), 'CSV format: AWS Cost & Usage Report (row-per-line-item, aggregated by usage type)');
+    if (r) return r;
   }
 
   // AWS S3 usage-type cost CSV (pivoted: SKUs as columns, months as rows)
@@ -104,6 +106,16 @@ function detectCsvProvider(text: string): ParseResult {
     probeFields.some((h) => COST_COLUMN_SUFFIX.test(h))
   ) {
     const r = attempt(() => parseAwsCostCsv(text), 'CSV format: AWS cost export (header alias match)');
+    if (r) return r;
+  }
+  // Long-format (row-per-usage-type) AWS export: a usage-type column plus a single cost column,
+  // with no pivoted SKU columns / totals row. Tried after the pivoted parser so it only handles
+  // the non-pivoted shape.
+  if (
+    resolveColumn(probeFields, ['Usage type', 'UsageType', 'lineItem/UsageType']) &&
+    resolveColumn(probeFields, ['Cost($)', 'Cost ($)', 'Cost', 'Amount($)', 'Amount', 'UnblendedCost', 'lineItem/UnblendedCost'])
+  ) {
+    const r = attempt(() => parseAwsLongCsv(text), 'CSV format: AWS long-format usage export (aggregated by usage type)');
     if (r) return r;
   }
 
@@ -183,14 +195,41 @@ function parseExcel(content: Buffer | string): ParseResult {
   const buffer = typeof content === 'string' ? Buffer.from(content) : content;
   const workbook = XLSX.read(buffer, { type: 'buffer' });
 
+  // Choose the sheet by CONTENT, not by name: try to parse every sheet and keep the one that
+  // yields the most billing line items. A prose "Billing Summary" cover tab no longer wins over
+  // the real data sheet, and a known-provider parse is preferred over the generic fallback.
+  let best: { name: string; result: ParseResult; score: number } | null = null;
+  for (const name of workbook.SheetNames as string[]) {
+    const csvContent = XLSX.utils.sheet_to_csv(workbook.Sheets[name]);
+    if (!csvContent.trim()) continue;
+    try {
+      const result = detectCsvProvider(csvContent);
+      const isGeneric = (result.detectionSignals || []).some((s) => /generic tabular fallback/i.test(s));
+      const score = result.parsedBill.lineItems.length + (isGeneric ? 0 : 1000);
+      if (result.parsedBill.lineItems.length > 0 && (!best || score > best.score)) {
+        best = { name, result, score };
+      }
+    } catch {
+      // Not a billing sheet — skip it.
+    }
+  }
+
+  if (best) {
+    best.result.detectionSignals = [
+      `Excel file: parsed sheet "${best.name}" (chosen by content)`,
+      ...(best.result.detectionSignals || []),
+    ];
+    return best.result;
+  }
+
+  // Fallback: original name-based heuristic, then the first sheet — surfaces a clear parse error
+  // rather than silently succeeding on the wrong sheet.
   const sheetName = workbook.SheetNames.find((name: string) => {
     const lower = name.toLowerCase();
     return lower.includes('cost') || lower.includes('billing') || lower.includes('charge') || lower.includes('usage');
   }) || workbook.SheetNames[0];
 
-  const sheet = workbook.Sheets[sheetName];
-  const csvContent = XLSX.utils.sheet_to_csv(sheet);
-
+  const csvContent = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName]);
   const result = detectCsvProvider(csvContent);
   result.detectionSignals = [
     `Excel file: extracted sheet "${sheetName}" as CSV`,
