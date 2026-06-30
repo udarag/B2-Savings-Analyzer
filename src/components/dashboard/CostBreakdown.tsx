@@ -58,10 +58,11 @@ export function CostBreakdown({ result, provider }: CostBreakdownProps) {
   );
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Storage cost breakdown</h3>
-        <p className="mt-1 text-sm text-gray-500">
+    // Design-system card: rounded-2xl surface with a hairline border and soft shadow.
+    <div className="rounded-2xl border border-c-border bg-c-surface shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b border-c-border">
+        <h3 className="text-lg font-semibold text-c-text">Storage cost breakdown</h3>
+        <p className="mt-1 text-sm text-c-muted">
           Monthly view of the modeled storage costs selected for migration. Non-storage spend is outside this view.
         </p>
       </div>
@@ -69,8 +70,8 @@ export function CostBreakdown({ result, provider }: CostBreakdownProps) {
       <div className="p-6 space-y-5">
         <div>
           <div className="mb-4 flex items-center justify-between gap-4">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Monthly cost comparison</h4>
-            <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-c-subtle">Monthly cost comparison</h4>
+            <span className="rounded-full bg-c-surface2 px-2.5 py-1 text-xs font-medium text-c-muted">
               Storage scope only
             </span>
           </div>
@@ -99,24 +100,33 @@ export function CostBreakdown({ result, provider }: CostBreakdownProps) {
           </div>
         </div>
 
-        <div className={`rounded-lg border px-4 py-3 ${
+        {/* AE takeaway band: green-soft success treatment with a check when there are savings,
+            amber-soft caution treatment when the model needs review. */}
+        <div className={`rounded-xl border px-4 py-3 ${
           hasSavings
-            ? 'border-green-200 bg-green-50 text-green-900'
-            : 'border-amber-200 bg-amber-50 text-amber-900'
+            ? 'border-c-border bg-c-green-soft text-c-text'
+            : 'border-c-border bg-c-amber-soft text-c-text'
         }`}>
-          <p className="text-sm font-semibold">
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <span aria-hidden="true" className={hasSavings ? 'text-c-green' : 'text-c-amber'}>
+              {hasSavings ? '✓' : '!'}
+            </span>
             AE takeaway: {hasSavings ? 'B2 lowers the modeled monthly storage bill.' : 'This model needs a closer review.'}
           </p>
           <p className="mt-1 text-sm">
             {currentBillLabel} is {formatCurrency(eliminatedTotal)}. {newB2BillLabel} is {formatCurrency(replacementCostTotal)}.
             {' '}
-            {hasSavings
-              ? `That creates ${formatCurrency(result.monthlySavings)} in estimated monthly savings.`
-              : `The modeled change is ${formatCurrency(result.monthlySavings)} per month.`}
+            {hasSavings ? (
+              <>That creates <b className="text-c-green">{formatCurrency(result.monthlySavings)}</b> in estimated monthly savings.</>
+            ) : (
+              `The modeled change is ${formatCurrency(result.monthlySavings)} per month.`
+            )}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        {/* Two-column split: current vs. modeled B2, separated by a single hairline. The grid
+            background bleeds through the 1px gap to draw the divider between the two surface cells. */}
+        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-c-border bg-c-border lg:grid-cols-2">
           <BillPanel
             title={currentBillLabel}
             total={eliminatedTotal}
@@ -143,7 +153,7 @@ export function CostBreakdown({ result, provider }: CostBreakdownProps) {
           />
         </div>
 
-        <div className="rounded-lg border border-gray-200">
+        <div className="rounded-xl border border-c-border">
           <button
             type="button"
             onClick={() => setDetailsOpen((value) => !value)}
@@ -151,10 +161,10 @@ export function CostBreakdown({ result, provider }: CostBreakdownProps) {
             className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left"
           >
             <div>
-              <p className="text-sm font-semibold text-gray-900">Line-item savings detail</p>
-              <p className="mt-0.5 text-xs text-gray-500">For AE follow-up, SE review, or customer validation.</p>
+              <p className="text-sm font-semibold text-c-text">Line-item savings detail</p>
+              <p className="mt-0.5 text-xs text-c-muted">For AE follow-up, SE review, or customer validation.</p>
             </div>
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-3 py-1.5 text-sm font-semibold text-gray-700">
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-c-surface2 px-3 py-1.5 text-sm font-semibold text-c-text">
               {detailsOpen ? 'Hide details' : 'Show details'}
               <svg
                 className={`h-4 w-4 transition-transform ${detailsOpen ? 'rotate-180' : ''}`}
@@ -170,40 +180,40 @@ export function CostBreakdown({ result, provider }: CostBreakdownProps) {
           </button>
 
           <Collapse open={detailsOpen}>
-            <div className="border-t border-gray-200 bg-gray-50 p-4">
+            <div className="border-t border-c-border bg-c-bg p-4">
               <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Costs removed</p>
-                  <div className="mt-3 space-y-2 border-l-2 border-green-300 pl-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-c-subtle">Costs removed</p>
+                  <div className="mt-3 space-y-2 border-l-2 border-c-green pl-3">
                     {eliminatedFees.map((fee, i) => (
                       <div key={i} className="flex justify-between gap-4 text-sm">
-                        <span className="min-w-0 text-gray-600">{fee.description}</span>
-                        <span className="shrink-0 font-medium text-green-700">{formatCurrency(fee.amountUsd)}</span>
+                        <span className="min-w-0 text-c-muted">{fee.description}</span>
+                        <span className="shrink-0 font-medium text-c-green">{formatCurrency(fee.amountUsd)}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-3 flex justify-between gap-4 border-t border-gray-200 pt-3 text-sm font-semibold">
-                    <span className="text-gray-900">Total removed</span>
-                    <span className="shrink-0 text-green-700">{formatCurrency(eliminatedTotal)}</span>
+                  <div className="mt-3 flex justify-between gap-4 border-t border-c-border pt-3 text-sm font-semibold">
+                    <span className="text-c-text">Total removed</span>
+                    <span className="shrink-0 text-c-green">{formatCurrency(eliminatedTotal)}</span>
                   </div>
                 </div>
 
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">New B2 bill</p>
-                  <div className="mt-3 space-y-2 border-l-2 border-bb-red/60 pl-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-c-subtle">New B2 bill</p>
+                  <div className="mt-3 space-y-2 border-l-2 border-c-red pl-3">
                     <Row label="B2 Storage" value={b2Monthly.storage} tone="b2" showZero />
                     <Row label="B2 Egress" value={b2Monthly.egress} tone="b2" />
                     <Row label="B2 Transactions" value={b2Monthly.transactions} tone="b2" />
                     {newCosts.map((cost, i) => (
-                      <div key={i} className="flex justify-between gap-4 text-sm text-gray-600">
+                      <div key={i} className="flex justify-between gap-4 text-sm text-c-muted">
                         <span className="min-w-0">{cost.description}</span>
                         <span className="shrink-0">{formatCurrency(cost.amountUsd)}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-3 flex justify-between gap-4 border-t border-gray-200 pt-3 text-sm font-semibold">
-                    <span className="text-gray-900">Total new B2 bill</span>
-                    <span className="shrink-0 text-bb-red-dark">{formatCurrency(replacementCostTotal)}</span>
+                  <div className="mt-3 flex justify-between gap-4 border-t border-c-border pt-3 text-sm font-semibold">
+                    <span className="text-c-text">Total new B2 bill</span>
+                    <span className="shrink-0 text-c-red-dark">{formatCurrency(replacementCostTotal)}</span>
                   </div>
                 </div>
               </div>
@@ -211,26 +221,26 @@ export function CostBreakdown({ result, provider }: CostBreakdownProps) {
               {/* Upside-only "what if" line: with a Bandwidth Alliance compute partner, hyperscaler→B2
                   egress is free, so this models the extra savings on top of the base comparison. */}
               {result.partnerComputeScenario && (
-                <div className="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+                <div className="mt-5 rounded-xl border border-c-border bg-c-green-soft px-4 py-3">
                   <div className="flex justify-between gap-4 text-sm">
-                    <span className="font-medium text-emerald-900">Bandwidth alliance compute scenario</span>
-                    <span className="font-semibold text-emerald-900">
+                    <span className="font-medium text-c-text">Bandwidth alliance compute scenario</span>
+                    <span className="font-semibold text-c-green">
                       {formatCurrency(result.partnerComputeScenario.monthlySavings)}/mo savings
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-emerald-800">
+                  <p className="mt-1 text-xs text-c-muted">
                     Avoids {formatCurrency(result.partnerComputeScenario.monthlyEgressAvoided)}/mo in hyperscaler-to-B2 processed-data egress.
                   </p>
                 </div>
               )}
 
-              <div className="mt-5 border-t-2 border-gray-300 pt-4">
-                <div className="flex justify-between text-sm text-gray-500">
+              <div className="mt-5 border-t border-c-border pt-4">
+                <div className="flex justify-between text-sm text-c-muted">
                   <span>{formatCurrency(eliminatedTotal)} removed - {formatCurrency(replacementCostTotal)} new B2 bill</span>
                 </div>
                 <div className="mt-1 flex justify-between gap-4 text-base font-semibold">
-                  <span className="text-green-800">Net storage-scope savings</span>
-                  <span className="text-green-700">
+                  <span className="text-c-text">Net storage-scope savings</span>
+                  <span className="text-c-green">
                     <AnimatedMetricValue value={result.monthlySavings} formatter={formatCurrency} />
                   </span>
                 </div>
@@ -254,14 +264,17 @@ function BillPanel({
   rows: Array<{ label: string; value: number }>;
   tone: 'current' | 'b2';
 }) {
-  const accentClass = tone === 'b2' ? 'border-bb-red/60' : 'border-gray-300';
+  const accentClass = tone === 'b2' ? 'border-c-red' : 'border-c-border2';
   const totalTone = tone === 'b2' ? 'b2' : 'default';
+  // B2 column gets the red eyebrow + red total; the current bill stays neutral.
+  const titleClass = tone === 'b2' ? 'text-c-red' : 'text-c-subtle';
 
   return (
-    <div className="rounded-lg border border-gray-200 p-4">
+    // Flush surface cell — the parent grid's 1px gap (over bg-c-border) supplies the divider.
+    <div className="bg-c-surface p-4">
       <div className="mb-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{title}</p>
-        <p className={`mt-1 text-xl font-bold ${getValueClass(totalTone, total)}`}>
+        <p className={`text-xs font-semibold uppercase tracking-wide ${titleClass}`}>{title}</p>
+        <p className={`mt-1 font-display text-2xl font-semibold ${getValueClass(totalTone, total)}`}>
           <AnimatedMetricValue value={total} formatter={formatCurrency} />
         </p>
       </div>
@@ -276,7 +289,7 @@ function BillPanel({
 
 function OperatorSymbol({ symbol }: { symbol: '-' | '=' }) {
   return (
-    <div className="hidden h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-lg font-semibold text-gray-500 md:flex">
+    <div className="hidden h-8 w-8 items-center justify-center rounded-full bg-c-surface2 text-lg font-semibold text-c-subtle md:flex">
       {symbol}
     </div>
   );
@@ -296,19 +309,20 @@ function Metric({
   emphasized?: boolean;
 }) {
   const valueClass = getValueClass(tone, value);
+  // Emphasized metric (net savings) reads as a success/caution tile; the rest are plain surfaces.
   const containerClass = emphasized
     ? value >= 0
-      ? 'rounded-lg border border-green-200 bg-green-50 p-4'
-      : 'rounded-lg border border-amber-200 bg-amber-50 p-4'
-    : 'rounded-lg border border-gray-200 bg-white p-4';
+      ? 'rounded-xl border border-c-border bg-c-green-soft p-4'
+      : 'rounded-xl border border-c-border bg-c-amber-soft p-4'
+    : 'rounded-xl border border-c-border bg-c-surface p-4';
 
   return (
     <div className={containerClass}>
-      <p className="text-xs font-semibold text-gray-500 tracking-wide">{label}</p>
-      <p className={`mt-1 text-2xl font-bold ${valueClass}`}>
+      <p className="text-xs font-semibold text-c-subtle tracking-wide">{label}</p>
+      <p className={`mt-1 font-display text-2xl font-semibold ${valueClass}`}>
         <AnimatedMetricValue value={value} formatter={formatCurrency} />
       </p>
-      {caption && <p className="mt-1 text-xs text-gray-500">{caption}</p>}
+      {caption && <p className="mt-1 text-xs text-c-muted">{caption}</p>}
     </div>
   );
 }
@@ -329,10 +343,10 @@ function Row({
   // Hide zero-valued rows to keep the breakdown tight, unless explicitly kept (e.g. B2 storage,
   // which we always want to show even at $0) or emphasized as a bold total.
   if (value === 0 && !bold && !showZero) return null;
-  const labelClass = bold ? 'font-semibold text-gray-900' : 'text-gray-600';
+  const labelClass = bold ? 'font-semibold text-c-text' : 'text-c-muted';
   const valueClass = bold
     ? `font-semibold ${getValueClass(tone, value)}`
-    : tone === 'default' ? 'text-gray-600' : getValueClass(tone, value);
+    : tone === 'default' ? 'text-c-muted' : getValueClass(tone, value);
 
   return (
     <div className="flex justify-between gap-4 text-sm">
@@ -343,9 +357,9 @@ function Row({
 }
 
 function getValueClass(tone: 'default' | 'b2' | 'savings', value: number): string {
-  if (tone === 'b2') return 'text-bb-red-dark';
-  if (tone === 'savings') return value >= 0 ? 'text-green-700' : 'text-red-600';
-  return 'text-gray-900';
+  if (tone === 'b2') return 'text-c-red-dark';
+  if (tone === 'savings') return value >= 0 ? 'text-c-green' : 'text-c-red';
+  return 'text-c-text';
 }
 
 // Round to cents and flatten sub-half-cent residue to exactly 0, so floating-point dust doesn't

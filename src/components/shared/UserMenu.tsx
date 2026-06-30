@@ -141,25 +141,24 @@ export function UserMenu() {
   const darkMode = theme === 'dark';
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2.5">
       <Link
         href="/analyses/new"
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-white/10 rounded-md hover:bg-bb-red transition-colors"
+        className="inline-flex items-center gap-1.5 rounded-[9px] bg-[#e20626] px-[15px] py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[#b40a23]"
       >
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path d="M12 5v14m-7-7h14" /></svg>
-        New
+        <span className="text-[15px] font-semibold leading-none">+</span>
+        <span className="hidden sm:inline">New opportunity</span>
+        <span className="sm:hidden">New</span>
       </Link>
-      <div className="w-px h-5 bg-white/20" />
       <div className="relative" ref={panelRef}>
         <button
           onClick={() => { setShowPanel(!showPanel); setEditing(false); setNameInput(profile?.displayName || emailToDisplayName(email)); setTitleInput(profile?.title || ''); }}
-          className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+          aria-label="Account menu"
+          aria-haspopup="menu"
+          aria-expanded={showPanel}
+          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-[linear-gradient(135deg,#e20626,#f9733a)] transition-opacity hover:opacity-90"
         >
-          <div className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center">
-            <span className="text-xs font-semibold text-white">{initials}</span>
-          </div>
-          <span className="text-sm text-gray-300 hidden sm:inline">{displayName}</span>
-          <svg className="w-3 h-3 text-gray-400 hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M19 9l-7 7-7-7" /></svg>
+          <span className="font-display text-[13px] font-semibold text-white">{initials}</span>
         </button>
 
       {/* Profile setup prompt (first login) */}

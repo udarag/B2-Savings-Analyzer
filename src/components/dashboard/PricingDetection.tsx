@@ -50,58 +50,67 @@ export function PricingDetection({ results }: PricingDetectionProps) {
   const listRate = discountPrograms[0]?.listRate || tierAnalysis[0]?.listRate || 0;
 
   return (
-    <div className="bg-white rounded-lg shadow border-l-4 border-amber-400">
-      <div className="px-5 py-3 border-b border-gray-200">
-        <h4 className="text-sm font-semibold text-gray-900">Pricing Detection</h4>
-        <p className="text-xs text-gray-500">Internal Only — Not Shown in Customer Report</p>
+    // Card shell: amber left accent marks this as the internal-only pricing panel.
+    <div className="bg-c-surface rounded-2xl border border-c-border border-l-[3px] border-l-c-amber shadow-sm overflow-hidden">
+      <div className="px-[18px] py-[15px] border-b border-c-border">
+        <div className="flex items-center gap-[9px]">
+          <h4 className="text-[15px] font-semibold text-c-text">Pricing Detection</h4>
+          {/* "Internal" pill — soft amber so it reads as a non-customer-facing flag. */}
+          <span className="text-[10px] font-bold uppercase tracking-[0.04em] px-2 py-0.5 rounded-full bg-c-amber-soft text-c-amber">
+            Internal
+          </span>
+        </div>
+        <p className="text-[11.5px] text-c-subtle mt-[3px]">Internal Only — Not Shown in Customer Report</p>
       </div>
 
       {discountPrograms.length > 0 && (
-        <div className="px-5 py-4 bg-amber-50 border-b border-amber-100">
-          <p className="text-xs font-semibold text-amber-800 mb-3">Active Discount Programs</p>
+        // Discount-program block sits on the soft-amber wash to tie back to the card accent.
+        <div className="px-[18px] py-[15px] bg-c-amber-soft border-b border-c-border">
+          <p className="text-[10.5px] font-bold uppercase tracking-[0.04em] text-c-amber mb-[9px]">Active Discount Programs</p>
           <div className="space-y-2">
             {discountPrograms.map((r, i) => {
               const pctOff = r.storagePercentOff || r.discountPercent || 0;
               return (
-                <div key={i} className="bg-white rounded-md px-3 py-2 border border-amber-200">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-900">{r.programName}</span>
+                <div key={i} className="bg-c-surface rounded-[10px] px-[13px] py-[11px] border border-c-border2">
+                  <div className="flex items-start justify-between gap-2.5">
+                    <span className="text-[13px] font-semibold text-c-text">{r.programName}</span>
                     {pctOff > 0 && (
-                      <span className="text-xs font-semibold text-red-700 whitespace-nowrap ml-2">
+                      <span className="text-xs font-bold text-c-red whitespace-nowrap ml-2">
                         {formatPercent(pctOff)} off
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">-{formatCurrency(r.totalAmountUsd || 0)} total</p>
+                  <p className="text-[11.5px] text-c-muted mt-[3px]">-{formatCurrency(r.totalAmountUsd || 0)} total</p>
                 </div>
               );
             })}
           </div>
 
           {effectiveRate > 0 && listRate > 0 && (
-            <div className="mt-3 pt-3 border-t border-amber-200">
-              <p className="text-xs text-amber-800 font-medium mb-1">Effective Storage Rate</p>
-              <p className="text-lg font-semibold text-gray-900">
+            <div className="mt-3 pt-[11px] border-t border-c-border2">
+              <p className="text-[11px] text-c-amber font-semibold mb-[3px]">Effective Storage Rate</p>
+              {/* Headline effective rate — display font so the number carries weight. */}
+              <p className="font-display font-semibold text-[22px] text-c-text">
                 ${(effectiveRate * 1000).toFixed(2)}
-                <span className="text-xs font-normal text-gray-500">/TB/mo</span>
+                <span className="text-[11px] font-medium text-c-subtle">/TB/mo</span>
               </p>
-              <p className="text-xs text-gray-400">
-                List: ${(listRate * 1000).toFixed(2)}/TB — {formatPercent(((listRate - effectiveRate) / listRate) * 100)} Below List
+              <p className="text-[11px] text-c-muted mt-0.5">
+                List: ${(listRate * 1000).toFixed(2)}/TB — <b className="text-c-red">{formatPercent(((listRate - effectiveRate) / listRate) * 100)} Below List</b>
               </p>
             </div>
           )}
 
-          <p className="text-xs text-amber-700 mt-3">
+          <p className="text-[11px] text-c-amber mt-2.5 leading-normal">
             Savings in the report are calculated against these discounted rates, not list pricing.
           </p>
         </div>
       )}
 
       {tierAnalysis.length > 0 && (
-        <div className="p-5 space-y-4">
+        <div className="px-[18px] py-[15px] space-y-3">
           <div>
-            <p className="text-xs font-semibold text-gray-500">Per-Tier Rate Analysis</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">Sorted High to Low by $/TB/mo</p>
+            <p className="text-[10.5px] font-bold uppercase tracking-[0.04em] text-c-subtle">Per-Tier Rate Analysis</p>
+            <p className="text-[10.5px] text-c-subtle mt-0.5">Sorted High to Low by $/TB/mo</p>
           </div>
 
           <div className="flex flex-wrap gap-1.5">
@@ -110,7 +119,8 @@ export function PricingDetection({ results }: PricingDetectionProps) {
             {listPriceTierCount > 0 && <SummaryPill label="List Price" count={listPriceTierCount} tone="green" />}
           </div>
 
-          <div className="rounded-md border border-gray-200 bg-white divide-y divide-gray-100 overflow-hidden">
+          {/* Each tier is its own bordered card, stacked with a small gap. */}
+          <div className="flex flex-col gap-[11px]">
             {sortedTiers.map((r, i) => (
               <TierRateRow key={`${r.assessment}-${r.storageClass}-${r.region}-${i}`} result={r} />
             ))}
@@ -130,14 +140,15 @@ function SummaryPill({
   count: number;
   tone: 'red' | 'yellow' | 'green';
 }) {
+  // Summary pills are tinted by assessment tone using the design-system soft fills.
   const colors = {
-    red: 'bg-red-50 text-red-700 ring-red-100',
-    yellow: 'bg-yellow-50 text-yellow-700 ring-yellow-100',
-    green: 'bg-green-50 text-green-700 ring-green-100',
+    red: 'bg-c-red-soft text-c-red',
+    yellow: 'bg-c-amber-soft text-c-amber',
+    green: 'bg-c-green-soft text-c-green',
   };
 
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${colors[tone]}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${colors[tone]}`}>
       {label}
       <span className="font-bold">{count}</span>
     </span>
@@ -150,18 +161,20 @@ function TierRateRow({ result: r }: { result: PricingDetectionResult }) {
   const isDiscounted = r.assessment === 'small-discount';
   const isList = r.assessment === 'list-price';
 
+  // Assessment tone drives the badge, headline rate, and bar fill colors.
   const badgeColor = isCustom
-    ? 'bg-red-100 text-red-700'
+    ? 'bg-c-red-soft text-c-red'
     : isDiscounted
-      ? 'bg-yellow-100 text-yellow-700'
-      : 'bg-green-100 text-green-700';
+      ? 'bg-c-amber-soft text-c-amber'
+      : 'bg-c-green-soft text-c-green';
   const badgeLabel = isCustom ? 'Custom' : isDiscounted ? 'Small Discount' : 'List Price';
   const priceColor = isCustom
-    ? 'text-red-700'
+    ? 'text-c-red'
     : isDiscounted
-      ? 'text-yellow-700'
-      : 'text-green-700';
-  const barColor = isCustom ? 'bg-red-400' : 'bg-yellow-400';
+      ? 'text-c-amber'
+      : 'text-c-green';
+  // Solid bar fill by tone (custom uses the darker red token, never the solid bg-c-red).
+  const barColor = isCustom ? 'bg-c-red-dark' : 'bg-c-amber';
 
   const displayedTb = ratePerTb(r).toFixed(2);
   const listTb = (r.listRate * 1000).toFixed(2);
@@ -169,37 +182,41 @@ function TierRateRow({ result: r }: { result: PricingDetectionResult }) {
   const barWidth = r.listRate > 0 ? Math.max(5, (r.effectiveRate / r.listRate) * 100) : 100;
 
   return (
-    <div className="px-3 py-2.5">
-      <div className="flex items-start justify-between gap-2">
+    // One tier card: name + region badge on the left, headline rate on the right.
+    <div className="border border-c-border rounded-[11px] px-[13px] py-[11px]">
+      <div className="flex items-start justify-between gap-2.5">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-gray-900 leading-snug break-words">{r.storageClass}</p>
+          <p className="text-[13px] font-semibold text-c-text leading-snug break-words">{r.storageClass}</p>
+          {/* Region rendered as a mono badge so the geo code stays scannable. */}
+          <span className="inline-block mt-[3px] rounded bg-c-surface2 px-1.5 py-0.5 text-[11px] font-mono text-c-subtle break-words">
+            {formatRegionWithLocation(r.region)}
+          </span>
         </div>
         <div className="text-right shrink-0">
-          <p className={`text-sm font-bold whitespace-nowrap ${priceColor}`}>${displayedTb}/TB</p>
-          <p className="text-[10px] text-gray-400">{isList ? 'List' : 'Effective'}</p>
+          {/* Rate headline in display font, tinted by assessment tone. */}
+          <p className={`font-display font-semibold text-[15px] whitespace-nowrap ${priceColor}`}>
+            ${displayedTb}<span className="text-[10px] font-medium text-c-subtle">/TB</span>
+          </p>
+          <p className="text-[10px] text-c-subtle">{isList ? 'List' : 'Effective'}</p>
         </div>
       </div>
 
-      <div className="mt-2 rounded-md bg-gray-50 px-2 py-1 text-[11px] leading-snug text-gray-600 ring-1 ring-gray-200">
-        <span className="font-medium text-gray-400">Region </span>
-        <span className="font-semibold break-words">{formatRegionWithLocation(r.region)}</span>
-      </div>
-
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <span className={`px-2 py-0.5 text-[11px] rounded-full whitespace-nowrap shrink-0 ${badgeColor}`}>
+      <div className="mt-[9px] flex items-center justify-between gap-2.5">
+        <span className={`px-[9px] py-[3px] text-[10.5px] font-bold rounded-full whitespace-nowrap shrink-0 ${badgeColor}`}>
           {badgeLabel}
         </span>
         {isList ? (
-          <span className="text-[11px] text-gray-500 text-right">No Discount Detected</span>
+          <span className="text-[11px] text-c-muted text-right">No Discount Detected</span>
         ) : (
-          <span className="text-[11px] text-gray-500 text-right">
+          <span className="text-[11px] text-c-muted text-right">
             {formatPercent(r.discountPercent)} Below ${listTb}/TB List
           </span>
         )}
       </div>
 
       {!isList && (
-        <div className="mt-1.5 w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+        // Progress bar: track on surface2, fill tinted by tone, width = effective/list.
+        <div className="mt-[9px] w-full h-1.5 bg-c-surface2 rounded-full overflow-hidden">
           <div className={`h-full ${barColor} rounded-full`} style={{ width: `${barWidth}%` }} />
         </div>
       )}

@@ -130,6 +130,20 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString();
 }
 
+// Readiness drives the status pill + card accent: draft (no bill) → active (bill, no model) →
+// reported (a saved snapshot exists).
+type ReadinessStatus = 'reported' | 'active' | 'draft';
+
+// Left accent bar color for a card: pipeline state wins (won = purple, lost = muted), otherwise the
+// readiness tone (reported = brand red, active = orange, draft = muted).
+function cardAccent(readiness: ReadinessStatus, pipeline: PipelineStatus): string {
+  if (pipeline === 'closed-won') return 'var(--c-purple)';
+  if (pipeline === 'closed-lost') return 'var(--c-border2)';
+  if (readiness === 'reported') return 'var(--c-red)';
+  if (readiness === 'active') return '#f9733a';
+  return 'var(--c-border2)';
+}
+
 /**
  * Opportunities list: the AE's landing page. Loads all analyses, shows portfolio rollups (scoped to
  * open deals), and supports filtering/sorting, pipeline status changes, delete, and a bulk reparse.
@@ -375,24 +389,24 @@ export default function HomePage() {
   if (loading) {
     return (
       <div className="mx-auto flex flex-1 flex-col items-center justify-center px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
-        <div className="relative w-12 h-12 mb-4">
-          <div className="absolute inset-0 rounded-full border-4 border-gray-200" />
-          <div className="absolute inset-0 rounded-full border-4 border-bb-red border-t-transparent animate-spin" />
+        <div className="relative mb-4 h-12 w-12">
+          <div className="absolute inset-0 rounded-full border-4 border-c-border" />
+          <div className="absolute inset-0 animate-spin rounded-full border-4 border-c-red border-t-transparent" />
         </div>
-        <p className="text-gray-500 text-sm">Loading your opportunities...</p>
+        <p className="text-sm text-c-muted">Loading your opportunities...</p>
       </div>
     );
   }
 
   if (loadError && analyses.length === 0) {
     return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 lg:py-10">
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-          <h1 className="text-lg font-semibold text-red-900">Could not load opportunities</h1>
-          <p className="mt-2 text-sm text-red-700">{loadError}</p>
+      <div className="mx-auto w-full max-w-[1240px] px-4 py-8 sm:px-6 lg:py-10">
+        <div className="rounded-2xl border border-c-red/40 bg-c-red-soft p-6 text-center">
+          <h1 className="text-lg font-semibold text-c-red-dark">Could not load opportunities</h1>
+          <p className="mt-2 text-sm text-c-muted">{loadError}</p>
           <button
             onClick={() => loadAnalyses(true)}
-            className="mt-4 rounded-lg bg-bb-red px-4 py-2 text-sm font-medium text-white hover:bg-bb-red-dark"
+            className="mt-4 rounded-[10px] bg-[#e20626] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#b40a23]"
           >
             Retry
           </button>
@@ -402,18 +416,20 @@ export default function HomePage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 lg:py-10">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mx-auto w-full max-w-[1240px] px-4 pb-16 pt-7 sm:px-6 sm:pt-8">
+      {/* Page header */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Opportunities</h1>
-          <p className="text-gray-500 mt-1">Track modeled B2 savings opportunities</p>
+          <p className="mb-2 font-display text-xs font-semibold uppercase tracking-[0.14em] text-c-red">Pipeline</p>
+          <h1 className="text-[28px] font-semibold text-c-text sm:text-[34px]">Opportunities</h1>
+          <p className="mt-1.5 text-[15px] text-c-muted">Modeled Backblaze B2 savings across your active deals.</p>
         </div>
         {analyses.length > 0 && (
           <button
             onClick={handleRerunAll}
             disabled={rerunning || !hasRunnableAnalyses}
             title={hasRunnableAnalyses ? 'Reparse stored bills and create fresh snapshots with the current analysis logic' : 'Upload a bill before rerunning analysis'}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex shrink-0 items-center gap-2 rounded-[10px] border border-c-border2 bg-c-surface px-[15px] py-[9px] text-[13px] font-semibold text-c-text shadow-sm transition-colors hover:bg-c-surface2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <svg className={`h-4 w-4 ${rerunning ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M8.977 14.652H3.985m17.03-10.296v4.992m0 0h-4.992m4.992 0-3.181-3.183a8.25 8.25 0 0 0-13.803 3.7" />
@@ -424,34 +440,37 @@ export default function HomePage() {
       </div>
 
       {(loadError || rerunMessage || rerunError) && (
-        <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
+        <div className={`mb-4 rounded-xl border px-4 py-3 text-sm ${
           loadError || rerunError
-            ? 'border-red-200 bg-red-50 text-red-700'
-            : 'border-green-200 bg-green-50 text-green-700'
+            ? 'border-c-red/40 bg-c-red-soft text-c-red-dark'
+            : 'border-c-green/40 bg-c-green-soft text-c-green'
         }`}>
           {loadError || rerunError || rerunMessage}
         </div>
       )}
 
       {analyses.length > 0 && (
-        <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="mb-3.5 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
           <PortfolioMetric
             label="Open opportunities"
             value={portfolioStats.opportunities}
             formatter={formatInteger}
-            caption={`${pipelineCounts['closed-won'] + pipelineCounts['closed-lost']} Closed`}
+            caption={`${pipelineCounts['closed-won'] + pipelineCounts['closed-lost']} closed`}
+            bar="var(--c-red)"
           />
           <PortfolioMetric
             label="Reports ready"
             value={portfolioStats.reportReady}
             formatter={formatInteger}
-            caption="Latest snapshots"
+            caption="Latest snapshots saved"
+            bar="var(--c-purple)"
           />
           <PortfolioMetric
             label="Potential TCV"
             value={portfolioStats.potentialTcv}
             formatter={formatCurrency}
-            caption="Modeled B2 storage revenue"
+            caption="Open-pipeline B2 storage revenue"
+            bar="var(--c-red)"
             tone="pipeline"
           />
           <PortfolioMetric
@@ -459,13 +478,14 @@ export default function HomePage() {
             value={portfolioStats.modeledStorageGb}
             formatter={formatModeledStorage}
             caption="Report-ready scope"
+            bar="#f9733a"
           />
         </div>
       )}
 
       {analyses.length > 0 && (
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="inline-flex w-full flex-wrap rounded-lg border border-gray-200 bg-white p-1 shadow-sm sm:w-auto" role="group" aria-label="Opportunity status filter">
+          <div className="inline-flex w-full rounded-[11px] border border-c-border bg-c-surface p-1 shadow-sm sm:w-auto" role="group" aria-label="Opportunity status filter">
             {PIPELINE_FILTERS.map((filter) => {
               const selected = pipelineFilter === filter.id;
               return (
@@ -473,204 +493,196 @@ export default function HomePage() {
                   key={filter.id}
                   type="button"
                   onClick={() => setPipelineFilter(filter.id)}
-                  className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors sm:flex-none ${
+                  className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors sm:flex-none ${
                     selected
-                      ? 'bg-bb-red text-white shadow-sm'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'bg-[#e20626] text-white'
+                      : 'text-c-muted hover:bg-c-surface2 hover:text-c-text'
                   }`}
                 >
                   <span>{filter.label}</span>
-                  <span className={selected ? 'text-white/80' : 'text-gray-400'}>{pipelineCounts[filter.id]}</span>
+                  <span className={selected ? 'text-white/70' : 'text-c-subtle'}>{pipelineCounts[filter.id]}</span>
                 </button>
               );
             })}
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 sm:max-w-sm">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search prospects..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-bb-red focus:border-transparent"
-            />
-          </div>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortKey)}
-            className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-bb-red focus:border-transparent"
-          >
-            <option value="recent">Most recent</option>
-            <option value="oldest">Oldest</option>
-            <option value="tcv">Highest potential TCV</option>
-            <option value="alpha">Alphabetical</option>
-          </select>
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-2 rounded-[10px] border border-c-border2 bg-c-surface px-3 py-2 sm:w-[230px]">
+              <svg className="h-4 w-4 shrink-0 text-c-subtle" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search prospects..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="min-w-0 flex-1 border-0 bg-transparent! text-[13px] text-c-text outline-none placeholder:text-c-subtle"
+              />
+            </div>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortKey)}
+              className="rounded-[10px] border border-c-border2 bg-c-surface px-3 py-2 text-[13px] font-semibold text-c-text outline-none focus:border-c-red"
+            >
+              <option value="tcv">Highest TCV</option>
+              <option value="recent">Most recent</option>
+              <option value="oldest">Oldest</option>
+              <option value="alpha">Alphabetical</option>
+            </select>
           </div>
         </div>
       )}
 
       {analyses.length === 0 ? (
-        <div className="text-center py-10 sm:py-12 bg-white rounded-lg shadow">
-          <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <div className="rounded-2xl border border-c-border bg-c-surface py-12 text-center shadow-sm">
+          <svg className="mx-auto mb-4 h-12 w-12 text-c-subtle" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
           </svg>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No opportunities yet</h3>
-          <p className="text-gray-500 mb-6">Upload a customer cloud bill to get started.</p>
+          <h3 className="mb-2 text-lg font-semibold text-c-text">No opportunities yet</h3>
+          <p className="mb-6 text-c-muted">Upload a customer cloud bill to get started.</p>
           <Link
             href="/analyses/new"
-            className="inline-flex items-center px-4 py-2 bg-bb-red text-white text-sm font-medium rounded-lg hover:bg-bb-red-dark"
+            className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#e20626] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#b40a23]"
           >
-            New opportunity
+            <span className="text-[15px] leading-none">+</span>New opportunity
           </Link>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3">
           {filteredAnalyses.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
+            <div className="py-8 text-center text-c-muted">
               {getFilterEmptyMessage(pipelineFilter, searchQuery)}
             </div>
           )}
           {filteredAnalyses.map((a) => {
             // Readiness is independent of pipeline status: a deal progresses draft (no bill) →
             // active (bill uploaded, not yet modeled) → reported (has a saved snapshot).
-            const readinessStatus = a.latestSnapshot ? 'reported' : a.hasBill ? 'active' : 'draft';
+            const readinessStatus: ReadinessStatus = a.latestSnapshot ? 'reported' : a.hasBill ? 'active' : 'draft';
             const pipelineStatus = getPipelineStatus(a);
             const storageTcv = analysisTcvById.get(a.id) ?? 0;
             return (
               <div
                 key={a.id}
                 data-analysis-id={a.id}
-                className="bg-white rounded-lg shadow hover:shadow-md transition-shadow"
+                className="flex items-stretch overflow-hidden rounded-2xl border border-c-border bg-c-surface shadow-sm transition-all hover:-translate-y-px hover:shadow-md"
               >
-                <div className="flex items-stretch">
-                  {/* Main clickable area */}
-                  <a href={`/analyses/${a.id}`} className="flex-1 p-5 min-w-0">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2.5">
-                          <h3 className="font-semibold text-gray-900 truncate">{a.prospectName}</h3>
-                          {readinessStatus === 'draft' && (
-                            <span className="shrink-0 text-xs font-medium px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">Draft</span>
-                          )}
-                          {readinessStatus === 'active' && (
-                            <span className="shrink-0 text-xs font-medium px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full">In progress</span>
-                          )}
-                          {readinessStatus === 'reported' && (
-                            <span className="shrink-0 text-xs font-medium px-2 py-0.5 bg-green-50 text-green-700 rounded-full">Report ready</span>
-                          )}
-                          {pipelineStatus !== 'open' && (
-                            <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
-                              pipelineStatus === 'closed-won'
-                                ? 'bg-blue-50 text-blue-700'
-                                : 'bg-gray-100 text-gray-500'
-                            }`}>
-                              {getPipelineStatusLabel(pipelineStatus)}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 mt-1.5 text-sm text-gray-500">
-                          <span className="text-xs font-semibold px-2 py-0.5 bg-gray-100 rounded">
-                            {PROVIDER_LABELS[a.provider] || a.provider}
-                          </span>
-                          {a.billingPeriod && <span>{a.billingPeriod}</span>}
-                          <span className="text-gray-400">Updated {timeAgo(a.updatedAt)}</span>
-                        </div>
-                      </div>
+                {/* Status accent bar */}
+                <div className="w-1 shrink-0" style={{ background: cardAccent(readinessStatus, pipelineStatus) }} />
 
-                      {/* Savings preview from latest snapshot */}
-                      {a.latestSnapshot && (
-                        <div className="min-w-0 sm:shrink-0 sm:text-right">
-                          <p className="text-lg font-bold text-bb-red-dark">
-                            {formatCurrency(storageTcv)}
-                            <span className="text-xs font-normal text-gray-400"> potential TCV</span>
-                          </p>
-                          <p className="mt-0.5 text-xs leading-snug text-gray-500">
-                            {formatCurrency(a.latestSnapshot.annualSavings)}/yr savings · {formatGb(a.latestSnapshot.totalStorageGb)}
-                          </p>
-                        </div>
+                {/* Main clickable area — Next Link so navigation is client-side (keeps the layout/header
+                    mounted, which lets the header margins animate to the dashboard width). */}
+                <Link href={`/analyses/${a.id}`} className="flex min-w-0 flex-1 flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <h3 className="truncate text-[18px] font-semibold text-c-text">{a.prospectName}</h3>
+                      {readinessStatus === 'draft' && (
+                        <StatusPill className="bg-c-surface2 text-c-subtle">Draft</StatusPill>
                       )}
-
-                      {!a.latestSnapshot && a.hasBill && (
-                        <div className="min-w-0 sm:shrink-0 sm:text-right">
-                          <p className="text-sm text-gray-400 italic">Bill uploaded</p>
-                          <p className="text-xs text-gray-400">No report yet</p>
-                        </div>
+                      {readinessStatus === 'active' && (
+                        <StatusPill className="bg-c-amber-soft text-c-amber">In progress</StatusPill>
                       )}
-
-                      {!a.hasBill && (
-                        <div className="min-w-0 sm:shrink-0 sm:text-right">
-                          <p className="text-sm text-gray-400 italic">Awaiting bill</p>
-                        </div>
+                      {readinessStatus === 'reported' && (
+                        <StatusPill className="bg-c-green-soft text-c-green">Report ready</StatusPill>
+                      )}
+                      {pipelineStatus !== 'open' && (
+                        <StatusPill className={pipelineStatus === 'closed-won' ? 'bg-c-purple-soft text-c-purple' : 'bg-c-surface2 text-c-subtle'}>
+                          {getPipelineStatusLabel(pipelineStatus)}
+                        </StatusPill>
                       )}
                     </div>
-                  </a>
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-[12.5px] text-c-muted">
+                      <span className="rounded-md bg-c-surface2 px-2 py-[3px] text-[11px] font-bold tracking-[0.04em] text-c-muted">
+                        {PROVIDER_LABELS[a.provider] || a.provider}
+                      </span>
+                      {a.billingPeriod && <span>{a.billingPeriod}</span>}
+                      <span className="text-c-subtle">Updated {timeAgo(a.updatedAt)}</span>
+                    </div>
+                  </div>
 
-                  {/* Actions */}
-                  <div className="flex flex-col items-center justify-center gap-1 px-3 border-l border-gray-100">
-                    {pipelineStatus === 'open' ? (
-                      <>
-                        <OpportunityActionButton
-                          label="Closed won"
-                          toneClass="hover:text-green-700 hover:bg-green-100 focus-visible:text-green-700 focus-visible:bg-green-100"
-                          tooltipClass="group-hover:bg-green-700 group-focus-visible:bg-green-700"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            void handlePipelineStatusChange(a.id, 'closed-won');
-                          }}
-                          disabled={updatingPipelineStatus === a.id}
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" aria-hidden="true">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                          </svg>
-                        </OpportunityActionButton>
-                        <OpportunityActionButton
-                          label="Closed lost"
-                          toneClass="hover:text-red-700 hover:bg-red-100 focus-visible:text-red-700 focus-visible:bg-red-100"
-                          tooltipClass="group-hover:bg-red-700 group-focus-visible:bg-red-700"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            void handlePipelineStatusChange(a.id, 'closed-lost');
-                          }}
-                          disabled={updatingPipelineStatus === a.id}
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" aria-hidden="true">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                          </svg>
-                        </OpportunityActionButton>
-                      </>
-                    ) : (
+                  {/* Savings preview from latest snapshot */}
+                  {a.latestSnapshot && (
+                    <div className="min-w-0 sm:min-w-[180px] sm:text-right">
+                      <p className="font-display text-[24px] font-semibold text-c-text">
+                        {formatCurrency(storageTcv)}
+                        <span className="text-xs font-medium text-c-subtle"> potential TCV</span>
+                      </p>
+                      <p className="mt-0.5 text-[12.5px] font-semibold text-c-green">
+                        {formatCurrency(a.latestSnapshot.annualSavings)}/yr saved · {formatGb(a.latestSnapshot.totalStorageGb)}
+                      </p>
+                    </div>
+                  )}
+
+                  {!a.latestSnapshot && a.hasBill && (
+                    <div className="min-w-0 sm:min-w-[180px] sm:text-right">
+                      <p className="text-sm italic text-c-subtle">Bill uploaded</p>
+                      <p className="text-xs text-c-subtle">No report yet</p>
+                    </div>
+                  )}
+
+                  {!a.hasBill && (
+                    <div className="min-w-0 sm:min-w-[180px] sm:text-right">
+                      <p className="text-sm italic text-c-subtle">Awaiting bill</p>
+                    </div>
+                  )}
+                </Link>
+
+                {/* Row actions */}
+                <div className="flex flex-col items-center justify-center gap-1.5 border-l border-c-border px-3">
+                  {pipelineStatus === 'open' ? (
+                    <>
                       <OpportunityActionButton
-                        label="Reopen"
-                        toneClass="hover:text-green-700 hover:bg-green-100 focus-visible:text-green-700 focus-visible:bg-green-100"
-                        tooltipClass="group-hover:bg-green-700 group-focus-visible:bg-green-700"
+                        label="Mark closed won"
+                        toneClass="hover:bg-c-green-soft hover:text-c-green focus-visible:bg-c-green-soft focus-visible:text-c-green"
                         onClick={(e) => {
                           e.preventDefault();
-                          void handlePipelineStatusChange(a.id, 'open');
+                          void handlePipelineStatusChange(a.id, 'closed-won');
                         }}
                         disabled={updatingPipelineStatus === a.id}
                       >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" aria-hidden="true">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992m0 0V4.356m0 4.992-3.181-3.183a8.25 8.25 0 1 0 2.188 7.912" />
+                        <svg className="h-[17px] w-[17px]" fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                         </svg>
                       </OpportunityActionButton>
-                    )}
+                      <OpportunityActionButton
+                        label="Mark closed lost"
+                        toneClass="hover:bg-c-red-soft hover:text-c-red focus-visible:bg-c-red-soft focus-visible:text-c-red"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          void handlePipelineStatusChange(a.id, 'closed-lost');
+                        }}
+                        disabled={updatingPipelineStatus === a.id}
+                      >
+                        <svg className="h-[17px] w-[17px]" fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                        </svg>
+                      </OpportunityActionButton>
+                    </>
+                  ) : (
                     <OpportunityActionButton
-                      label="Trash"
-                      toneClass="hover:text-red-700 hover:bg-red-100 focus-visible:text-red-700 focus-visible:bg-red-100"
-                      tooltipClass="group-hover:bg-red-700 group-focus-visible:bg-red-700"
+                      label="Reopen"
+                      toneClass="hover:bg-c-green-soft hover:text-c-green focus-visible:bg-c-green-soft focus-visible:text-c-green"
                       onClick={(e) => {
                         e.preventDefault();
-                        setDeleteTarget(a.id);
+                        void handlePipelineStatusChange(a.id, 'open');
                       }}
+                      disabled={updatingPipelineStatus === a.id}
                     >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                      <svg className="h-[17px] w-[17px]" fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992m0 0V4.356m0 4.992-3.181-3.183a8.25 8.25 0 1 0 2.188 7.912" />
                       </svg>
                     </OpportunityActionButton>
-                  </div>
+                  )}
+                  <OpportunityActionButton
+                    label="Delete"
+                    toneClass="hover:bg-c-red-soft hover:text-c-red focus-visible:bg-c-red-soft focus-visible:text-c-red"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setDeleteTarget(a.id);
+                    }}
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.6} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                    </svg>
+                  </OpportunityActionButton>
                 </div>
               </div>
             );
@@ -680,25 +692,25 @@ export default function HomePage() {
 
       {/* Delete confirmation modal */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete opportunity?</h3>
-            <p className="text-sm text-gray-600 mb-1">
-              This will permanently delete <span className="font-medium">{analyses.find((a) => a.id === deleteTarget)?.prospectName}</span> and all associated data including uploaded bills, snapshots, and reports.
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-c-border bg-c-surface p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-semibold text-c-text">Delete opportunity?</h3>
+            <p className="mb-1 text-sm text-c-muted">
+              This will permanently delete <span className="font-medium text-c-text">{analyses.find((a) => a.id === deleteTarget)?.prospectName}</span> and all associated data including uploaded bills, snapshots, and reports.
             </p>
-            <p className="text-sm text-red-600 mb-5">This action cannot be undone.</p>
-            <div className="flex gap-3 justify-end">
+            <p className="mb-5 text-sm text-c-red">This action cannot be undone.</p>
+            <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeleteTarget(null)}
                 disabled={deleting}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                className="rounded-[10px] bg-c-surface2 px-4 py-2 text-sm font-semibold text-c-text transition-colors hover:opacity-80 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDelete(deleteTarget)}
                 disabled={deleting}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
+                className="rounded-[10px] bg-[#e20626] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#b40a23] disabled:opacity-50"
               >
                 {deleting ? 'Deleting...' : 'Delete'}
               </button>
@@ -710,48 +722,56 @@ export default function HomePage() {
   );
 }
 
-/** A single portfolio rollup tile with an animated value. `tone="pipeline"` tints revenue figures. */
+/** Small rounded status/pipeline pill. Color classes are supplied by the caller. */
+function StatusPill({ children, className }: { children: ReactNode; className: string }) {
+  return (
+    <span className={`shrink-0 rounded-full px-2.5 py-[3px] text-[11px] font-semibold ${className}`}>
+      {children}
+    </span>
+  );
+}
+
+/** A single portfolio rollup tile with an animated value and a colored left accent bar. */
 function PortfolioMetric({
   label,
   value,
   formatter,
   caption,
+  bar,
   tone = 'default',
 }: {
   label: string;
   value: number;
   formatter: (value: number) => string;
   caption?: string;
+  bar: string;
   tone?: 'default' | 'pipeline';
 }) {
-  const valueClass = tone === 'pipeline' ? 'text-bb-red-dark' : 'text-gray-900';
-
   return (
-    <div className="min-w-0 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
-      <p className="truncate text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>
-      <p className={`mt-1 text-xl font-bold sm:text-2xl ${valueClass}`}>
+    <div className="relative min-w-0 overflow-hidden rounded-2xl border border-c-border bg-c-surface px-[18px] py-4 shadow-sm">
+      <span className="absolute left-0 top-0 h-full w-[3px]" style={{ background: bar }} aria-hidden="true" />
+      <p className="truncate text-[11px] font-semibold uppercase tracking-[0.1em] text-c-subtle">{label}</p>
+      <p className={`mt-2 font-display text-[26px] font-semibold leading-[1.05] sm:text-[30px] ${tone === 'pipeline' ? 'text-c-red' : 'text-c-text'}`}>
         <AnimatedMetricValue value={value} formatter={formatter} />
       </p>
-      {caption && <p className="mt-1 truncate text-xs text-gray-500">{caption}</p>}
+      {caption && <p className="mt-1.5 truncate text-xs text-c-muted">{caption}</p>}
     </div>
   );
 }
 
-/** Icon-only row action (won/lost/reopen/trash) with a hover tooltip. `label` doubles as aria-label. */
+/** Icon-only row action (won/lost/reopen/delete) with a hover tooltip. `label` doubles as aria-label. */
 function OpportunityActionButton({
   label,
   children,
   disabled,
   onClick,
   toneClass,
-  tooltipClass = '',
 }: {
   label: string;
   children: ReactNode;
   disabled?: boolean;
   onClick: (event: MouseEvent<HTMLButtonElement>) => void;
   toneClass: string;
-  tooltipClass?: string;
 }) {
   return (
     <button
@@ -759,10 +779,10 @@ function OpportunityActionButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className={`group relative inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-300 transition-colors disabled:cursor-wait disabled:opacity-50 ${toneClass}`}
+      className={`group relative inline-flex h-8 w-8 items-center justify-center rounded-lg text-c-subtle transition-colors disabled:cursor-wait disabled:opacity-50 ${toneClass}`}
     >
       {children}
-      <span className={`pointer-events-none absolute left-full top-1/2 z-20 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-[11px] font-semibold text-white opacity-0 shadow-lg transition-all group-hover:opacity-100 group-focus-visible:opacity-100 ${tooltipClass}`}>
+      <span className="pointer-events-none absolute left-full top-1/2 z-20 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md bg-[#11113a] px-2 py-1 text-[11px] font-semibold text-white opacity-0 shadow-lg transition-all group-hover:opacity-100 group-focus-visible:opacity-100">
         {label}
       </span>
     </button>
