@@ -16,6 +16,11 @@ import {
 } from '@/lib/engine/cost-model';
 import { buildTierState, computeAnalysisView } from '@/lib/analysis/analysis-model';
 import {
+  computeBusinessPotential,
+  formatCapacityMultiplier,
+  type BusinessPotential,
+} from '@/lib/analysis/business-potential';
+import {
   getOperationActionCostSummary,
   type ActionCostDetail,
   type OperationActionCostSummary,
@@ -229,6 +234,14 @@ function ReportPageContent() {
   const migrationCostCovered = costModel.migrationCost.egressCost + costModel.migrationCost.restoreCost;
   const totalSavings = projections.length > 0 ? projections[projections.length - 1].cumulativeSavings : 0;
   const endingProjectedStorageGb = projections.length > 0 ? projections[projections.length - 1].storageGb : migratedStorageGb;
+  // The "business potential" figures (capacity headroom, free egress, redeployable capital) that turn
+  // the cost-out story into a value-in one. Derived once from the same model the rest of the page uses.
+  const businessPotential = computeBusinessPotential({
+    migratedTiers,
+    b2PricePerTb: modelConfig.b2PricePerTb,
+    costModel,
+    cumulativeSavings: totalSavings,
+  });
   const termYears = (modelConfig?.projectionTermMonths || 12) / 12;
   const growthLabel = formatGrowthAssumption({
     growthMode: egressConfig.dataGrowthMode,
@@ -485,6 +498,13 @@ function ReportPageContent() {
               />
             </div>
           </div>
+
+          <BusinessPotentialStrip
+            potential={businessPotential}
+            companyName={reportCompanyName}
+            providerLabel={providerLabel}
+            termYears={termYears}
+          />
 
           <div className="mb-6 rounded-lg border border-red-200 bg-bb-red-light p-4 keep-together">
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
@@ -916,6 +936,108 @@ function OutcomeMetric({
     <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
       <p className="text-xs font-medium text-gray-500">{label}</p>
       <p className={`mt-1 font-display text-lg font-bold leading-tight ${valueColor}`}>{value}</p>
+    </div>
+  );
+}
+
+/**
+ * "What this unlocks" — the value-in counterpart to the savings hero. Up to three tiles built from
+ * the customer's own numbers: storage-capacity headroom and free egress (aimed at the technical
+ * buyer), and reclaimable capital (aimed at the financial buyer). Tiles drop out when the bill
+ * doesn't support the claim, and the strip renders nothing if none qualify, so it never shows an
+ * empty band or an unsupported "NaN" figure.
+ */
+function BusinessPotentialStrip({
+  potential,
+  companyName,
+  providerLabel,
+  termYears,
+}: {
+  potential: BusinessPotential;
+  companyName: string;
+  providerLabel: string;
+  termYears: number;
+}) {
+  const tiles: Array<{
+    key: string;
+    value: string;
+    label: string;
+    support: string;
+    tone: 'red' | 'green';
+  }> = [];
+
+  if (potential.hasCapacityUnlock) {
+    tiles.push({
+      key: 'capacity',
+      value: formatCapacityMultiplier(potential.capacityMultiplier),
+      label: 'More data for the same storage budget',
+      support: `Your effective storage rate drops from ${formatEffectiveRate(potential.currentStoragePerTb)} to ${formatEffectiveRate(potential.b2StoragePerTb)}, so the budget you spend on storage today stretches much further on Backblaze B2.`,
+      tone: 'red',
+    });
+  }
+
+  if (potential.freeEgressGbPerMonth > 0) {
+    tiles.push({
+      key: 'egress',
+      value: `${formatReportStorage(potential.freeEgressGbPerMonth)}/mo`,
+      label: 'Egress included free every month',
+      support: potential.eliminatedEgressMonthly > 0
+        ? `${providerLabel} bills you to move your own data — about ${formatCurrency(potential.eliminatedEgressMonthly)}/month on this scope today. B2 includes 3x your stored data, so you can use and share it without the per-GB egress toll.`
+        : `B2 includes 3x your stored data in free egress, so reading, serving, and sharing it stops being a metered cost the way it is on ${providerLabel}.`,
+      tone: 'green',
+    });
+  }
+
+  // Avoid a lonely single tile (e.g. an archive-heavy bill that priced below B2 on storage alone, so
+  // there's no capacity unlock to show): fall back to the reclaimable-capital framing for finance.
+  if (tiles.length < 2 && potential.hasReclaimableCapital) {
+    tiles.push({
+      key: 'capital',
+      value: `${formatCurrency(potential.annualSavings)}/yr`,
+      label: 'Freed up to reinvest in the business',
+      support: `About ${formatPercent(potential.reclaimedPercent)} of your storage spend comes back as budget — ${formatCurrency(potential.cumulativeSavings)} over ${termYears} year${termYears === 1 ? '' : 's'} — to redirect toward growth.`,
+      tone: 'green',
+    });
+  }
+
+  if (tiles.length === 0) return null;
+
+  const gridCols = tiles.length >= 3 ? 'md:grid-cols-3' : tiles.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-1';
+
+  return (
+    <div className="mb-6 rounded-lg border border-gray-200 p-4 keep-together">
+      <h2 className="border-l-4 border-bb-red pl-3 text-base font-semibold text-gray-900">What This Unlocks for {companyName}</h2>
+      <p className="mb-4 mt-1 pl-3 text-xs text-gray-500">
+        Beyond the line-item savings, the same migration economics create room to grow — every figure below is drawn from your bill.
+      </p>
+      <div className={`grid grid-cols-1 gap-3 ${gridCols}`}>
+        {tiles.map((tile) => (
+          <PotentialTile key={tile.key} value={tile.value} label={tile.label} support={tile.support} tone={tile.tone} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** One tile in the "What this unlocks" strip: a big headline figure with a label and a one-line
+ *  plain-language explanation. `tone` tints the figure B2 red (capability) or green (financial). */
+function PotentialTile({
+  value,
+  label,
+  support,
+  tone,
+}: {
+  value: string;
+  label: string;
+  support: string;
+  tone: 'red' | 'green';
+}) {
+  const valueColor = tone === 'green' ? 'text-green-700' : 'text-bb-red-dark';
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+      <p className={`font-display text-2xl font-bold leading-tight ${valueColor}`}>{value}</p>
+      <p className="mt-2 text-sm font-semibold text-gray-900">{label}</p>
+      <p className="mt-1 text-xs leading-relaxed text-gray-600">{support}</p>
     </div>
   );
 }
