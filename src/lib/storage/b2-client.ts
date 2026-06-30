@@ -1,4 +1,5 @@
 import { S3Client } from '@aws-sdk/client-s3';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 
 // Memoized so every storage call reuses one client (and its connection pool)
 // rather than re-reading env and re-handshaking per request.
@@ -34,6 +35,16 @@ export function getB2Client(): S3Client {
     // B2 serves bucket-in-path URLs, not the virtual-hosted bucket.endpoint style
     // the SDK defaults to; without this, every request 404s.
     forcePathStyle: true,
+    // Bound every B2 request so a stalled connection (e.g. a transient network/B2 hiccup)
+    // fails fast instead of hanging indefinitely. Without this the default handler has no
+    // socket timeout, so a stuck read leaves API routes pending forever and the UI spins with
+    // no error. On timeout the storage layer classifies it into a safe JSON error and the
+    // client surfaces a retryable "couldn't load" state. Bounded by maxAttempts (default 3),
+    // worst case stays under the client-side 60s load timeout.
+    requestHandler: new NodeHttpHandler({
+      connectionTimeout: 5_000,
+      requestTimeout: 15_000,
+    }),
   });
 
   return client;
