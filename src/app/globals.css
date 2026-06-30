@@ -465,6 +465,11 @@ select {
   animation: metric-value-update 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Modeled data-flow diagram. The panel remounts (via a React key on the modeled case) whenever the
+   AE picks a questionnaire option that reshapes the path, so these animations replay each time: a
+   gentle lift + red ring on the whole panel, and a left-to-right staggered enter for the node cards
+   and connecting edges. Typing into the volume fields does not change the case key, so it updates
+   the labels in place without re-triggering the stagger. */
 @keyframes egress-flow-panel-update {
   0% {
     transform: translateY(3px);
@@ -480,7 +485,7 @@ select {
   }
 }
 
-@keyframes egress-flow-item-enter {
+@keyframes egress-flow-node-enter {
   0% {
     opacity: 0;
     transform: translateY(8px) scale(0.985);
@@ -514,26 +519,25 @@ select {
   animation: egress-flow-panel-update 560ms ease-out both;
 }
 
-.egress-flow-item {
-  animation: egress-flow-item-enter 420ms ease-out both;
+.egress-flow-node {
+  animation: egress-flow-node-enter 420ms ease-out both;
 }
 
 .egress-flow-edge {
   animation: egress-flow-edge-enter 420ms ease-out both;
 }
 
+/* Left-to-right stagger across the five cells: node, edge, node, edge, node. */
 .egress-flow-delay-0 { animation-delay: 0ms; }
 .egress-flow-delay-1 { animation-delay: 55ms; }
 .egress-flow-delay-2 { animation-delay: 110ms; }
 .egress-flow-delay-3 { animation-delay: 165ms; }
 .egress-flow-delay-4 { animation-delay: 220ms; }
-.egress-flow-delay-5 { animation-delay: 275ms; }
-.egress-flow-delay-6 { animation-delay: 330ms; }
 
 @media (prefers-reduced-motion: reduce) {
   .metric-value-update,
   .egress-flow-panel,
-  .egress-flow-item,
+  .egress-flow-node,
   .egress-flow-edge {
     animation: none !important;
   }

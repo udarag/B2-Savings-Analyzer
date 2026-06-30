@@ -178,7 +178,6 @@ export function EgressQuestionnaire({
 
         <DataFlowPreview
           config={config}
-          partnerComputeScenario={partnerComputeScenario}
           b2FreeAllowanceGb={b2FreeAllowanceGb}
         />
 
@@ -523,306 +522,180 @@ function formatSignalType(type: ComputeSignal['signalType']): string {
   }
 }
 
-type FlowTone = 'neutral' | 'compute' | 'storage' | 'output' | 'chargeable' | 'free';
-type FlowIcon = 'source' | 'compute' | 'gpu' | 'backblaze' | 'target' | 'training' | 'artifact';
+type FlowEdgeTone = 'free' | 'charge' | 'neutral';
+type FlowNodeKind = 'b2' | 'cloud' | 'endpoint';
 
 interface FlowNode {
   label: string;
   detail: string;
-  tone: FlowTone;
-  icon: FlowIcon;
+  kind: FlowNodeKind;
 }
 
 interface FlowEdge {
   label: string;
   detail: string;
-  tone: FlowTone;
+  tone: FlowEdgeTone;
 }
 
+// The diagram is always a three-node / two-edge row: a source, Backblaze B2, and the
+// downstream target, with one connecting edge between each pair.
 interface DataFlow {
-  animationKey: string;
-  title: string;
-  summary: string;
-  nodes: FlowNode[];
-  edges: FlowEdge[];
+  nodes: [FlowNode, FlowNode, FlowNode];
+  edges: [FlowEdge, FlowEdge];
 }
 
-type FlowStep =
-  | { kind: 'node'; node: FlowNode; sequence: number }
-  | { kind: 'edge'; edge: FlowEdge; sequence: number };
-
-// Live node-and-edge diagram of the data path implied by the current answers, so the AE can see at
-// a glance which transfers are free vs. chargeable before trusting the savings number.
+// Live diagram of the data path implied by the current answers. It pairs a node-colour legend
+// (Backblaze B2 / hyperscaler / customer) with a free/chargeable/needs-input edge key so the AE
+// can see at a glance which transfers are billable before trusting the savings number.
 function DataFlowPreview({
   config,
-  partnerComputeScenario,
   b2FreeAllowanceGb,
 }: {
   config: EgressConfig;
-  partnerComputeScenario?: PartnerComputeScenario | null;
   b2FreeAllowanceGb: number;
 }) {
-  const flow = getDataFlow(config, partnerComputeScenario, b2FreeAllowanceGb);
-  const flowSteps = getFlowSteps(flow);
-  const gridLayout = getFlowGridLayout(flowSteps.length);
+  const flow = getDataFlow(config, b2FreeAllowanceGb);
+  // Keying the panel on the modeled case remounts it whenever the AE changes an option that
+  // reshapes the path, which replays the panel pulse and the staggered node/edge enters (see
+  // globals.css). The key deliberately ignores volume fields so typing doesn't restart the stagger.
+  const animationKey = getFlowAnimationKey(config);
 
   return (
     <div
-      className="egress-flow-panel rounded-lg border border-c-border bg-c-bg p-4 lg:h-[230px] lg:overflow-hidden"
+      key={animationKey}
+      className="egress-flow-panel rounded-xl border border-c-border bg-c-bg p-4"
     >
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between lg:min-h-[54px]">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-c-subtle">Data Flow Preview</p>
-          <p className="mt-1 text-sm font-semibold text-c-text">{flow.title}</p>
+      {/* Header: section eyebrow on the left, node-colour legend on the right. */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2.5">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-c-subtle">Modeled data flow</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <FlowLegendItem swatchClass="bg-[#e20626]" label="Backblaze B2" />
+          <FlowLegendItem swatchClass="border border-c-border2 bg-[#11113a]" label="Hyperscaler" />
+          <FlowLegendItem swatchClass="border border-c-border2 bg-c-surface" label="Customer" />
         </div>
-        <p className="max-w-lg text-xs text-c-muted sm:text-right">{flow.summary}</p>
       </div>
 
-      <div
-        key={flow.animationKey}
-        style={{ gridTemplateColumns: gridLayout.templateColumns }}
-        className="mt-4 flex flex-col gap-2 lg:grid lg:h-[118px] lg:items-stretch"
-      >
-        {flowSteps.map((step, index) => (
-          step.kind === 'node' ? (
-            <FlowNodeCard
-              key={`${step.node.label}-${index}`}
-              node={step.node}
-              sequence={step.sequence}
-              gridColumnStart={index === 0 ? gridLayout.startColumn : undefined}
-            />
-          ) : (
-            <FlowEdgePill
-              key={`${step.edge.label}-${index}`}
-              edge={step.edge}
-              sequence={step.sequence}
-              gridColumnStart={index === 0 ? gridLayout.startColumn : undefined}
-            />
-          )
-        ))}
+      {/* Flow row: three nodes joined by two edge pills, revealed left to right (sequence 0-4).
+          Stacks vertically on narrow screens. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+        <FlowNodeCard node={flow.nodes[0]} sequence={0} />
+        <FlowEdgePill edge={flow.edges[0]} sequence={1} />
+        <FlowNodeCard node={flow.nodes[1]} sequence={2} />
+        <FlowEdgePill edge={flow.edges[1]} sequence={3} />
+        <FlowNodeCard node={flow.nodes[2]} sequence={4} />
+      </div>
+
+      {/* Key: maps each edge colour to free / chargeable / needs-input. */}
+      <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-c-border pt-2.5">
+        <FlowKeyItem arrowClass="text-c-green" label="Free path" />
+        <FlowKeyItem arrowClass="text-c-red" label="Chargeable egress" />
+        <FlowKeyItem arrowClass="text-c-subtle" label="Needs input" />
       </div>
     </div>
   );
 }
 
-// Keeps the diagram centered regardless of how many steps a case has. Shorter flows (3 nodes /
-// 2 edges = 5 steps) get narrow spacer tracks on each side so they don't stretch full width;
-// the 7-step flow fills the grid edge to edge.
-function getFlowGridLayout(stepCount: number): { templateColumns: string; startColumn: number } {
-  const nodeTrack = 'minmax(0,1.25fr)';
-  const edgeTrack = 'minmax(0,0.58fr)';
-
-  if (stepCount <= 5) {
-    return {
-      templateColumns: [
-        'minmax(0,0.34fr)',
-        nodeTrack,
-        edgeTrack,
-        nodeTrack,
-        edgeTrack,
-        nodeTrack,
-        'minmax(0,0.34fr)',
-      ].join(' '),
-      startColumn: 2,
-    };
+// Coarse key for the modeled case — compute / writeback / alliance / CDN, but not the volume
+// values. Used as the React key on the panel (above) so the diagram re-animates when an option
+// reshapes the path, yet stays put while the AE types volumes into the fields.
+function getFlowAnimationKey(config: EgressConfig): string {
+  if (!config.hasHyperscalerCompute) {
+    return `direct-${config.usesPartnerCdn ? 'cdn' : 'users'}`;
   }
 
-  return {
-    templateColumns: [nodeTrack, edgeTrack, nodeTrack, edgeTrack, nodeTrack, edgeTrack, nodeTrack].join(' '),
-    startColumn: 1,
-  };
-}
-
-function getFlowSteps(flow: DataFlow): FlowStep[] {
-  return flow.nodes.flatMap((node, index) => {
-    const steps: FlowStep[] = [{ kind: 'node', node, sequence: index * 2 }];
-    const edge = flow.edges[index];
-
-    if (edge) {
-      steps.push({ kind: 'edge', edge, sequence: (index * 2) + 1 });
-    }
-
-    return steps;
-  });
-}
-
-function FlowNodeCard({
-  node,
-  sequence,
-  gridColumnStart,
-}: {
-  node: FlowNode;
-  sequence: number;
-  gridColumnStart?: number;
-}) {
-  return (
-    <div
-      style={gridColumnStart ? { gridColumnStart } : undefined}
-      className={`egress-flow-item ${flowDelayClass(sequence)} flex items-center justify-center rounded-lg border px-3 py-2.5 lg:h-[118px] lg:min-w-0 lg:overflow-hidden ${flowNodeClasses(node.tone)}`}
-    >
-      <div className="flex max-w-full items-center gap-2.5">
-        <FlowNodeIcon icon={node.icon} tone={node.tone} />
-        <div className="min-w-0">
-          {/* Node label/detail inherit currentColor so the brand-red B2 and navy hyperscaler nodes
-              keep their white text; neutral nodes are themed below via flowNodeClasses. */}
-          <p className="text-sm font-semibold">{node.label}</p>
-          <p className="mt-1 text-xs leading-relaxed opacity-80">{node.detail}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FlowNodeIcon({ icon, tone }: { icon: FlowIcon; tone: FlowTone }) {
-  const iconClass = `mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border ${flowIconClasses(tone)}`;
-
-  if (icon === 'backblaze') {
-    return (
-      <span className={iconClass}>
-        <Image
-          src="/backblaze-flame.png"
-          alt=""
-          width={20}
-          height={20}
-          className="h-5 w-5 object-contain"
-        />
-      </span>
-    );
+  if (!config.hyperscalerComputeFeedsStorage) {
+    return 'training';
   }
 
+  return [
+    'pipeline',
+    config.computeMovingToPartner ? 'partner' : 'hyperscaler',
+    config.usesPartnerCdn ? 'cdn' : 'users',
+  ].join('-');
+}
+
+// A coloured swatch + label in the top-right legend, keyed to the node fills used in the row.
+function FlowLegendItem({ swatchClass, label }: { swatchClass: string; label: string }) {
   return (
-    <span className={iconClass} aria-hidden="true">
-      <FlowNodeSvg icon={icon} />
+    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-c-muted">
+      <span className={`h-2.5 w-2.5 rounded-[3px] ${swatchClass}`} />
+      {label}
     </span>
   );
 }
 
-function FlowNodeSvg({ icon }: { icon: Exclude<FlowIcon, 'backblaze'> }) {
-  const common = {
-    className: 'h-4 w-4',
-    fill: 'none',
-    viewBox: '0 0 24 24',
-    strokeWidth: 1.8,
-    stroke: 'currentColor',
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-  };
-
-  switch (icon) {
-    case 'compute':
-      return (
-        <svg {...common}>
-          <rect x="6" y="6" width="12" height="12" rx="2" />
-          <path d="M9 1.5v3M15 1.5v3M9 19.5v3M15 19.5v3M1.5 9h3M1.5 15h3M19.5 9h3M19.5 15h3M10 10h4v4h-4z" />
-        </svg>
-      );
-    case 'gpu':
-      return (
-        <svg {...common}>
-          <rect x="4" y="7" width="16" height="10" rx="2" />
-          <path d="M8 11h3M8 14h5M15 10.5h1.5M15 13.5h1.5M7 4v3M12 4v3M17 4v3M7 17v3M12 17v3M17 17v3" />
-        </svg>
-      );
-    case 'target':
-      return (
-        <svg {...common}>
-          <circle cx="12" cy="12" r="8" />
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
-        </svg>
-      );
-    case 'training':
-      return (
-        <svg {...common}>
-          <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z" />
-          <path d="M4 5.5v15M8 7h8M8 10h6" />
-        </svg>
-      );
-    case 'artifact':
-      return (
-        <svg {...common}>
-          <path d="M12 3 4.5 7.25v9.5L12 21l7.5-4.25v-9.5z" />
-          <path d="m4.5 7.25 7.5 4.25 7.5-4.25M12 11.5V21" />
-        </svg>
-      );
-    case 'source':
-    default:
-      return (
-        <svg {...common}>
-          <path d="M4 7h16M4 12h10M4 17h7" />
-          <path d="M17 13.5 20.5 17 17 20.5" />
-        </svg>
-      );
-  }
-}
-
-// Icon chip inside each node. On the filled navy/red nodes the chip is a translucent white tile so
-// the glyph stays legible; tinted and neutral nodes use matching soft/surface chips.
-function flowIconClasses(tone: FlowTone): string {
-  switch (tone) {
-    case 'compute':
-      return 'border-white/25 bg-white/15 text-white';
-    case 'storage':
-      return 'border-white/25 bg-white/15 text-white';
-    case 'chargeable':
-      return 'border-c-border bg-c-amber-soft text-c-amber';
-    case 'free':
-      return 'border-c-border bg-c-green-soft text-c-green';
-    case 'output':
-    case 'neutral':
-    default:
-      return 'border-c-border2 bg-c-surface2 text-c-muted';
-  }
-}
-
-function FlowEdgePill({
-  edge,
-  sequence,
-  gridColumnStart,
-}: {
-  edge: FlowEdge;
-  sequence: number;
-  gridColumnStart?: number;
-}) {
+// A coloured arrow + label in the bottom key, keyed to the edge tones used between nodes.
+function FlowKeyItem({ arrowClass, label }: { arrowClass: string; label: string }) {
   return (
-    <div
-      style={gridColumnStart ? { gridColumnStart } : undefined}
-      className={`egress-flow-edge ${flowDelayClass(sequence)} flex items-center gap-2 rounded-md border px-3 py-2 text-xs lg:h-[118px] lg:min-w-0 lg:flex-col lg:justify-center lg:overflow-hidden lg:text-center ${flowEdgeClasses(edge.tone)}`}
-    >
-      <span className="shrink-0 font-mono text-sm leading-none md:text-base">&gt;</span>
-      <span>
-        <span className="block font-semibold">{edge.label}</span>
-        <span className="block whitespace-pre-line text-[11px] font-normal opacity-80">{edge.detail}</span>
-      </span>
+    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-c-muted">
+      <span className={`text-[13px] leading-none ${arrowClass}`}>&rarr;</span>
+      {label}
+    </span>
+  );
+}
+
+// Node card: a centred label + detail tinted by role. Backblaze B2 nodes carry the white flame
+// above the label; navy compute and neutral endpoint nodes are text-only. Cards stretch to equal
+// height in the row (sm:items-stretch on the parent) and shrink past their content with min-w-0.
+function FlowNodeCard({ node, sequence }: { node: FlowNode; sequence: number }) {
+  const skin = flowNodeClasses(node.kind);
+
+  return (
+    <div className={`egress-flow-node ${flowDelayClass(sequence)} flex min-w-0 flex-1 flex-col items-center justify-center rounded-[10px] px-2.5 py-3 text-center ${skin.box}`}>
+      {node.kind === 'b2' && (
+        <Image
+          src="/flame-white.png"
+          alt=""
+          width={9}
+          height={15}
+          className="mb-[5px] h-[15px] w-auto object-contain"
+        />
+      )}
+      <p className={`text-xs font-semibold leading-tight ${skin.title}`}>{node.label}</p>
+      <p className={`mt-[3px] text-[10.5px] leading-snug ${skin.sub}`}>{node.detail}</p>
     </div>
   );
 }
 
-// Builds the node/edge diagram for the current answers. The branch order matters: it mirrors the
+// Edge pill: a tone-coloured arrow + bold label over a muted sub-detail. The edge tracks sit
+// slightly narrower than the nodes they connect (flex-[0.85] vs flex-1).
+function FlowEdgePill({ edge, sequence }: { edge: FlowEdge; sequence: number }) {
+  const accent = flowEdgeAccent(edge.tone);
+
+  return (
+    <div className={`egress-flow-edge ${flowDelayClass(sequence)} flex min-w-0 flex-[0.85] flex-col items-center justify-center rounded-[10px] px-1.5 py-2 text-center ${flowEdgeSurface(edge.tone)}`}>
+      <span className={`text-sm leading-none ${accent}`}>&rarr;</span>
+      <p className={`mt-[3px] text-[10.5px] font-bold leading-tight ${accent}`}>{edge.label}</p>
+      <p className="mt-px text-[9.5px] leading-tight text-c-muted">{edge.detail}</p>
+    </div>
+  );
+}
+
+// Staggered reveal: cells animate in left to right. Clamped at 4 (the last delay class) because the
+// row is always five cells — node, edge, node, edge, node.
+function flowDelayClass(sequence: number): string {
+  return `egress-flow-delay-${Math.min(sequence, 4)}`;
+}
+
+// Builds the three-node / two-edge diagram for the current answers. The branch order mirrors the
 // form's gating (no compute -> direct write; compute without writeback -> training reads; compute
 // with writeback -> partner alliance vs. chargeable hyperscaler egress) so the picture always
 // matches the case the cost model is scoring.
-function getDataFlow(config: EgressConfig, partnerComputeScenario?: PartnerComputeScenario | null, b2FreeAllowanceGb = 0): DataFlow {
-  const animationKey = getFlowAnimationKey(config);
+function getDataFlow(config: EgressConfig, b2FreeAllowanceGb: number): DataFlow {
   const b2OutboundEdge = getB2OutboundEdge(config, b2FreeAllowanceGb);
-  const externalNode: FlowNode = {
-    label: 'Target',
-    detail: config.usesPartnerCdn
-      ? 'CDN partner, users, external customers, etc. B2 partner CDN path modeled as free egress.'
-      : formatServedDataDetail(config.gbPerMonthServedToUsers),
-    tone: config.usesPartnerCdn ? 'free' : 'output',
-    icon: 'target',
+  const downstreamNode: FlowNode = {
+    label: config.usesPartnerCdn ? 'CDN → end users' : 'End users',
+    detail: 'Customer-facing',
+    kind: 'endpoint',
   };
 
+  // Case 1 — no hyperscaler compute: applications write straight to B2, then B2 serves downstream.
   if (!config.hasHyperscalerCompute) {
     return {
-      animationKey,
-      title: 'Direct write to B2',
-      summary: 'No hyperscaler compute write-out path is modeled, so this remains a pure storage migration case.',
       nodes: [
-        { label: 'App Data Source', detail: 'Data is written directly to object storage.', tone: 'neutral', icon: 'source' },
-        { label: 'Backblaze B2', detail: 'New storage target for the selected tiers.', tone: 'storage', icon: 'backblaze' },
-        externalNode,
+        { label: 'Applications', detail: 'Write to object storage', kind: 'endpoint' },
+        { label: 'Backblaze B2', detail: formatStoredDetail(b2FreeAllowanceGb), kind: 'b2' },
+        downstreamNode,
       ],
       edges: [
         { label: 'Direct write', detail: 'No new egress', tone: 'free' },
@@ -831,81 +704,59 @@ function getDataFlow(config: EgressConfig, partnerComputeScenario?: PartnerCompu
     };
   }
 
+  // Case 2 — compute that does not write back: training/inference reads pull out of B2 and results
+  // stay in compute, so the only new traffic is the read leg checked against the free allowance.
   if (!config.hyperscalerComputeFeedsStorage) {
-    const monthlyTrainingEgressGb = getTrainingEgressGb(config.trainingRunsPerMonth, config.trainingDataTbPerRun);
-    const trainingOverageGb = Math.max(0, monthlyTrainingEgressGb - b2FreeAllowanceGb);
-    const trainingOverageCost = getB2EgressOverageCost(trainingOverageGb);
+    const trainingEgressGb = getTrainingEgressGb(config.trainingRunsPerMonth, config.trainingDataTbPerRun);
+    const trainingOverageGb = Math.max(0, trainingEgressGb - b2FreeAllowanceGb);
+    const trainingReadDetail = trainingEgressGb > 0
+      ? trainingOverageGb > 0
+        ? `${formatCurrency(getB2EgressOverageCost(trainingOverageGb))}/mo overage`
+        : `${formatVolume(trainingEgressGb / 1000)} TB/mo under 3×`
+      : 'Enter runs';
 
     return {
-      animationKey,
-      title: 'Training data read from Backblaze B2',
-      summary: 'Training data is stored in B2 and read into hyperscaler compute for each run; the model checks those reads against B2 free egress.',
       nodes: [
-        { label: 'Backblaze B2', detail: 'Training Data', tone: 'storage', icon: 'backblaze' },
-        { label: 'GPU Cluster', detail: 'Data is processed inside the hyperscaler.', tone: 'compute', icon: 'gpu' },
-        { label: 'Model / Compute Artifacts', detail: 'Results remain in the compute environment instead of writing back to object storage.', tone: 'output', icon: 'artifact' },
+        { label: 'Backblaze B2', detail: 'Training data at rest', kind: 'b2' },
+        { label: 'Hyperscaler compute', detail: 'GPU / training', kind: 'cloud' },
+        { label: 'Results stay in compute', detail: 'Models / artifacts', kind: 'endpoint' },
       ],
       edges: [
-        {
-          label: 'B2 egress',
-          detail: monthlyTrainingEgressGb > 0
-            ? trainingOverageGb > 0
-              ? `Training read\n${formatCurrency(trainingOverageCost)}/mo overage`
-              : `Training read\n${formatVolume(monthlyTrainingEgressGb / 1000)} TB/mo under 3x`
-            : 'Training read\nEnter runs',
-          tone: trainingOverageGb > 0 ? 'chargeable' : 'free',
-        },
+        { label: 'Training reads', detail: trainingReadDetail, tone: trainingOverageGb > 0 ? 'charge' : 'free' },
         { label: 'No writeback', detail: 'No new egress', tone: 'free' },
       ],
     };
   }
 
-  if (config.computeMovingToPartner) {
-    return {
-      animationKey,
-      title: 'Partner compute with B2 storage',
-      summary: 'The primary model assumes the write path moves to a B2 bandwidth alliance partner, avoiding hyperscaler egress on processed data.',
-      nodes: [
-        { label: 'App Data Source', detail: 'Workload input enters the compute path.', tone: 'neutral', icon: 'source' },
-        { label: 'Hyperscaler Compute', detail: 'Modeled as a B2 bandwidth alliance partner for this scenario.', tone: 'free', icon: 'compute' },
-        { label: 'Backblaze B2', detail: 'Processed data lands in B2 without hyperscaler write-out fees.', tone: 'storage', icon: 'backblaze' },
-        externalNode,
-      ],
-      edges: [
-        { label: 'Process', detail: 'Partner stack', tone: 'free' },
-        { label: 'Alliance path', detail: 'Free egress', tone: 'free' },
-        b2OutboundEdge,
-      ],
-    };
-  }
-
-  const writeVolumeDetail = config.gbPerMonthHyperscalerToB2 > 0
-    ? `${formatVolume(config.gbPerMonthHyperscalerToB2 / 1000)} TB/mo`
-    : 'Enter volume';
-  const chargeDetail = partnerComputeScenario
-    ? `${formatCurrency(partnerComputeScenario.monthlyEgressAvoided)}/mo`
-    : writeVolumeDetail;
+  // Case 3 — compute writes processed data back to B2: free via a bandwidth-alliance partner, or
+  // new chargeable hyperscaler egress otherwise. B2 then serves the same downstream node.
+  const writebackEdge: FlowEdge = config.computeMovingToPartner
+    ? { label: 'Alliance path', detail: 'Free egress', tone: 'free' }
+    : config.gbPerMonthHyperscalerToB2 > 0
+      ? { label: 'Chargeable egress', detail: `${formatVolume(config.gbPerMonthHyperscalerToB2 / 1000)} TB/mo writeback`, tone: 'charge' }
+      : { label: 'Writeback', detail: 'Enter volume', tone: 'neutral' };
 
   return {
-    animationKey,
-    title: 'Hyperscaler compute writes to B2',
-    summary: 'The compute-to-B2 write path is modeled as new hyperscaler egress and reduces the primary savings estimate.',
     nodes: [
-      { label: 'App Data Source', detail: 'Data enters the hyperscaler compute workflow.', tone: 'neutral', icon: 'source' },
-      { label: 'Hyperscaler Compute', detail: 'Processing remains in the current hyperscaler.', tone: 'compute', icon: 'compute' },
-      { label: 'Backblaze B2', detail: 'Processed data is written out to B2.', tone: 'storage', icon: 'backblaze' },
-      externalNode,
+      { label: 'Hyperscaler compute', detail: 'Processing pipeline', kind: 'cloud' },
+      { label: 'Backblaze B2', detail: 'Processed data', kind: 'b2' },
+      downstreamNode,
     ],
-    edges: [
-      { label: 'Process', detail: 'In hyperscaler', tone: 'neutral' },
-      { label: 'Chargeable egress', detail: chargeDetail, tone: 'chargeable' },
-      b2OutboundEdge,
-    ],
+    edges: [writebackEdge, b2OutboundEdge],
   };
 }
 
-// The B2 -> users edge: free over a partner CDN, free while served volume stays under the 3x
-// allowance, otherwise priced at the B2 overage rate. Same allowance logic the cost model applies.
+// Backblaze B2 holds the migrated storage in the direct-write case. The free egress allowance is a
+// fixed multiple of that stored volume, so we recover the stored amount by dividing the multiple
+// back out (falling back to a plain label when no allowance has been computed yet).
+function formatStoredDetail(b2FreeAllowanceGb: number): string {
+  const storedTb = b2FreeAllowanceGb / b2Pricing.egress.freeMultiplier / 1000;
+  return storedTb > 0 ? `${formatVolume(storedTb)} TB stored` : 'Migration target';
+}
+
+// The B2 -> downstream edge: free over a partner CDN, free while served volume stays under the 3×
+// allowance, otherwise priced at the B2 overage rate. Same allowance logic the cost model applies,
+// so the diagram and the savings summary always agree.
 function getB2OutboundEdge(config: EgressConfig, b2FreeAllowanceGb: number): FlowEdge {
   if (config.usesPartnerCdn) {
     return { label: 'Partner CDN', detail: 'Free egress', tone: 'free' };
@@ -917,84 +768,71 @@ function getB2OutboundEdge(config: EgressConfig, b2FreeAllowanceGb: number): Flo
 
   const overageGb = Math.max(0, config.gbPerMonthServedToUsers - b2FreeAllowanceGb);
   if (overageGb <= 0) {
-    return {
-      label: 'B2 egress',
-      detail: `${formatVolume(config.gbPerMonthServedToUsers / 1000)} TB/mo under 3x`,
-      tone: 'free',
-    };
+    return { label: 'B2 egress', detail: 'Under free 3×', tone: 'free' };
   }
 
   return {
     label: 'B2 egress',
     detail: `${formatCurrency(getB2EgressOverageCost(overageGb))}/mo overage`,
-    tone: 'chargeable',
+    tone: 'charge',
   };
 }
 
-function getFlowAnimationKey(config: EgressConfig): string {
-  if (!config.hasHyperscalerCompute) {
-    return `direct-${config.usesPartnerCdn ? 'cdn' : 'users'}`;
-  }
-
-  if (!config.hyperscalerComputeFeedsStorage) {
-    return 'compute-no-writeback';
-  }
-
-  return [
-    'compute-writeback',
-    config.computeMovingToPartner ? 'partner' : 'hyperscaler',
-    config.usesPartnerCdn ? 'cdn' : 'users',
-  ].join('-');
-}
-
-// Staggered reveal of each step; clamped at 6 because that's the last delay class defined in CSS.
-function flowDelayClass(sequence: number): string {
-  return `egress-flow-delay-${Math.min(sequence, 6)}`;
-}
-
-// Node skins per the data-flow design: the B2 node fills brand red with white text + flame, the
-// hyperscaler compute node fills navy with white text, and endpoint/neutral nodes sit on the plain
-// surface. The free/chargeable tones (partner alliance, training artifact) keep the soft semantic tints.
-function flowNodeClasses(tone: FlowTone): string {
-  switch (tone) {
-    case 'compute':
+// Node skins per the data-flow design: Backblaze B2 fills brand red with the white flame, the
+// hyperscaler compute node fills navy, and customer/endpoint nodes sit on the plain surface. The
+// title/detail colours are returned separately so each role keeps legible text on its fill.
+function flowNodeClasses(kind: FlowNodeKind): { box: string; title: string; sub: string } {
+  switch (kind) {
+    case 'b2':
+      // Backblaze B2 = brand-red node with a soft red glow, white text.
+      return {
+        box: 'border border-[#e20626] bg-[#e20626] shadow-[0_4px_14px_rgba(226,6,38,0.30)]',
+        title: 'text-white',
+        sub: 'text-white/80',
+      };
+    case 'cloud':
       // Hyperscaler compute = navy node, white text.
-      return 'border-[#11113a] bg-[#11113a] text-white';
-    case 'storage':
-      // Backblaze B2 = brand-red node, white text.
-      return 'border-[#e20626] bg-[#e20626] text-white';
-    case 'chargeable':
-      return 'border-c-border bg-c-amber-soft text-c-amber';
-    case 'free':
-      return 'border-c-border bg-c-green-soft text-c-green';
-    case 'output':
-    case 'neutral':
+      return {
+        box: 'border border-white/15 bg-[#11113a]',
+        title: 'text-white',
+        sub: 'text-white/60',
+      };
+    case 'endpoint':
     default:
-      // Endpoint / customer node on the plain surface.
-      return 'border-c-border2 bg-c-surface text-c-text';
+      // Customer / endpoint node on the plain surface.
+      return {
+        box: 'border border-c-border2 bg-c-surface',
+        title: 'text-c-text',
+        sub: 'text-c-subtle',
+      };
   }
 }
 
-// Edge pills carry the free/chargeable/neutral semantics from the design's flow legend: free egress
-// is green-soft, chargeable egress is red-soft, and anything still needing input stays neutral.
-function flowEdgeClasses(tone: FlowTone): string {
+// Edge background per tone: free egress is green-soft, chargeable egress is red-soft, and anything
+// still awaiting a volume stays on the neutral surface tint.
+function flowEdgeSurface(tone: FlowEdgeTone): string {
   switch (tone) {
-    case 'chargeable':
-    case 'storage':
-      return 'border-c-border bg-c-red-soft text-c-red';
     case 'free':
-      return 'border-c-border bg-c-green-soft text-c-green';
-    case 'compute':
-    case 'output':
+      return 'bg-c-green-soft';
+    case 'charge':
+      return 'bg-c-red-soft';
     case 'neutral':
     default:
-      return 'border-c-border2 bg-c-surface2 text-c-subtle';
+      return 'bg-c-surface2';
   }
 }
 
-function formatServedDataDetail(gbPerMonth: number): string {
-  if (gbPerMonth <= 0) return 'External serving volume is not entered yet.';
-  return `${formatVolume(gbPerMonth / 1000)} TB/mo served from Backblaze B2.`;
+// Arrow + label colour for each edge tone (the sub-detail always stays muted, per the design).
+function flowEdgeAccent(tone: FlowEdgeTone): string {
+  switch (tone) {
+    case 'free':
+      return 'text-c-green';
+    case 'charge':
+      return 'text-c-red';
+    case 'neutral':
+    default:
+      return 'text-c-subtle';
+  }
 }
 
 function formatVolume(value: number): string {
