@@ -41,11 +41,12 @@ export function ProjectionChart({
       : `The projection does not show monthly savings by the final month across ${formatStorage(endingStorageGb)}.`;
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="flex flex-col gap-4 border-b border-gray-200 px-6 py-4 xl:flex-row xl:items-center xl:justify-between">
+    // Design-system card: rounded-2xl surface with soft border + shadow.
+    <div className="rounded-2xl border border-c-border bg-c-surface shadow-sm">
+      <div className="flex flex-col gap-4 border-b border-c-border px-6 py-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Cost projections</h3>
-          <p className="mt-1 text-sm text-gray-500">
+          <h3 className="text-lg font-semibold text-c-text">Cost projections</h3>
+          <p className="mt-1 text-sm text-c-muted">
             {formatTerm(termMonths)} projection · {growthLabel}
           </p>
         </div>
@@ -54,10 +55,11 @@ export function ProjectionChart({
             <button
               key={m}
               onClick={() => onTermChange(m)}
+              // Active term = solid brand red; inactive = muted text on hover surface.
               className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
                 termMonths === m
-                  ? 'bg-bb-red text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-[#e20626] text-white shadow-sm hover:bg-[#b40a23]'
+                  : 'text-c-muted hover:bg-c-surface2'
               }`}
             >
               {formatShortTerm(m)}
@@ -73,21 +75,23 @@ export function ProjectionChart({
           <ChartMetric label="Ending storage" value={endingStorageGb} formatter={formatStorage} />
         </div>
 
-        <p className="mb-4 text-sm font-medium text-gray-600">{savingsTrend}</p>
+        <p className="mb-4 text-sm font-medium text-c-muted">{savingsTrend}</p>
 
-        <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-gray-600">
-          <ChartLegendItem colorClass="bg-slate-500" label={providerLabel} />
-          <ChartLegendItem colorClass="bg-bb-red" label="Backblaze B2" />
-          <ChartLegendItem colorClass="bg-emerald-600" label="Cumulative Savings" />
+        {/* Legend dots match the recharts series colors: navy current-cost, brand-red B2, green savings. */}
+        <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-c-muted">
+          <ChartLegendItem colorClass="bg-[#000033]" label={providerLabel} />
+          <ChartLegendItem colorClass="bg-[#e20626]" label="Backblaze B2" />
+          <ChartLegendItem colorClass="bg-[#1f8a5b]" label="Cumulative Savings" />
         </div>
 
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={points} margin={{ top: 14, right: 12, left: 4, bottom: 4 }}>
               <defs>
+                {/* Cumulative-savings area: soft green fade matching the design's #1F8A5B gradient. */}
                 <linearGradient id="projectionSavings" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#16a34a" stopOpacity={0.22} />
-                  <stop offset="95%" stopColor="#16a34a" stopOpacity={0.02} />
+                  <stop offset="5%" stopColor="#1f8a5b" stopOpacity={0.22} />
+                  <stop offset="95%" stopColor="#1f8a5b" stopOpacity={0.03} />
                 </linearGradient>
               </defs>
               <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" vertical={false} />
@@ -135,31 +139,34 @@ export function ProjectionChart({
                   label={{ value: 'Break-Even', position: 'top', fill: '#4b5563', fontSize: 12 }}
                 />
               )}
+              {/* Cumulative-savings area: green stroke (#1F8A5B) over the soft green gradient fill. */}
               <Area
                 yAxisId="savings"
                 type="monotone"
                 dataKey="cumulativeSavings"
-                stroke="#16a34a"
+                stroke="#1f8a5b"
                 fill="url(#projectionSavings)"
                 strokeWidth={2.5}
                 dot={false}
                 name="Cumulative Savings"
               />
+              {/* Current-provider cost line: navy (#000033) per the design spec. */}
               <Line
                 yAxisId="cost"
                 type="monotone"
                 dataKey="currentCost"
-                stroke="#64748b"
+                stroke="#000033"
                 strokeWidth={2.5}
                 dot={false}
                 activeDot={{ r: 5, strokeWidth: 0 }}
                 name={providerLabel}
               />
+              {/* B2 cost line: brand red (#E20626). */}
               <Line
                 yAxisId="cost"
                 type="monotone"
                 dataKey="b2Cost"
-                stroke="#D1232A"
+                stroke="#e20626"
                 strokeWidth={3}
                 dot={false}
                 activeDot={{ r: 5, strokeWidth: 0 }}
@@ -184,12 +191,14 @@ function ChartMetric({
   formatter?: (value: number) => string;
   tone?: 'default' | 'savings';
 }) {
-  const valueClass = tone === 'savings' ? 'text-emerald-700' : 'text-gray-900';
+  // Savings values read in green; everything else in primary text color.
+  const valueClass = tone === 'savings' ? 'text-c-green' : 'text-c-text';
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>
-      <p className={`mt-1 text-lg font-semibold ${valueClass}`}>
+    <div className="rounded-lg border border-c-border bg-c-surface2 px-4 py-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-c-subtle">{label}</p>
+      {/* Big display values use the heading font. */}
+      <p className={`mt-1 font-display text-lg font-semibold ${valueClass}`}>
         {typeof value === 'number'
           ? <AnimatedMetricValue value={value} formatter={formatter} />
           : value}
@@ -265,14 +274,15 @@ function ProjectionTooltip({
   if (!point) return null;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3 text-xs shadow-lg">
-      <p className="mb-2 font-semibold text-gray-900">Month {point.month || label}</p>
+    <div className="rounded-lg border border-c-border bg-c-surface p-3 text-xs shadow-lg">
+      <p className="mb-2 font-semibold text-c-text">Month {point.month || label}</p>
       <div className="space-y-1.5">
+        {/* Row dots mirror the chart series colors: navy current cost, brand-red B2, green savings. */}
         <TooltipRow label="Data Stored" value={formatStorage(point.storageGb)} />
-        <TooltipRow label={providerLabel} value={formatCurrency(point.currentCost)} colorClass="bg-slate-500" />
-        <TooltipRow label="Backblaze B2" value={formatCurrency(point.b2Cost)} colorClass="bg-bb-red" />
-        <TooltipRow label="Monthly Savings" value={formatCurrency(point.monthlySavings)} colorClass="bg-emerald-500" />
-        <TooltipRow label="Cumulative Savings" value={formatCurrency(point.cumulativeSavings)} colorClass="bg-green-600" />
+        <TooltipRow label={providerLabel} value={formatCurrency(point.currentCost)} colorClass="bg-[#000033]" />
+        <TooltipRow label="Backblaze B2" value={formatCurrency(point.b2Cost)} colorClass="bg-[#e20626]" />
+        <TooltipRow label="Monthly Savings" value={formatCurrency(point.monthlySavings)} colorClass="bg-[#1f8a5b]" />
+        <TooltipRow label="Cumulative Savings" value={formatCurrency(point.cumulativeSavings)} colorClass="bg-[#1f8a5b]" />
       </div>
     </div>
   );
@@ -289,11 +299,11 @@ function TooltipRow({
 }) {
   return (
     <div className="flex min-w-48 items-center justify-between gap-4">
-      <span className="flex items-center gap-2 text-gray-500">
+      <span className="flex items-center gap-2 text-c-muted">
         {colorClass && <span className={`h-2 w-2 rounded-full ${colorClass}`} />}
         {label}
       </span>
-      <span className="font-semibold text-gray-900">{value}</span>
+      <span className="font-semibold text-c-text">{value}</span>
     </div>
   );
 }

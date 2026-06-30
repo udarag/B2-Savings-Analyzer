@@ -1,18 +1,33 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { AppHeader } from "@/components/shared/AppHeader";
 import { ThemeController } from "@/components/shared/ThemeController";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+// Self-hosted Backblaze brand fonts: DM Sans for body copy, Space Grotesk for
+// display headings. Loading them locally keeps the internal VM deployment free
+// of any external Google Fonts request.
+const dmSans = localFont({
+  variable: "--font-dm-sans",
+  display: "swap",
+  src: [
+    { path: "./fonts/DMSans-Regular.ttf", weight: "400", style: "normal" },
+    { path: "./fonts/DMSans-Medium.ttf", weight: "500", style: "normal" },
+    { path: "./fonts/DMSans-SemiBold.ttf", weight: "600", style: "normal" },
+    { path: "./fonts/DMSans-Bold.ttf", weight: "700", style: "normal" },
+  ],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const spaceGrotesk = localFont({
+  variable: "--font-space-grotesk",
+  display: "swap",
+  src: [
+    { path: "./fonts/SpaceGrotesk-Regular.ttf", weight: "400", style: "normal" },
+    { path: "./fonts/SpaceGrotesk-Medium.ttf", weight: "500", style: "normal" },
+    { path: "./fonts/SpaceGrotesk-SemiBold.ttf", weight: "600", style: "normal" },
+    { path: "./fonts/SpaceGrotesk-Bold.ttf", weight: "700", style: "normal" },
+  ],
 });
 
 export const metadata: Metadata = {
@@ -58,11 +73,11 @@ export default function RootLayout({
     <html
       lang="en"
       data-theme="light"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${dmSans.variable} ${spaceGrotesk.variable} h-full antialiased`}
       style={{ colorScheme: 'light' }}
       suppressHydrationWarning
     >
-      <body className="min-h-dvh flex flex-col bg-gray-50 transition-colors duration-300">
+      <body className="min-h-dvh flex flex-col bg-c-bg transition-colors duration-300">
         <Script
           id="b2-theme-init"
           strategy="beforeInteractive"

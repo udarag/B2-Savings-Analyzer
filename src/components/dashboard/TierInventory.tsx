@@ -30,7 +30,7 @@ function UnitToggle({ label, onClick }: { label: string; onClick: () => void }) 
   return (
     <button
       onClick={onClick}
-      className="inline-flex h-8 min-w-[104px] items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 text-xs font-semibold text-gray-600 shadow-sm transition-all hover:border-gray-400 hover:bg-gray-50 hover:text-gray-900 active:bg-gray-100 cursor-pointer"
+      className="inline-flex h-8 min-w-[88px] items-center justify-center gap-1 whitespace-nowrap rounded-md border border-c-border bg-c-surface px-2 text-xs font-semibold text-c-muted shadow-sm transition-all hover:border-c-border2 hover:bg-c-surface2 hover:text-c-text active:bg-c-surface2 cursor-pointer"
       title={`Click to cycle: ${UNIT_ORDER.join(' → ')}`}
     >
       {label}
@@ -104,14 +104,15 @@ function tierRank(storageClass: string): number {
 
 // Coarse hot/warm/cool badge for the tier. "Warm" keys off the infrequent-access markers each provider
 // uses (AWS *-IA, GCP Nearline, Azure Cool); anything colder than that falls through to "Cooler".
+// Soft-pill colors map to the design tokens: Hot→red, Warm→amber, Cooler→purple.
 function tierTemperature(storageClass: string): { label: string; className: string } {
   if (isHotStorageTier(storageClass)) {
-    return { label: 'Hot', className: 'bg-red-50 text-red-700 ring-red-100' };
+    return { label: 'Hot', className: 'bg-c-red-soft text-c-red' };
   }
   if (storageClass.includes('IA') || storageClass.includes('Nearline') || storageClass.includes('Cool')) {
-    return { label: 'Warm', className: 'bg-amber-50 text-amber-700 ring-amber-100' };
+    return { label: 'Warm', className: 'bg-c-amber-soft text-c-amber' };
   }
-  return { label: 'Cooler', className: 'bg-blue-50 text-blue-700 ring-blue-100' };
+  return { label: 'Cooler', className: 'bg-c-purple-soft text-c-purple' };
 }
 
 // Blended $/TB-month across all regions in a group: weight by GB so the group rate reflects where the
@@ -132,7 +133,7 @@ function StorageTierHelpLink({ group }: { group: TierGroup }) {
       rel="noreferrer"
       title={`${tierName}: ${help.description}`}
       aria-label={`Learn about ${tierName}: ${help.description}`}
-      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-white text-[11px] font-bold leading-none text-gray-500 transition-colors hover:border-bb-red hover:bg-bb-red-light hover:text-bb-red-dark focus:outline-none focus:ring-2 focus:ring-bb-red/30"
+      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-c-border bg-c-surface text-[11px] font-bold leading-none text-c-subtle transition-colors hover:border-c-red hover:bg-c-red-soft hover:text-c-red-dark focus:outline-none focus:ring-2 focus:ring-c-red/30"
       onClick={(e) => e.stopPropagation()}
     >
       ?
@@ -162,7 +163,7 @@ function GroupCheckbox({
       }}
       onChange={(e) => onChange(e.target.checked)}
       aria-label={ariaLabel}
-      className="h-4 w-4 text-bb-red accent-bb-red rounded"
+      className="h-4 w-4 accent-[#e20626] rounded"
     />
   );
 }
@@ -250,34 +251,36 @@ export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInvent
   };
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Storage Tier Inventory</h3>
-        <p className="text-sm text-gray-500 mt-1">
+    <div className="rounded-2xl border border-c-border bg-c-surface shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b border-c-border">
+        <h3 className="text-lg font-semibold text-c-text">Storage Tier Inventory</h3>
+        <p className="text-sm text-c-muted mt-1">
           Hot tiers are selected by default. Expand a tier for region-level selection and account allocation.
         </p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50">
+          {/* Column-header row sits on the muted surface2 fill per the design spec. */}
+          <thead className="bg-c-surface2">
             <tr>
-              <th className="px-4 py-4 text-left align-middle font-semibold text-gray-500 whitespace-nowrap">Migrate</th>
-              <th className="px-4 py-4 text-left align-middle font-semibold text-gray-500 whitespace-nowrap">Storage Tier</th>
-              <th className="px-4 py-4 text-left align-middle font-semibold text-gray-500 whitespace-nowrap">Coverage</th>
-              <th className="px-4 py-4 text-center align-middle whitespace-nowrap">
+              <th className="px-2 py-4 text-left align-middle font-semibold text-c-subtle whitespace-nowrap">Migrate</th>
+              <th className="px-2 py-4 text-left align-middle font-semibold text-c-subtle whitespace-nowrap">Storage Tier</th>
+              <th className="px-2 py-4 text-left align-middle font-semibold text-c-subtle whitespace-nowrap">Coverage</th>
+              <th className="px-2 py-4 text-center align-middle whitespace-nowrap">
                 <UnitToggle label={`${storageUnit} Stored`} onClick={cycleUnit} />
               </th>
-              <th className="px-4 py-4 text-center align-middle font-semibold text-gray-500 whitespace-nowrap">Monthly Cost</th>
-              <th className="px-4 py-4 text-center align-middle whitespace-nowrap">
+              <th className="px-2 py-4 text-center align-middle font-semibold text-c-subtle whitespace-nowrap">Monthly Cost</th>
+              <th className="px-2 py-4 text-center align-middle whitespace-nowrap">
                 <UnitToggle label="Effective" onClick={cycleUnit} />
               </th>
-              <th className="px-4 py-4 text-center align-middle font-semibold text-gray-500 whitespace-nowrap">Fees</th>
-              <th className="px-4 py-4 text-center align-middle font-semibold text-gray-500 whitespace-nowrap">True Cost</th>
-              <th className="px-4 py-4 text-center align-middle font-semibold text-bb-red-dark bg-bb-red-light whitespace-nowrap">B2 Cost</th>
-              <th className="px-4 py-4 text-center align-middle font-semibold text-gray-500 whitespace-nowrap">Savings</th>
+              <th className="px-2 py-4 text-center align-middle font-semibold text-c-subtle whitespace-nowrap">Fees</th>
+              <th className="px-2 py-4 text-center align-middle font-semibold text-c-subtle whitespace-nowrap">True Cost</th>
+              {/* "$/TB B2" column accent: brand-red label on a soft-red wash. */}
+              <th className="px-2 py-4 text-center align-middle font-semibold text-c-red bg-c-red-soft whitespace-nowrap">B2 Cost</th>
+              <th className="px-2 py-4 text-center align-middle font-semibold text-c-subtle whitespace-nowrap">Savings</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-c-border">
             {groups.map((group) => {
               const isExpanded = expanded.has(group.storageClass);
               const allSelected = group.selectedCount === group.rows.length;
@@ -289,9 +292,9 @@ export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInvent
               return (
                 <Fragment key={group.storageClass}>
                   <tr
-                    className={group.selectedCount > 0 ? 'bg-green-50/50' : ''}
+                    className={group.selectedCount > 0 ? 'bg-c-green-soft' : ''}
                   >
-                    <td className="px-4 py-3">
+                    <td className="px-2 py-3">
                       <GroupCheckbox
                         checked={allSelected}
                         indeterminate={partiallySelected}
@@ -299,11 +302,11 @@ export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInvent
                         ariaLabel={`Migrate all ${formatStorageTierName(group.storageClass)}`}
                       />
                     </td>
-                    <td className="px-4 py-3 font-medium text-gray-900">
+                    <td className="px-2 py-3 font-medium text-c-text">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => toggleExpand(group.storageClass)}
-                          className="text-gray-400 hover:text-gray-600 transition-transform"
+                          className="text-c-subtle hover:text-c-text transition-transform"
                           aria-label={isExpanded ? `Collapse ${formatStorageTierName(group.storageClass)}` : `Expand ${formatStorageTierName(group.storageClass)}`}
                         >
                           <svg
@@ -315,46 +318,50 @@ export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInvent
                         </button>
                         <span>{formatStorageTierName(group.storageClass)}</span>
                         <StorageTierHelpLink group={group} />
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${temperature.className}`}>
+                        {/* Temperature soft-pill — Hot/Warm/Cooler colors come from tierTemperature(). */}
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${temperature.className}`}>
                           {temperature.label}
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="px-2 py-3 text-c-muted">
                       <div className="flex flex-col">
                         <span>{regionCount} {regionCount === 1 ? 'region' : 'regions'}</span>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-c-subtle">
                           {group.selectedCount}/{group.rows.length} selected
                           {accountCount > 0 ? ` · ${accountCount} ${accountCount === 1 ? 'account' : 'accounts'}` : ''}
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-900">{formatStorage(group.gbStored, storageUnit)}</td>
-                    <td className="px-4 py-3 text-right text-gray-900">{formatCurrency(group.monthlyStorageCost)}</td>
-                    <td className="px-4 py-3 text-right text-gray-600">{formatRatePerUnit(weightedRatePerTb(group), storageUnit)}</td>
-                    <td className="px-4 py-3 text-right text-gray-600">
+                    <td className="px-2 py-3 text-right text-c-text">{formatStorage(group.gbStored, storageUnit)}</td>
+                    <td className="px-2 py-3 text-right text-c-text">{formatCurrency(group.monthlyStorageCost)}</td>
+                    <td className="px-2 py-3 text-right text-c-muted">{formatRatePerUnit(weightedRatePerTb(group), storageUnit)}</td>
+                    <td className="px-2 py-3 text-right text-c-muted">
                       {formatCurrency(group.fees)}
                     </td>
-                    <td className="px-4 py-3 text-right font-medium text-gray-900">{formatCurrency(group.totalTrueCost)}</td>
-                    <td className="px-4 py-3 text-right bg-bb-red-light/40">
+                    <td className="px-2 py-3 text-right font-medium text-c-text">{formatCurrency(group.totalTrueCost)}</td>
+                    {/* B2-cost column: brand-red value chip on a soft-red column wash. */}
+                    <td className="px-2 py-3 text-right bg-c-red-soft/40">
                       {group.selectedCount > 0 ? (
-                        <span className="inline-flex justify-end rounded-md bg-white px-2 py-1 font-semibold text-bb-red-dark ring-1 ring-red-100 shadow-sm">
+                        <span className="inline-flex justify-end rounded-md bg-c-surface px-2 py-1 font-semibold text-c-red-dark ring-1 ring-c-red-soft shadow-sm">
                           {formatCurrency(group.selectedB2Cost)}
                         </span>
                       ) : (
-                        <span className="text-gray-400">—</span>
+                        <span className="text-c-subtle">—</span>
                       )}
                     </td>
-                    <td className={`px-4 py-3 text-right font-medium ${group.selectedDelta > 0 ? 'text-green-700' : group.selectedDelta < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                    {/* Savings: positive deltas read green, negative red, zero muted. */}
+                    <td className={`px-2 py-3 text-right font-medium ${group.selectedDelta > 0 ? 'text-c-green' : group.selectedDelta < 0 ? 'text-c-red' : 'text-c-subtle'}`}>
                       {group.selectedCount > 0 ? formatCurrency(group.selectedDelta) : '—'}
                     </td>
                   </tr>
                   {isExpanded && (
-                    <tr className="bg-gray-50">
-                      <td className="px-4 py-3" />
-                      <td className="px-4 py-3" colSpan={9}>
-                        <div className="rounded-md border border-gray-200 bg-white overflow-hidden">
-                          <div className="grid grid-cols-[44px_1.15fr_1.2fr_repeat(7,minmax(82px,1fr))] items-center gap-0 bg-gray-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                    <tr className="bg-c-surface2">
+                      <td className="px-2 py-3" />
+                      <td className="px-2 py-3" colSpan={9}>
+                        <div className="rounded-md border border-c-border bg-c-surface overflow-hidden">
+                          {/* Region sub-rows: header band on surface2, dividers on the border token. */}
+                          <div className="grid grid-cols-[44px_1.15fr_1.2fr_repeat(7,minmax(82px,1fr))] items-center gap-0 bg-c-surface2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-c-subtle">
                             <span />
                             <span className="whitespace-nowrap">Region</span>
                             <span className="whitespace-nowrap">Location</span>
@@ -363,44 +370,45 @@ export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInvent
                             <span className="text-right whitespace-nowrap">Effective</span>
                             <span className="text-right whitespace-nowrap">Fees</span>
                             <span className="text-right whitespace-nowrap">True</span>
-                            <span className="text-right text-bb-red-dark whitespace-nowrap">B2</span>
+                            <span className="text-right text-c-red whitespace-nowrap">B2</span>
                             <span className="text-right whitespace-nowrap">Savings</span>
                           </div>
                           {group.rows.map((tier) => {
                             const fees = tier.retrievalFees + tier.earlyDeletionFees + tier.monitoringFees + tier.operationsFees;
                             const location = getRegionLocation(tier.region);
                             return (
-                              <div key={tier.id} className={`grid grid-cols-[44px_1.15fr_1.2fr_repeat(7,minmax(82px,1fr))] gap-0 px-3 py-2 text-xs border-t border-gray-100 ${tier.migrateToB2 ? 'bg-green-50/60' : ''}`}>
+                              <div key={tier.id} className={`grid grid-cols-[44px_1.15fr_1.2fr_repeat(7,minmax(82px,1fr))] gap-0 px-3 py-2 text-xs border-t border-c-border ${tier.migrateToB2 ? 'bg-c-green-soft' : ''}`}>
                                 <span>
                                   <input
                                     type="checkbox"
                                     checked={tier.migrateToB2}
                                     onChange={(e) => onToggle(tier.id, e.target.checked)}
                                     aria-label={`Migrate ${tier.storageClass} in ${tier.region}`}
-                                    className="h-4 w-4 text-bb-red accent-bb-red rounded"
+                                    className="h-4 w-4 accent-[#e20626] rounded"
                                   />
                                 </span>
-                                <span className="font-medium text-gray-800">{tier.region}</span>
-                                <span className={location ? 'font-medium text-gray-600' : 'text-gray-400'}>
+                                <span className="font-medium text-c-text">{tier.region}</span>
+                                <span className={location ? 'font-medium text-c-muted' : 'text-c-subtle'}>
                                   {location || '—'}
                                 </span>
-                                <span className="text-right text-gray-700">{formatStorage(tier.gbStored, storageUnit)}</span>
-                                <span className="text-right text-gray-700">{formatCurrency(tier.monthlyStorageCost)}</span>
-                                <span className="text-right text-gray-500">{formatRatePerUnit(tier.effectivePerTb, storageUnit)}</span>
-                                <span className="text-right text-gray-500" title={`Retrieval: ${formatCurrency(tier.retrievalFees)}\nEarly Delete: ${formatCurrency(tier.earlyDeletionFees)}\nMonitoring: ${formatCurrency(tier.monitoringFees)}\nOperations: ${formatCurrency(tier.operationsFees)}`}>
+                                <span className="text-right text-c-muted">{formatStorage(tier.gbStored, storageUnit)}</span>
+                                <span className="text-right text-c-muted">{formatCurrency(tier.monthlyStorageCost)}</span>
+                                <span className="text-right text-c-subtle">{formatRatePerUnit(tier.effectivePerTb, storageUnit)}</span>
+                                <span className="text-right text-c-subtle" title={`Retrieval: ${formatCurrency(tier.retrievalFees)}\nEarly Delete: ${formatCurrency(tier.earlyDeletionFees)}\nMonitoring: ${formatCurrency(tier.monitoringFees)}\nOperations: ${formatCurrency(tier.operationsFees)}`}>
                                   {formatCurrency(fees)}
                                 </span>
-                                <span className="text-right font-medium text-gray-800">{formatCurrency(tier.totalTrueCost)}</span>
+                                <span className="text-right font-medium text-c-text">{formatCurrency(tier.totalTrueCost)}</span>
+                                {/* Per-region B2 cost chip: brand-red value on the soft-red wash. */}
                                 <span className="text-right">
                                   {tier.migrateToB2 ? (
-                                    <span className="inline-flex rounded-md bg-bb-red-light px-2 py-0.5 font-semibold text-bb-red-dark ring-1 ring-red-100">
+                                    <span className="inline-flex rounded-md bg-c-red-soft px-2 py-0.5 font-semibold text-c-red-dark ring-1 ring-c-red-soft">
                                       {formatCurrency(tier.modeledB2Cost)}
                                     </span>
                                   ) : (
-                                    <span className="text-gray-400">—</span>
+                                    <span className="text-c-subtle">—</span>
                                   )}
                                 </span>
-                                <span className={`text-right font-medium ${tier.delta > 0 ? 'text-green-700' : tier.delta < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                                <span className={`text-right font-medium ${tier.delta > 0 ? 'text-c-green' : tier.delta < 0 ? 'text-c-red' : 'text-c-subtle'}`}>
                                   {tier.migrateToB2 ? formatCurrency(tier.delta) : '—'}
                                 </span>
                               </div>
@@ -409,8 +417,8 @@ export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInvent
                         </div>
 
                         {group.accounts.length > 0 && (
-                          <div className="mt-3 rounded-md border border-gray-200 bg-white overflow-hidden">
-                            <div className="bg-gray-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                          <div className="mt-3 rounded-md border border-c-border bg-c-surface overflow-hidden">
+                            <div className="bg-c-surface2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-c-subtle">
                               Account Allocation
                             </div>
                             {group.accounts.map((acct) => {
@@ -421,13 +429,13 @@ export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInvent
                                 ? Math.round((acct.costUsd / group.monthlyStorageCost) * group.gbStored)
                                 : 0;
                               return (
-                                <div key={`${group.storageClass}-${acct.accountId}`} className="grid grid-cols-[1.5fr_1fr_120px_120px] gap-3 border-t border-gray-100 px-3 py-2 text-xs">
-                                  <span className="font-medium text-gray-700">{acct.accountName}</span>
-                                  <span className="text-gray-400">{acct.accountId}</span>
-                                  <span className="text-right text-gray-500" title="Estimated from Cost Proportion">
+                                <div key={`${group.storageClass}-${acct.accountId}`} className="grid grid-cols-[1.5fr_1fr_120px_120px] gap-3 border-t border-c-border px-3 py-2 text-xs">
+                                  <span className="font-medium text-c-text">{acct.accountName}</span>
+                                  <span className="text-c-subtle">{acct.accountId}</span>
+                                  <span className="text-right text-c-subtle" title="Estimated from Cost Proportion">
                                     {estimatedGb > 0 ? `~${formatStorage(estimatedGb, storageUnit)}` : '—'}
                                   </span>
-                                  <span className="text-right text-gray-700">{formatCurrency(acct.costUsd)}</span>
+                                  <span className="text-right text-c-muted">{formatCurrency(acct.costUsd)}</span>
                                 </div>
                               );
                             })}
@@ -440,16 +448,17 @@ export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInvent
               );
             })}
           </tbody>
-          <tfoot className="bg-gray-50 font-medium">
+          {/* Blended-total footer sits on the muted surface2 fill. */}
+          <tfoot className="bg-c-surface2 font-medium">
             <tr>
-              <td className="px-4 py-3" colSpan={7} />
-              <td className="px-4 py-3 text-right">{formatCurrency(totalCurrent)}</td>
-              <td className="px-4 py-3 text-right bg-bb-red-light">
-                <span className="inline-flex rounded-md bg-white px-2 py-1 font-semibold text-bb-red-dark ring-1 ring-red-100">
+              <td className="px-2 py-3 text-c-text" colSpan={7} />
+              <td className="px-2 py-3 text-right text-c-text">{formatCurrency(totalCurrent)}</td>
+              <td className="px-2 py-3 text-right bg-c-red-soft">
+                <span className="inline-flex rounded-md bg-c-surface px-2 py-1 font-semibold text-c-red-dark ring-1 ring-c-red-soft">
                   {formatCurrency(totalB2)}
                 </span>
               </td>
-              <td className="px-4 py-3 text-right text-green-700">
+              <td className="px-2 py-3 text-right text-c-green">
                 {/* Savings = current spend on migrated tiers minus their B2 cost. Subtracting
                     totalRemaining strips out tiers left behind, which keep their current cost. */}
                 {formatCurrency(totalCurrent - totalB2 - totalRemaining)}
