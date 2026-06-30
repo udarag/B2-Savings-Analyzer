@@ -432,9 +432,11 @@ function ReportPageContent() {
           .report-header-flush { margin: 0; }
           table { break-inside: avoid; }
           .keep-together { break-inside: avoid; }
+          /* Let the executive-summary content flow into the narrative instead of forcing a page
+             break before it. The forced break used to leave the lower half of a page empty whenever
+             the summary content didn't end exactly at a page boundary; flowing fills the pages and
+             keep-together still protects individual panels from splitting mid-block. */
           .report-narrative-section {
-            break-before: page;
-            page-break-before: always;
             break-inside: avoid;
             page-break-inside: avoid;
           }
