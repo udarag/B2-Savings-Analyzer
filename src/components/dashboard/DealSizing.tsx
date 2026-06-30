@@ -183,20 +183,28 @@ export function DealSizing({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow border-l-4 border-bb-red">
-      <div className="px-5 py-3 border-b border-gray-200">
-        <h4 className="text-sm font-semibold text-gray-900">Deal Sizing</h4>
-        <p className="text-xs text-gray-500">Internal Only — B2 Revenue Estimate</p>
+    // Sidebar "Build the deal" card: surface panel with a left red accent on the header and an
+    // amber "Internal" pill marking this as a non-customer-facing revenue tool.
+    <div className="rounded-2xl border border-c-border bg-c-surface shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-c-border border-l-[3px] border-l-[#e20626]">
+        <div className="flex items-center gap-2">
+          <h4 className="text-sm font-semibold text-c-text">Build the deal</h4>
+          <span className="rounded-full bg-c-amber-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-c-amber">
+            Internal
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-c-subtle">Internal Only — B2 Revenue Estimate</p>
       </div>
       <div className="p-5 space-y-4">
         {/* B2 price control */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1.5">
+          <label className="block text-xs font-medium text-c-muted mb-1.5">
             B2 Price per TB/month
           </label>
-          <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-            <div className="flex items-center rounded-md border border-gray-300 bg-white shadow-sm focus-within:border-bb-red focus-within:ring-2 focus-within:ring-red-100">
-              <span className="pl-3 text-sm font-semibold text-gray-400">$</span>
+          {/* Editable rate input on the recessed surface2 fill with a red focus ring. */}
+          <div className="mb-3 rounded-xl border border-c-border2 bg-c-surface2 p-3">
+            <div className="flex items-center rounded-lg border border-c-border2 bg-c-surface focus-within:border-[#e20626] focus-within:ring-2 focus-within:ring-c-red-soft">
+              <span className="pl-3 text-sm font-semibold text-c-subtle">$</span>
               <input
                 ref={priceInputRef}
                 type="text"
@@ -208,12 +216,12 @@ export function DealSizing({
                 }}
                 onBlur={handlePriceInputBlur}
                 onChange={(e) => handlePriceInputChange(e.target.value)}
-                className="min-w-0 flex-1 border-0 bg-transparent px-2 py-2 text-lg font-bold text-bb-navy outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className="min-w-0 flex-1 border-0 bg-transparent px-2 py-2 font-display text-lg font-semibold text-c-text outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
-              <span className="pr-3 text-xs font-semibold uppercase tracking-wide text-gray-400">/TB</span>
+              <span className="pr-3 text-xs font-semibold uppercase tracking-wide text-c-subtle">/TB</span>
             </div>
             <div className="mt-2 flex items-center justify-between gap-2">
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-c-subtle">
                 List: {formatRate(B2_LIST_PRICE_PER_TB)}
                 {isCustom && b2PricePerTb < B2_LIST_PRICE_PER_TB && ` · ${((1 - b2PricePerTb / B2_LIST_PRICE_PER_TB) * 100).toFixed(1)}% Discount`}
                 {isCustom && b2PricePerTb > B2_LIST_PRICE_PER_TB && ` · ${(((b2PricePerTb / B2_LIST_PRICE_PER_TB) - 1) * 100).toFixed(1)}% Premium`}
@@ -225,7 +233,7 @@ export function DealSizing({
                     setPriceInputDraft(formatPriceNumber(B2_LIST_PRICE_PER_TB));
                     onB2PriceChange(B2_LIST_PRICE_PER_TB);
                   }}
-                  className="shrink-0 text-xs font-semibold text-bb-red hover:text-bb-red-dark"
+                  className="shrink-0 text-xs font-semibold text-c-red hover:text-c-red-dark"
                 >
                   Reset
                 </button>
@@ -260,11 +268,12 @@ export function DealSizing({
           </div>
         </div>
 
-        <div className="border-t pt-3">
+        <div className="border-t border-c-border pt-3">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <label htmlFor="deal-term-slider" className="text-xs font-medium text-gray-600">Contract Term</label>
-            <span className="text-xs font-semibold text-bb-navy">{formatTermLabel(termMonths)}</span>
+            <label htmlFor="deal-term-slider" className="text-xs font-medium text-c-muted">Contract Term</label>
+            <span className="text-xs font-semibold text-c-text">{formatTermLabel(termMonths)}</span>
           </div>
+          {/* Term stays a range slider (preserving termIndex/onTermChange wiring); brand-red accent. */}
           <input
             id="deal-term-slider"
             type="range"
@@ -273,9 +282,9 @@ export function DealSizing({
             step={1}
             value={termIndex}
             onChange={(e) => onTermChange(TERM_OPTIONS[Number(e.target.value)].months)}
-            className="w-full accent-bb-red"
+            className="w-full accent-[#e20626]"
           />
-          <div className="relative mt-1 h-5 text-[10px] font-medium text-gray-400">
+          <div className="relative mt-1 h-5 text-[10px] font-medium text-c-subtle">
             {TERM_OPTIONS.map((option, index) => (
               <span
                 key={option.months}
@@ -285,7 +294,7 @@ export function DealSizing({
                     : index === TERM_OPTIONS.length - 1
                       ? '-translate-x-full'
                       : '-translate-x-1/2'
-                } ${option.months === termMonths ? 'text-bb-red-dark' : ''}`}
+                } ${option.months === termMonths ? 'text-c-red-dark' : ''}`}
                 style={{ left: `${(index / (TERM_OPTIONS.length - 1)) * 100}%` }}
               >
                 {option.years}Y
@@ -294,16 +303,16 @@ export function DealSizing({
           </div>
         </div>
 
-        <div className="border-t pt-3">
+        <div className="border-t border-c-border pt-3">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-xs font-medium text-gray-600">Data Growth</p>
-            <span className="text-xs font-semibold text-bb-navy">{growthLabel}</span>
+            <p className="text-xs font-medium text-c-muted">Data Growth</p>
+            <span className="text-xs font-semibold text-c-text">{growthLabel}</span>
           </div>
-          <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+          <div className="mb-3 rounded-xl border border-c-border2 bg-c-surface2 p-3">
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-c-subtle">
               {growthMode === 'percent' ? 'Annual Growth' : 'Added Storage per Month'}
             </label>
-            <div className="flex items-center rounded-md border border-gray-300 bg-white shadow-sm focus-within:border-bb-red focus-within:ring-2 focus-within:ring-red-100">
+            <div className="flex items-center rounded-lg border border-c-border2 bg-c-surface focus-within:border-[#e20626] focus-within:ring-2 focus-within:ring-c-red-soft">
               <input
                 type="number"
                 min={0}
@@ -318,26 +327,27 @@ export function DealSizing({
                       : { dataGrowthFixedTbPerMonth: value },
                   );
                 }}
-                className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-lg font-bold text-bb-navy outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 font-display text-lg font-semibold text-c-text outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
-              <span className="pr-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <span className="pr-3 text-xs font-semibold uppercase tracking-wide text-c-subtle">
                 {growthMode === 'percent' ? '%/yr' : 'TB/mo'}
               </span>
             </div>
-            <p className="mt-2 text-xs text-gray-400">
+            <p className="mt-2 text-xs text-c-subtle">
               {growthMode === 'percent'
                 ? 'Applied as monthly compounded growth.'
                 : 'Added linearly to projected storage each month.'}
             </p>
           </div>
-          <div className="grid grid-cols-2 rounded-md bg-gray-100 p-1">
+          {/* %/Fixed segmented toggle: active segment is a solid brand-red fill with white text. */}
+          <div className="grid grid-cols-2 gap-1 rounded-lg bg-c-surface2 p-1">
             <button
               type="button"
               onClick={() => onGrowthChange({ dataGrowthMode: 'percent' })}
-              className={`rounded px-2 py-1.5 text-xs font-semibold transition-colors ${
+              className={`rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
                 growthMode === 'percent'
-                  ? 'bg-white text-bb-red-dark shadow-sm'
-                  : 'text-gray-500 hover:text-gray-800'
+                  ? 'bg-[#e20626] hover:bg-[#b40a23] text-white'
+                  : 'text-c-muted hover:text-c-text'
               }`}
             >
               % Growth
@@ -345,10 +355,10 @@ export function DealSizing({
             <button
               type="button"
               onClick={() => onGrowthChange({ dataGrowthMode: 'fixed-tb' })}
-              className={`rounded px-2 py-1.5 text-xs font-semibold transition-colors ${
+              className={`rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
                 growthMode === 'fixed-tb'
-                  ? 'bg-white text-bb-red-dark shadow-sm'
-                  : 'text-gray-500 hover:text-gray-800'
+                  ? 'bg-[#e20626] hover:bg-[#b40a23] text-white'
+                  : 'text-c-muted hover:text-c-text'
               }`}
             >
               Fixed TB/Month
@@ -357,16 +367,17 @@ export function DealSizing({
         </div>
 
         {/* UDM Toggle */}
-        <div className="border-t pt-3">
+        <div className="border-t border-c-border pt-3">
           <div className="flex items-center justify-between">
             <div>
-              <label className="text-xs font-medium text-gray-600">Universal Data Migration</label>
-              <p className="text-xs text-gray-400">Backblaze Covers Migration Egress</p>
+              <label className="text-xs font-medium text-c-text">Universal Data Migration</label>
+              <p className="text-xs text-c-subtle">Backblaze Covers Migration Egress</p>
             </div>
+            {/* ON = filled brand-red track with a white knob; OFF = neutral border2 track. */}
             <button
               onClick={() => onUdmChange(!udmEnabled)}
               className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                udmEnabled ? 'bg-bb-red' : 'bg-gray-300'
+                udmEnabled ? 'bg-[#e20626]' : 'bg-c-border2'
               }`}
             >
               <span
@@ -383,24 +394,25 @@ export function DealSizing({
               ? Math.ceil(udmCostToBackblaze / monthlyB2Revenue)
               : null;
             return (
-              <div className="mt-2 bg-bb-red-light rounded p-2.5 space-y-2">
+              // Soft-red cost panel; the divider uses a translucent brand red to stay on-theme.
+              <div className="mt-2 bg-c-red-soft rounded-xl p-2.5 space-y-2">
                 <div className="flex justify-between text-xs">
-                  <span className="text-bb-red-dark">B2 UDM Cost (at ${b2Pricing.udm.costPerGb}/GB)</span>
-                  <span className="font-semibold text-bb-navy">{formatCurrency(udmCostToBackblaze)}</span>
+                  <span className="text-c-red-dark">B2 UDM Cost (at ${b2Pricing.udm.costPerGb}/GB)</span>
+                  <span className="font-semibold text-c-text">{formatCurrency(udmCostToBackblaze)}</span>
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-c-subtle">
                   {(totalStorageGb / 1000).toFixed(1)} TB × ${b2Pricing.udm.costPerGb}/GB — One-Time Cost to Backblaze
                 </p>
-                <div className="flex justify-between text-xs border-t border-red-200 pt-2">
-                  <span className="text-bb-red-dark">B2 UDM Break-even</span>
-                  <span className="font-semibold text-bb-navy">
+                <div className="flex justify-between text-xs border-t border-[#e20626]/20 pt-2">
+                  <span className="text-c-red-dark">B2 UDM Break-even</span>
+                  <span className="font-semibold text-c-text">
                     {b2BreakEven !== null
                       ? `Month ${b2BreakEven}`
                       : 'N/A'}
                   </span>
                 </div>
                 {b2BreakEven !== null && (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-c-subtle">
                     {formatCurrency(udmCostToBackblaze)} UDM Cost ÷ {formatCurrency(monthlyB2Revenue)}/mo Revenue
                   </p>
                 )}
@@ -409,11 +421,11 @@ export function DealSizing({
           })()}
         </div>
 
-        <div className="border-t pt-3">
+        <div className="border-t border-c-border pt-3">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-xs font-medium text-gray-600">ARR / TCV Summary</p>
+            <p className="text-xs font-medium text-c-muted">ARR / TCV Summary</p>
           </div>
-          <div className="overflow-hidden rounded-md border border-gray-200">
+          <div className="overflow-hidden rounded-xl border border-c-border">
             <RevenueSummaryRow
               label="Current B2 Price"
               rate={formatRate(b2PricePerTb)}
@@ -435,41 +447,42 @@ export function DealSizing({
                 tcv={termValue}
               />
             ) : (
-              <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2 border-t border-gray-100 px-2.5 py-2 text-xs">
+              <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2 border-t border-c-border px-2.5 py-2 text-xs bg-c-surface">
                 <div>
-                  <p className="font-medium text-gray-500">Custom Price</p>
-                  <p className="text-[11px] text-gray-400">Select Custom to model</p>
+                  <p className="font-medium text-c-muted">Custom Price</p>
+                  <p className="text-[11px] text-c-subtle">Select Custom to model</p>
                 </div>
-                <span className="text-right text-gray-400">—</span>
-                <span className="text-right text-gray-400">—</span>
+                <span className="text-right text-c-subtle">—</span>
+                <span className="text-right text-c-subtle">—</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Revenue impact vs list */}
+        {/* Revenue impact vs list — green when the deal lifts revenue, red when it cuts it. */}
         {isCustom && (
-          <div className={`border-t pt-3 ${revenueDelta < 0 ? 'text-red-700' : 'text-green-700'}`}>
-            <p className="text-xs font-medium text-gray-600 mb-1">Revenue vs. List Price</p>
+          <div className={`border-t border-c-border pt-3 ${revenueDelta < 0 ? 'text-c-red' : 'text-c-green'}`}>
+            <p className="text-xs font-medium text-c-muted mb-1">Revenue vs. List Price</p>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">{formatTermLabel(termMonths)} at List (${B2_LIST_PRICE_PER_TB}/TB)</span>
-              <span className="text-gray-600 font-medium">{formatCurrency(listTermValue)}</span>
+              <span className="text-c-muted">{formatTermLabel(termMonths)} at List (${B2_LIST_PRICE_PER_TB}/TB)</span>
+              <span className="text-c-text font-medium">{formatCurrency(listTermValue)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">{formatTermLabel(termMonths)} at ${b2PricePerTb}/TB</span>
+              <span className="text-c-muted">{formatTermLabel(termMonths)} at ${b2PricePerTb}/TB</span>
               <span className="font-medium">{formatCurrency(termValue)}</span>
             </div>
-            <div className="flex justify-between text-sm font-bold border-t mt-1 pt-1">
+            <div className="flex justify-between text-sm font-bold border-t border-c-border mt-1 pt-1">
               <span>{revenueDelta < 0 ? 'Revenue Impact' : 'Revenue Uplift'}</span>
               <span>{revenueDelta < 0 ? '' : '+'}{formatCurrency(revenueDelta)}</span>
             </div>
           </div>
         )}
 
-        <div className="border-t pt-3">
+        {/* Primary action: solid brand-red button. */}
+        <div className="border-t border-c-border pt-3">
           <button
             onClick={copyDealSummary}
-            className="w-full rounded-md bg-bb-navy px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-bb-red"
+            className="w-full rounded-lg bg-[#e20626] hover:bg-[#b40a23] px-3 py-2.5 text-xs font-semibold text-white transition-colors"
           >
             {copyStatus === 'copied' ? 'Copied!' : copyStatus === 'error' ? 'Copy Failed' : 'Copy Deal Summary'}
           </button>
@@ -609,13 +622,14 @@ function PresetButton({
   onClick: () => void;
 }) {
   return (
+    // Preset chip: active = brand-red outline on soft-red fill with red text; inactive = neutral surface.
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-md border px-2 py-1.5 text-left transition-colors ${
+      className={`rounded-lg border px-2 py-1.5 text-left transition-colors ${
         active
-          ? 'border-bb-red bg-bb-red-light text-bb-red-dark'
-          : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+          ? 'border-[#e20626] bg-c-red-soft text-c-red'
+          : 'border-c-border2 bg-c-surface text-c-muted hover:border-c-border hover:bg-c-surface2'
       }`}
     >
       <span className="block text-xs font-semibold leading-tight">{label}</span>
@@ -638,18 +652,20 @@ function RevenueSummaryRow({
   active?: boolean;
 }) {
   return (
-    <div className={`grid grid-cols-[1fr_auto_auto] items-center gap-2 border-t border-gray-100 px-2.5 py-2 text-xs first:border-t-0 ${active ? 'bg-bb-red-light/50' : 'bg-white'}`}>
+    // The active (current-deal) row gets the navy "deal result" band with white text and font-display
+    // numbers; other rows sit on the plain surface. Dividers use the standard border token.
+    <div className={`grid grid-cols-[1fr_auto_auto] items-center gap-2 border-t border-c-border px-2.5 py-2 text-xs first:border-t-0 ${active ? 'bg-[#000033]' : 'bg-c-surface'}`}>
       <div>
-        <p className={`font-medium ${active ? 'text-bb-red-dark' : 'text-gray-700'}`}>{label}</p>
-        <p className="text-[11px] text-gray-400">{rate}</p>
+        <p className={`font-medium ${active ? 'text-white' : 'text-c-text'}`}>{label}</p>
+        <p className={`text-[11px] ${active ? 'text-white/60' : 'text-c-subtle'}`}>{rate}</p>
       </div>
       <div className="text-right">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">ARR</p>
-        <p className="font-semibold text-gray-900">{formatCurrency(arr)}</p>
+        <p className={`text-[10px] font-semibold uppercase tracking-wide ${active ? 'text-white/60' : 'text-c-subtle'}`}>ARR</p>
+        <p className={`font-display font-semibold ${active ? 'text-white' : 'text-c-text'}`}>{formatCurrency(arr)}</p>
       </div>
       <div className="text-right">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">TCV</p>
-        <p className="font-semibold text-gray-900">{formatCurrency(tcv)}</p>
+        <p className={`text-[10px] font-semibold uppercase tracking-wide ${active ? 'text-white/60' : 'text-c-subtle'}`}>TCV</p>
+        <p className={`font-display font-semibold ${active ? 'text-white' : 'text-c-text'}`}>{formatCurrency(tcv)}</p>
       </div>
     </div>
   );

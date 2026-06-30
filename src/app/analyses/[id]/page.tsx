@@ -9,7 +9,6 @@ import { buildTierState, computeAnalysisView } from '@/lib/analysis/analysis-mod
 import { ParseReview } from '@/components/upload/ParseReview';
 import { TierInventory } from '@/components/dashboard/TierInventory';
 import { EgressQuestionnaire } from '@/components/dashboard/EgressQuestionnaire';
-import { SavingsSummary } from '@/components/dashboard/SavingsSummary';
 import { CostBreakdown } from '@/components/dashboard/CostBreakdown';
 import { ProjectionChart } from '@/components/dashboard/ProjectionChart';
 import { PricingDetection } from '@/components/dashboard/PricingDetection';
@@ -18,6 +17,8 @@ import { DealSizing } from '@/components/dashboard/DealSizing';
 import { TransactionAnalysis } from '@/components/dashboard/TransactionAnalysis';
 import { FileUpload } from '@/components/upload/FileUpload';
 import { InlineEditText } from '@/components/shared/InlineEditText';
+import { AnimatedMetricValue } from '@/components/shared/AnimatedMetricValue';
+import { formatCurrency, formatPercent } from '@/components/shared/FormatCurrency';
 import { useDocumentTitle } from '@/components/shared/useDocumentTitle';
 import { getPricingFreshnessWarning } from '@/lib/pricing/freshness';
 import { formatGrowthAssumption } from '@/lib/engine/projections';
@@ -40,12 +41,13 @@ function formatBillType(billType: string): string {
   }
 }
 
-function formatProviderName(provider: Provider): string {
+/** Short provider chip label for the source meta row. */
+function formatProviderChip(provider: Provider): string {
   switch (provider) {
-    case 'aws': return 'Amazon Web Services (AWS)';
-    case 'gcp': return 'Google Cloud Platform (GCP)';
-    case 'azure': return 'Microsoft Azure';
-    case 'r2': return 'Cloudflare R2';
+    case 'aws': return 'AWS';
+    case 'gcp': return 'GCP';
+    case 'azure': return 'Azure';
+    case 'r2': return 'R2';
   }
 }
 
@@ -56,6 +58,12 @@ function formatProviderStorageLabel(provider: Provider): string {
     case 'azure': return 'Azure Blob Storage';
     case 'r2': return 'Cloudflare R2';
   }
+}
+
+// Storage is tracked in GB internally; display migrated scope as whole TB (decimal, not binary).
+function formatStorageTb(gb: number): string {
+  if (gb >= 1000) return `${(gb / 1000).toLocaleString('en-US', { maximumFractionDigits: 0 })} TB`;
+  return `${Math.round(gb)} GB`;
 }
 
 /**
@@ -207,22 +215,22 @@ export default function AnalysisDashboard() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-6 py-12 flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="relative w-12 h-12 mb-4">
-          <div className="absolute inset-0 rounded-full border-4 border-gray-200" />
-          <div className="absolute inset-0 rounded-full border-4 border-bb-red border-t-transparent animate-spin" />
+      <div className="mx-auto flex min-h-[60vh] max-w-[1240px] flex-col items-center justify-center px-6 py-12">
+        <div className="relative mb-4 h-12 w-12">
+          <div className="absolute inset-0 rounded-full border-4 border-c-border" />
+          <div className="absolute inset-0 animate-spin rounded-full border-4 border-c-red border-t-transparent" />
         </div>
-        <p className="text-gray-500 text-sm">Loading analysis...</p>
+        <p className="text-sm text-c-muted">Loading analysis...</p>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="max-w-[1600px] mx-auto px-6 py-12">
-        <div className="bg-red-50 rounded-lg p-6">
-          <p className="text-red-800">{error || 'Something went wrong'}</p>
-          <Link href="/" className="text-sm text-red-600 underline mt-2 inline-block">Back to Home</Link>
+      <div className="mx-auto max-w-[1240px] px-6 py-12">
+        <div className="rounded-2xl border border-c-red/40 bg-c-red-soft p-6">
+          <p className="text-c-red-dark">{error || 'Something went wrong'}</p>
+          <Link href="/" className="mt-2 inline-block text-sm text-c-red underline">Back to opportunities</Link>
         </div>
       </div>
     );
@@ -230,10 +238,10 @@ export default function AnalysisDashboard() {
 
   if (!data.parsed) {
     return (
-      <div className="max-w-2xl mx-auto px-6 py-12">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">{data.meta.prospectName}</h1>
-        <p className="text-sm text-gray-500 mb-2">Company Name: {reportCompanyName}</p>
-        <p className="text-gray-500 mb-8">Upload a Cloud Bill to Begin Analysis</p>
+      <div className="mx-auto max-w-2xl px-6 py-12">
+        <p className="mb-2 font-display text-xs font-semibold uppercase tracking-[0.14em] text-c-red">New opportunity</p>
+        <h1 className="mb-1 text-2xl font-semibold text-c-text">{data.meta.prospectName}</h1>
+        <p className="mb-8 text-c-muted">Upload a customer cloud bill to begin the analysis.</p>
         <FileUpload
           analysisId={id}
           onUploadComplete={() => window.location.reload()}
@@ -244,122 +252,138 @@ export default function AnalysisDashboard() {
   }
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      {/* Header */}
-      <div className="mb-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+    <div className="mx-auto max-w-[1680px] px-3 pb-16 pt-6 sm:px-5">
+      {/* Breadcrumb */}
+      <div className="mb-3.5 flex items-center gap-2 text-[13px] text-c-subtle">
+        <Link href="/" className="font-medium text-c-muted transition-colors hover:text-c-text">Opportunities</Link>
+        <span>/</span>
+        <span className="truncate font-semibold text-c-text">{data.meta.prospectName}</span>
+      </div>
+
+      {/* Title + source meta + actions */}
+      <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-[26px] font-semibold text-c-text sm:text-[30px]">
               <InlineEditText
                 value={data.meta.prospectName}
                 onSave={(name) => patchMeta({ prospectName: name } as Partial<Analysis>)}
-                placeholder="Opportunity Name"
+                placeholder="Opportunity name"
                 maxLength={100}
               />
             </h1>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Company Name</span>
-              <span className="font-medium text-gray-700">
-                <InlineEditText
-                  value={reportCompanyName}
-                  onSave={(companyName) => patchMeta({ companyName } as Partial<Analysis>)}
-                  placeholder="Company Name"
-                  maxLength={100}
-                />
-              </span>
-            </div>
+            {costModel && (
+              <span className="rounded-full bg-c-green-soft px-2.5 py-1 text-[11px] font-semibold text-c-green">Report ready</span>
+            )}
           </div>
-          {saving && <span className="text-xs text-gray-400 shrink-0">Saving...</span>}
-        </div>
-        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-          <span className="text-xs font-medium text-gray-500 tracking-wide">Source:</span>
-          <span className="text-sm font-semibold text-gray-900">{formatProviderName(data.meta.provider)}</span>
-          <span className="text-xs text-gray-400">|</span>
-          <span className="text-sm text-gray-600">{formatBillType(data.meta.billType)}</span>
-          {data.meta.billingPeriod && (
-            <>
-              <span className="text-xs text-gray-400">|</span>
-              <span className="text-sm text-gray-600">{data.meta.billingPeriod}</span>
-            </>
-          )}
-          {data.meta.detectionSignals && data.meta.detectionSignals.length > 0 && (
-            <span className="relative group">
-              <span className="text-xs text-gray-400 cursor-help underline decoration-dotted">
-                Auto-Detected
-              </span>
-              <span className="absolute left-0 top-full mt-1 z-10 hidden group-hover:block w-80 bg-bb-navy text-white text-xs rounded-lg p-3 shadow-lg">
-                <span className="font-semibold block mb-1">Detection Signals:</span>
-                {data.meta.detectionSignals.map((s, i) => (
-                  <span key={i} className="block py-0.5">• {s}</span>
-                ))}
-              </span>
+
+          {/* Source meta row */}
+          <div className="mt-2.5 flex flex-wrap items-center gap-2.5 text-[13px]">
+            <span className="rounded-md bg-c-surface2 px-2 py-[3px] text-[11px] font-bold tracking-[0.04em] text-c-muted">
+              {formatProviderChip(data.meta.provider)}
             </span>
-          )}
-          <button
-            type="button"
-            onClick={() => setShowSourceOverride((shown) => !shown)}
-            className="text-xs text-gray-400 underline decoration-dotted underline-offset-2 transition-colors hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-bb-red focus:ring-offset-2"
-            aria-expanded={showSourceOverride}
-            aria-controls="source-override-panel"
-          >
-            Fix source
-          </button>
-        </div>
-        {showSourceOverride && (
-          <div
-            id="source-override-panel"
-            className="mt-2 inline-flex max-w-full flex-wrap items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2"
-          >
-            <label htmlFor="source-override-select" className="text-xs font-medium text-gray-500">
-              Parser source override
-            </label>
-            <select
-              id="source-override-select"
-              value={data.meta.provider}
-              onChange={(e) => patchMeta({ provider: e.target.value as Provider } as Partial<Analysis>)}
-              className="max-w-full text-sm font-semibold bg-white border border-gray-300 rounded-md px-2 py-1 pr-7 cursor-pointer focus:ring-2 focus:ring-bb-red focus:border-transparent"
+            <span className="text-c-muted">{formatBillType(data.meta.billType)}</span>
+            {data.meta.billingPeriod && (
+              <>
+                <span className="text-c-subtle">·</span>
+                <span className="text-c-muted">{data.meta.billingPeriod}</span>
+              </>
+            )}
+            {data.meta.detectionSignals && data.meta.detectionSignals.length > 0 && (
+              <>
+                <span className="text-c-subtle">·</span>
+                <span className="group relative">
+                  <span className="cursor-help text-c-subtle underline decoration-dotted underline-offset-2">Auto-detected</span>
+                  <span className="absolute left-0 top-full z-10 mt-1 hidden w-80 rounded-lg bg-c-nav p-3 text-xs text-white shadow-lg group-hover:block">
+                    <span className="mb-1 block font-semibold">Detection signals:</span>
+                    {data.meta.detectionSignals.map((s, i) => (
+                      <span key={i} className="block py-0.5">• {s}</span>
+                    ))}
+                  </span>
+                </span>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowSourceOverride((shown) => !shown)}
+              className="text-c-subtle underline decoration-dotted underline-offset-2 transition-colors hover:text-c-muted focus:outline-none"
+              aria-expanded={showSourceOverride}
+              aria-controls="source-override-panel"
             >
-              <option value="aws">Amazon Web Services (AWS)</option>
-              <option value="gcp">Google Cloud Platform (GCP)</option>
-              <option value="azure">Microsoft Azure</option>
-              <option value="r2">Cloudflare R2</option>
-            </select>
-            <span className="text-xs text-gray-500">Use only when the detected source is clearly wrong.</span>
+              Fix source
+            </button>
           </div>
-        )}
-        {/* Notes */}
-        <div className="mt-2">
-          <InlineEditText
-            value={data.meta.notes || ''}
-            onSave={(notes) => patchMeta({ notes } as Partial<Analysis>)}
-            placeholder="+ Add Notes"
-            className="text-sm text-gray-500"
-            multiline
-            maxLength={500}
-          />
+
+          {showSourceOverride && (
+            <div
+              id="source-override-panel"
+              className="mt-2.5 inline-flex max-w-full flex-wrap items-center gap-2 rounded-lg border border-c-border bg-c-surface2 px-3 py-2"
+            >
+              <label htmlFor="source-override-select" className="text-xs font-medium text-c-muted">
+                Parser source override
+              </label>
+              <select
+                id="source-override-select"
+                value={data.meta.provider}
+                onChange={(e) => patchMeta({ provider: e.target.value as Provider } as Partial<Analysis>)}
+                className="max-w-full cursor-pointer rounded-md border border-c-border2 bg-c-surface px-2 py-1 pr-7 text-sm font-semibold text-c-text focus:border-c-red focus:outline-none"
+              >
+                <option value="aws">Amazon Web Services (AWS)</option>
+                <option value="gcp">Google Cloud Platform (GCP)</option>
+                <option value="azure">Microsoft Azure</option>
+                <option value="r2">Cloudflare R2</option>
+              </select>
+              <span className="text-xs text-c-subtle">Use only when the detected source is clearly wrong.</span>
+            </div>
+          )}
+
+          {/* Company name + notes */}
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
+            <span className="text-xs font-semibold uppercase tracking-wide text-c-subtle">Company</span>
+            <span className="font-medium text-c-muted">
+              <InlineEditText
+                value={reportCompanyName}
+                onSave={(companyName) => patchMeta({ companyName } as Partial<Analysis>)}
+                placeholder="Company name"
+                maxLength={100}
+              />
+            </span>
+          </div>
+          <div className="mt-1.5">
+            <InlineEditText
+              value={data.meta.notes || ''}
+              onSave={(notes) => patchMeta({ notes } as Partial<Analysis>)}
+              placeholder="+ Add notes"
+              className="text-sm text-c-subtle"
+              multiline
+              maxLength={500}
+            />
+          </div>
         </div>
+
         {/* Actions */}
-        <div className="flex items-center gap-2 mt-3 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2.5 lg:justify-end">
+          <span className="text-xs text-c-subtle">{saving ? 'Saving…' : 'All changes saved'}</span>
           <a
             href={`/analyses/${id}/report`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-lg bg-bb-red px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-bb-red-dark focus:outline-none focus:ring-2 focus:ring-bb-red focus:ring-offset-2"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[#e20626] px-4 py-2.5 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(226,6,38,0.28)] transition-colors hover:bg-[#b40a23]"
             aria-label="Open customer-facing report"
           >
             <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 2.75H6.75A2.75 2.75 0 0 0 4 5.5v13A2.75 2.75 0 0 0 6.75 21.25h10.5A2.75 2.75 0 0 0 20 18.5V7.75L15 2.75Z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M14.75 2.75v3.5A1.75 1.75 0 0 0 16.5 8h3.5M8 12.25h8M8 15.75h8M8 9.25h3" />
             </svg>
-            Customer Report
+            Customer report
           </a>
           <button
             onClick={handleCopyLink}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 rounded-md hover:bg-gray-100 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-[10px] border border-c-border2 bg-c-surface px-3 py-2.5 text-[13px] font-semibold text-c-muted transition-colors hover:bg-c-surface2"
             aria-label={linkCopied ? 'Analysis link copied' : 'Copy analysis link'}
           >
             {linkCopied ? (
-              <svg className="h-3.5 w-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+              <svg className="h-3.5 w-3.5 text-c-green" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
               </svg>
             ) : (
@@ -368,21 +392,20 @@ export default function AnalysisDashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.81 15.312a4.5 4.5 0 0 1-1.242-7.244l4.5-4.5a4.5 4.5 0 0 1 6.364 6.364l-1.757 1.757" />
               </svg>
             )}
-            {linkCopied ? 'Copied!' : 'Copy Link'}
+            {linkCopied ? 'Copied!' : 'Copy link'}
           </button>
           <button
             onClick={() => setShowReplaceConfirm(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 rounded-md hover:bg-gray-100 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-[10px] border border-c-border2 bg-c-surface px-3 py-2.5 text-[13px] font-semibold text-c-muted transition-colors hover:bg-c-surface2"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12-3-3m0 0-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12-3-3m0 0-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>
             Replace
           </button>
-          <div className="w-px h-4 bg-gray-200 mx-1" />
           <a
             href={`/api/analyses/${id}/pdf`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 rounded-md hover:bg-gray-100 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-[10px] border border-c-border2 bg-c-surface px-3 py-2.5 text-[13px] font-semibold text-c-muted transition-colors hover:bg-c-surface2"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
             PDF
           </a>
         </div>
@@ -391,9 +414,9 @@ export default function AnalysisDashboard() {
       {/* AWS is the most battle-tested parser path; everything else is flagged beta so the AE
           double-checks the numbers before sharing them with the customer. */}
       {data.meta.provider !== 'aws' && (
-        <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-          <span className="mt-0.5 shrink-0 rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold uppercase text-white leading-none">Beta</span>
-          <p className="text-sm text-amber-800">
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-c-amber/30 bg-c-amber-soft px-4 py-3">
+          <span className="mt-0.5 shrink-0 rounded bg-c-amber px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none text-white">Beta</span>
+          <p className="text-sm text-c-amber">
             Support for {data.meta.provider === 'gcp' ? 'GCP' : data.meta.provider === 'azure' ? 'Azure' : 'Cloudflare R2'} bill
             parsing is in beta. Please work with your SE to verify the numbers before sharing with the customer so we can improve analysis for this provider.
           </p>
@@ -404,25 +427,25 @@ export default function AnalysisDashboard() {
 
       {/* Replace bill confirmation modal */}
       {showReplaceConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Replace Bill?</h3>
-            <p className="text-sm text-gray-600 mb-1">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-c-border bg-c-surface p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-semibold text-c-text">Replace bill?</h3>
+            <p className="mb-1 text-sm text-c-muted">
               This will overwrite the current parsed data and reset the model configuration (tier toggles, egress settings, and B2 pricing) to defaults.
             </p>
-            <p className="text-sm text-amber-600 mb-5">All manual adjustments will be lost.</p>
-            <div className="flex gap-3 justify-end">
+            <p className="mb-5 text-sm text-c-amber">All manual adjustments will be lost.</p>
+            <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowReplaceConfirm(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                className="rounded-[10px] bg-c-surface2 px-4 py-2 text-sm font-semibold text-c-text transition-colors hover:opacity-80"
               >
                 Cancel
               </button>
               <button
                 onClick={() => { setShowReplaceConfirm(false); setShowReplaceUpload(true); }}
-                className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700"
+                className="rounded-[10px] bg-c-amber px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
               >
-                Replace Bill
+                Replace bill
               </button>
             </div>
           </div>
@@ -431,15 +454,15 @@ export default function AnalysisDashboard() {
 
       {/* Replace bill upload modal */}
       {showReplaceUpload && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Upload New Bill</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-c-border bg-c-surface p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-c-text">Upload new bill</h3>
               <button
                 onClick={() => setShowReplaceUpload(false)}
-                className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                className="rounded p-1 text-c-subtle hover:text-c-text"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -453,17 +476,76 @@ export default function AnalysisDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+      {/* Hero savings band */}
+      {costModel && (
+        <div
+          className="relative mb-4 overflow-hidden rounded-[20px] bg-[#000033] p-7 text-white shadow-[0_18px_50px_rgba(0,0,51,0.30)] sm:p-8"
+          style={{ backgroundImage: "url('/gradient-dark.png')", backgroundSize: 'cover', backgroundPosition: 'center' }}
+        >
+          <div className="relative flex flex-wrap items-center justify-between gap-9">
+            <div className="min-w-[280px]">
+              <p className="font-display text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">Modeled outcome</p>
+              <p className="mt-3 font-display text-[44px] font-semibold leading-none sm:text-[58px]">
+                <AnimatedMetricValue value={costModel.annualSavings} formatter={(v) => formatCurrency(v, 0)} />
+                <span className="text-[22px] font-medium text-white/70"> / year</span>
+              </p>
+              <p className="mt-3 max-w-[380px] text-[15px] text-white/80">
+                Saved by moving <b className="text-white">{formatStorageTb(migratedStorageGb)}</b> of {formatProviderStorageLabel(data.meta.provider)} storage to Backblaze B2 Cloud Storage.
+              </p>
+            </div>
+            <div className="grid min-w-[300px] grid-cols-2 gap-3.5">
+              <HeroStat label="Monthly savings" value={formatCurrency(costModel.monthlySavings, 0)} />
+              <HeroStat label="Savings rate" value={formatPercent(costModel.savingsPercent)} />
+              <HeroStat
+                label="Migration cost"
+                value={costModel.udmEnabled ? '$0' : formatCurrency(costModel.migrationCost.total, 0)}
+                caption={costModel.udmEnabled ? 'Covered by UDM' : undefined}
+              />
+              <HeroStat label="Savings start" value={costModel.monthlySavings > 0 ? 'Day 1' : '—'} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cost comparison strip */}
+      {costModel && (
+        <div className="mb-5 rounded-2xl border border-c-border bg-c-surface p-6 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-5">
+            <div className="min-w-[200px] flex-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.06em] text-c-subtle">Current modeled cost</p>
+              <p className="mt-1 font-display text-[30px] font-semibold text-c-text">
+                {formatCurrency(costModel.currentMonthly.total, 0)}<span className="text-sm font-medium text-c-subtle">/mo</span>
+              </p>
+            </div>
+            <div className="text-2xl text-c-subtle">→</div>
+            <div className="min-w-[200px] flex-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.06em] text-c-red">Estimated Backblaze B2 cost</p>
+              <p className="mt-1 font-display text-[30px] font-semibold text-c-red">
+                {formatCurrency(costModel.b2Monthly.total, 0)}<span className="text-sm font-medium text-c-subtle">/mo</span>
+              </p>
+            </div>
+            <div className="min-w-[240px] flex-[1.4]">
+              <div className="flex h-[30px] overflow-hidden rounded-lg bg-c-surface2">
+                <div
+                  className="flex items-center justify-center bg-[#000033] text-[11px] font-semibold text-white"
+                  style={{ width: `${costModel.currentMonthly.total > 0 ? Math.max(8, Math.min(100, (costModel.b2Monthly.total / costModel.currentMonthly.total) * 100)) : 0}%` }}
+                >
+                  B2
+                </div>
+                <div className="flex flex-1 items-center justify-center bg-[linear-gradient(90deg,#e20626,#f9733a)] text-[11px] font-bold text-white">
+                  {formatPercent(costModel.savingsPercent)} lower
+                </div>
+              </div>
+              <p className="mt-2 text-[11.5px] text-c-muted">Storage, egress and transaction costs across the migrated scope.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Two-column layout: main analysis + internal-only sidebar */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_344px] lg:items-start">
         {/* Main content */}
-        <div className="min-w-0 space-y-6">
-          {costModel && <SavingsSummary result={costModel} />}
-          <ParseReview
-            parsed={data.parsed}
-            billType={data.meta.billType}
-            provider={data.meta.provider}
-            pricingDiscountConfirmed={pricingDiscountConfirmed}
-            onPricingDiscountConfirmedChange={setPricingDiscountConfirmed}
-          />
+        <div className="min-w-0 space-y-5">
           {projections.length > 0 && (
             <ProjectionChart
               points={projections}
@@ -475,6 +557,7 @@ export default function AnalysisDashboard() {
           )}
           <TierInventory tiers={tiers} onToggle={handleToggleTier} accountBreakdowns={data.parsed.accountServiceBreakdowns} />
           <TransactionAnalysis lineItems={data.parsed.lineItems} />
+          {costModel && <CostBreakdown result={costModel} provider={data.meta.provider} />}
           <EgressQuestionnaire
             config={egressConfig}
             onChange={handleEgressChange}
@@ -485,17 +568,21 @@ export default function AnalysisDashboard() {
             computeSignals={data.parsed.computeSignals}
             egressProfileSuggestion={data.parsed.egressProfileSuggestion}
           />
-          {costModel && <CostBreakdown result={costModel} provider={data.meta.provider} />}
+          <ParseReview
+            parsed={data.parsed}
+            billType={data.meta.billType}
+            provider={data.meta.provider}
+            pricingDiscountConfirmed={pricingDiscountConfirmed}
+            onPricingDiscountConfirmedChange={setPricingDiscountConfirmed}
+          />
         </div>
 
         {/* Sidebar — internal only. Deal sizing and pricing-detection drivers live here, never in
             the customer report, so internal pricing levers stay off the customer deliverable. */}
-        <div className="space-y-6">
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <p className="text-xs font-semibold text-amber-800">Internal Only</p>
-            <p className="text-xs text-amber-600 mt-1">
-              Sidebar panels are not included in customer-facing reports.
-            </p>
+        <div className="space-y-4">
+          <div className="rounded-xl border border-c-border bg-c-amber-soft p-3.5">
+            <p className="text-xs font-bold text-c-amber">Internal only</p>
+            <p className="mt-1 text-[11.5px] text-c-muted">These panels never appear in the customer report.</p>
           </div>
           {costModel && (
             <DealSizing
@@ -517,6 +604,17 @@ export default function AnalysisDashboard() {
           {pricingDetection.length > 0 && <PricingDetection results={pricingDetection} />}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** A single stat tile inside the navy hero band. Colors are fixed (the band is always dark). */
+function HeroStat({ label, value, caption }: { label: string; value: string; caption?: string }) {
+  return (
+    <div className="rounded-[14px] border border-white/12 bg-white/[0.08] px-4 py-[15px]">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/60">{label}</p>
+      <p className="mt-1.5 font-display text-[26px] font-semibold text-[#8fe9be]">{value}</p>
+      {caption && <p className="mt-0.5 text-[11px] text-white/55">{caption}</p>}
     </div>
   );
 }

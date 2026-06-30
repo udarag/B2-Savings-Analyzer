@@ -324,7 +324,10 @@ function ReportPageContent() {
         </div>
       </div>
 
-      <div className="report-container report-compact max-w-4xl mx-auto bg-white print:max-w-none">
+      {/* Soft page gutter (screen only) so the report reads as a floating "paper". Print collapses
+          it via print:p-0 and the card reverts to a flush, full-width sheet for the PDF. */}
+      <div className="px-4 py-7 sm:py-8 print:p-0">
+      <div className="report-container report-compact mx-auto max-w-4xl overflow-hidden rounded-[14px] bg-white shadow-[0_18px_60px_rgba(0,0,51,0.16)] print:max-w-none print:overflow-visible print:rounded-none print:shadow-none">
       {/* Inline styles, not Tailwind utilities, because the PDF route renders this page in a
           headless browser: the print/page-size rules and the .report-compact size overrides must
           travel with the markup and survive print-to-PDF. */}
@@ -456,18 +459,18 @@ function ReportPageContent() {
 
         <div className="px-8 pt-6 pb-8">
           <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-[1.25fr_1fr]">
-            <div className="rounded-lg bg-bb-navy p-6 text-white">
+            <div className="relative overflow-hidden rounded-lg bg-bb-navy bg-cover bg-center p-6 text-white" style={{ backgroundImage: "url('/gradient-dark.png')" }}>
               <p className="text-sm text-gray-300">Projected Savings Over {termYears} Year{termYears === 1 ? '' : 's'}</p>
-              <p className="mt-1 text-4xl font-bold leading-tight">{formatCurrency(totalSavings)}</p>
+              <p className="mt-1 font-display text-4xl font-bold leading-tight">{formatCurrency(totalSavings)}</p>
               <p className="mt-2 text-xs text-gray-400">Includes {growthLabel} and the modeled migration economics below.</p>
               <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <p className="text-gray-400">Monthly Savings</p>
-                  <p className="mt-0.5 text-lg font-semibold text-green-200">{formatCurrency(costModel.monthlySavings)}</p>
+                  <p className="mt-0.5 font-display text-lg font-semibold text-green-200">{formatCurrency(costModel.monthlySavings)}</p>
                 </div>
                 <div>
                   <p className="text-gray-400">Annual Savings</p>
-                  <p className="mt-0.5 text-lg font-semibold text-green-200">{formatCurrency(costModel.annualSavings)}</p>
+                  <p className="mt-0.5 font-display text-lg font-semibold text-green-200">{formatCurrency(costModel.annualSavings)}</p>
                 </div>
               </div>
             </div>
@@ -493,7 +496,7 @@ function ReportPageContent() {
               </div>
               <div className="shrink-0 rounded-lg bg-white px-4 py-3 text-right ring-1 ring-red-100">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Provided Rate</p>
-                <p className="text-2xl font-bold leading-tight text-bb-red-dark">{b2StorageRateLabel}</p>
+                <p className="font-display text-2xl font-bold leading-tight text-bb-red-dark">{b2StorageRateLabel}</p>
               </div>
             </div>
           </div>
@@ -892,6 +895,7 @@ function ReportPageContent() {
         </div>
       </div>
     </div>
+    </div>
     </>
   );
 }
@@ -911,7 +915,7 @@ function OutcomeMetric({
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
       <p className="text-xs font-medium text-gray-500">{label}</p>
-      <p className={`mt-1 text-lg font-bold leading-tight ${valueColor}`}>{value}</p>
+      <p className={`mt-1 font-display text-lg font-bold leading-tight ${valueColor}`}>{value}</p>
     </div>
   );
 }
@@ -1347,7 +1351,7 @@ function ProjectionGraph({
         })}
         <path d={gapPath} fill="#16a34a" opacity="0.14" />
         <path d={currentPath} fill="none" stroke="#64748b" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-        <path d={b2Path} fill="none" stroke="#D1232A" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={b2Path} fill="none" stroke="#e20626" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
         {timingPoint && (
           <g>
             <line
@@ -1381,7 +1385,7 @@ function ProjectionGraph({
         <text x={left + chartWidth - 4} y={currentCoords[currentCoords.length - 1].y - 8} textAnchor="end" fontSize="11" fill="#475569">
           {formatCompactCurrency(finalPoint.currentCost)}/mo
         </text>
-        <text x={left + chartWidth - 4} y={b2Coords[b2Coords.length - 1].y + 16} textAnchor="end" fontSize="11" fill="#991b1b">
+        <text x={left + chartWidth - 4} y={b2Coords[b2Coords.length - 1].y + 16} textAnchor="end" fontSize="11" fill="#b40a23">
           {formatCompactCurrency(finalPoint.b2Cost)}/mo
         </text>
         <line x1={left} y1={top + chartHeight} x2={left + chartWidth} y2={top + chartHeight} stroke="#cbd5e1" strokeWidth="1" />
@@ -1465,7 +1469,7 @@ function DecisionMetric({
   return (
     <div className="bg-white p-4">
       <p className="text-xs font-medium text-gray-500">{label}</p>
-      <p className={`mt-1 text-base font-bold ${valueColor}`}>{value}</p>
+      <p className={`mt-1 font-display text-base font-bold ${valueColor}`}>{value}</p>
     </div>
   );
 }

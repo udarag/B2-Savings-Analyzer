@@ -42,14 +42,19 @@ export function EgressQuestionnaire({
   const isTrainingWorkflow = config.hasHyperscalerCompute && !config.hyperscalerComputeFeedsStorage;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-black/[0.02] dark:border-gray-800 dark:bg-[#11141a] dark:ring-white/[0.04]">
-      <div className="border-b border-gray-200 bg-gray-50/80 px-6 py-4 dark:border-gray-800 dark:bg-[#171b22]">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Egress Configuration</h3>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+    // Design-system card: rounded-2xl surface with a hairline border and soft shadow.
+    <div className="overflow-hidden rounded-2xl border border-c-border bg-c-surface shadow-sm">
+      {/* Header carries a purple left-accent rail and an amber "Internal" pill to flag this as an AE-only tool. */}
+      <div className="border-b border-c-border border-l-[3px] border-l-[#3430ff] px-6 py-4">
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-c-text">Egress Configuration</h3>
+          <span className="rounded-full bg-c-amber-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-c-amber">Internal</span>
+        </div>
+        <p className="mt-1 text-sm text-c-muted">
           Model whether moving storage to B2 creates a new hyperscaler data-transfer path.
         </p>
       </div>
-      <div className="space-y-5 p-6 dark:bg-[#11141a]">
+      <div className="space-y-5 p-6">
         {computeSignals.length > 0 && (
           <ComputeSignalsPanel signals={computeSignals} />
         )}
@@ -65,12 +70,13 @@ export function EgressQuestionnaire({
         )}
 
         <div>
-          <p className="mb-3 font-medium text-gray-900 dark:text-gray-100">
+          <p className="mb-3 font-medium text-c-text">
             Does the customer run compute in the hyperscaler?
           </p>
           <div className="space-y-2">
-            <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-gray-50 dark:hover:bg-[#171b22] ${
-              !config.hasHyperscalerCompute ? 'border-bb-red bg-bb-red-light/40 dark:bg-bb-red-light/40' : 'border-gray-200 dark:border-gray-700'
+            {/* Selected radio card: red border + red-soft fill with a filled red accent dot. Unselected: neutral surface. */}
+            <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${
+              !config.hasHyperscalerCompute ? 'border-[#e20626] bg-c-red-soft' : 'border-c-border2 bg-c-surface hover:bg-c-surface2'
             }`}>
               <input
                 type="radio"
@@ -84,15 +90,15 @@ export function EgressQuestionnaire({
                   computeMovingToPartner: false,
                   gbPerMonthHyperscalerToB2: 0,
                 })}
-                className="h-4 w-4 text-bb-red accent-bb-red"
+                className="h-4 w-4 accent-[#e20626]"
               />
               <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">No hyperscaler compute in the storage path</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Applications write directly to object storage, so no new inter-cloud egress applies.</p>
+                <p className="text-sm font-medium text-c-text">No hyperscaler compute in the storage path</p>
+                <p className="text-xs text-c-muted">Applications write directly to object storage, so no new inter-cloud egress applies.</p>
               </div>
             </label>
-            <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-gray-50 dark:hover:bg-[#171b22] ${
-              config.hasHyperscalerCompute ? 'border-bb-red bg-bb-red-light/40 dark:bg-bb-red-light/40' : 'border-gray-200 dark:border-gray-700'
+            <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${
+              config.hasHyperscalerCompute ? 'border-[#e20626] bg-c-red-soft' : 'border-c-border2 bg-c-surface hover:bg-c-surface2'
             }`}>
               <input
                 type="radio"
@@ -104,11 +110,11 @@ export function EgressQuestionnaire({
                   hyperscalerComputeFeedsStorage: true,
                   computeStaysInHyperscaler: true,
                 })}
-                className="h-4 w-4 text-bb-red accent-bb-red"
+                className="h-4 w-4 accent-[#e20626]"
               />
               <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Yes, compute is part of the stack</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Confirm whether processed data is written back to object storage.</p>
+                <p className="text-sm font-medium text-c-text">Yes, compute is part of the stack</p>
+                <p className="text-xs text-c-muted">Confirm whether processed data is written back to object storage.</p>
               </div>
             </label>
           </div>
@@ -116,12 +122,13 @@ export function EgressQuestionnaire({
 
         {config.hasHyperscalerCompute && (
           <div>
-            <p className="mb-3 font-medium text-gray-900 dark:text-gray-100">
+            <p className="mb-3 font-medium text-c-text">
               Does that compute write processed data back to object storage?
             </p>
             <div className="space-y-2">
-              <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-gray-50 dark:hover:bg-[#171b22] ${
-                config.hyperscalerComputeFeedsStorage ? 'border-bb-red bg-bb-red-light/40 dark:bg-bb-red-light/40' : 'border-gray-200 dark:border-gray-700'
+              {/* Selected radio card: red border + red-soft fill with a filled red accent dot. Unselected: neutral surface. */}
+              <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${
+                config.hyperscalerComputeFeedsStorage ? 'border-[#e20626] bg-c-red-soft' : 'border-c-border2 bg-c-surface hover:bg-c-surface2'
               }`}>
                 <input
                   type="radio"
@@ -132,15 +139,15 @@ export function EgressQuestionnaire({
                     hyperscalerComputeFeedsStorage: true,
                     computeStaysInHyperscaler: true,
                   })}
-                  className="h-4 w-4 text-bb-red accent-bb-red"
+                  className="h-4 w-4 accent-[#e20626]"
                 />
                 <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Yes, processed data lands in storage</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Moving storage to B2 creates a hyperscaler-to-B2 write path.</p>
+                  <p className="text-sm font-medium text-c-text">Yes, processed data lands in storage</p>
+                  <p className="text-xs text-c-muted">Moving storage to B2 creates a hyperscaler-to-B2 write path.</p>
                 </div>
               </label>
-              <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-gray-50 dark:hover:bg-[#171b22] ${
-                !config.hyperscalerComputeFeedsStorage ? 'border-bb-red bg-bb-red-light/40 dark:bg-bb-red-light/40' : 'border-gray-200 dark:border-gray-700'
+              <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${
+                !config.hyperscalerComputeFeedsStorage ? 'border-[#e20626] bg-c-red-soft' : 'border-c-border2 bg-c-surface hover:bg-c-surface2'
               }`}>
                 <input
                   type="radio"
@@ -158,11 +165,11 @@ export function EgressQuestionnaire({
                     gbPerMonthServedToUsers: getTrainingEgressGb(config.trainingRunsPerMonth, config.trainingDataTbPerRun),
                     usesPartnerCdn: false,
                   })}
-                  className="h-4 w-4 text-bb-red accent-bb-red"
+                  className="h-4 w-4 accent-[#e20626]"
                 />
                 <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">No, compute does not write back to storage</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Common for AI/GPU workflows where models or artifacts stay in compute.</p>
+                  <p className="text-sm font-medium text-c-text">No, compute does not write back to storage</p>
+                  <p className="text-xs text-c-muted">Common for AI/GPU workflows where models or artifacts stay in compute.</p>
                 </div>
               </label>
             </div>
@@ -189,7 +196,8 @@ export function EgressQuestionnaire({
               })}
             />
 
-            <label className="flex items-center gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+            {/* Alliance toggle: a checked checkbox fills purple (matches the bandwidth-alliance modeling semantics). */}
+            <label className="flex items-center gap-3 rounded-lg border border-c-border2 bg-c-surface p-3">
               <input
                 type="checkbox"
                 checked={config.computeMovingToPartner}
@@ -197,13 +205,13 @@ export function EgressQuestionnaire({
                   ...config,
                   computeMovingToPartner: e.target.checked,
                 })}
-                className="h-4 w-4 text-bb-red accent-bb-red rounded"
+                className="h-4 w-4 rounded accent-c-purple"
               />
               <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <p className="text-sm font-medium text-c-text">
                   Model primary case with B2 bandwidth alliance compute
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-c-muted">
                   Use this only when the customer is moving the write path to a partner such as CoreWeave, Vultr, or Equinix Metal.
                 </p>
               </div>
@@ -211,25 +219,26 @@ export function EgressQuestionnaire({
 
             {/* Three states: the partner write path is baked into the primary model; it's quantified
                 as optional upside (volume known but path not yet committed); or we still need the
-                volume before either egress drag or upside can be sized. */}
+                volume before either egress drag or upside can be sized. The two savings states use the
+                green-soft success tint; the missing-volume prompt uses the amber-soft caution tint. */}
             {config.computeMovingToPartner ? (
-              <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-400/30 dark:bg-green-950/30">
-                <p className="text-sm font-semibold text-green-900 dark:text-green-200">Partner compute modeled in primary savings</p>
-                <p className="mt-1 text-sm text-green-800 dark:text-green-200">
+              <div className="rounded-lg border border-c-border bg-c-green-soft p-4">
+                <p className="text-sm font-semibold text-c-green">Partner compute modeled in primary savings</p>
+                <p className="mt-1 text-sm text-c-text">
                   Hyperscaler-to-B2 processed-data egress is removed from the primary cost model.
                 </p>
               </div>
             ) : partnerComputeScenario ? (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-400/30 dark:bg-emerald-950/30">
-                <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Bandwidth alliance upside</p>
-                <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-200">
+              <div className="rounded-lg border border-c-border bg-c-green-soft p-4">
+                <p className="text-sm font-semibold text-c-green">Bandwidth alliance upside</p>
+                <p className="mt-1 text-sm text-c-text">
                   Moving this write path to partner compute would avoid {formatCurrency(partnerComputeScenario.monthlyEgressAvoided)}/month and raise modeled savings to {formatCurrency(partnerComputeScenario.monthlySavings)}/month.
                 </p>
               </div>
             ) : (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/30 dark:bg-amber-950/30">
-                <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">Processed-data volume needed</p>
-                <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
+              <div className="rounded-lg border border-c-border bg-c-amber-soft p-4">
+                <p className="text-sm font-semibold text-c-amber">Processed-data volume needed</p>
+                <p className="mt-1 text-sm text-c-text">
                   Enter the monthly write volume to quantify the hyperscaler egress drag and partner-compute upside.
                 </p>
               </div>
@@ -264,6 +273,7 @@ export function EgressQuestionnaire({
             )}
 
             <div>
+              {/* CDN toggle: a checked checkbox fills green because B2 -> CDN-partner egress is free. */}
               <label className="flex items-center gap-3">
                 <input
                   type="checkbox"
@@ -272,13 +282,13 @@ export function EgressQuestionnaire({
                     ...config,
                     usesPartnerCdn: e.target.checked,
                   })}
-                  className="h-4 w-4 text-bb-red accent-bb-red rounded"
+                  className="h-4 w-4 rounded accent-c-green"
                 />
                 <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <p className="text-sm font-medium text-c-text">
                     Uses or Plans to Use a B2 CDN Partner (Cloudflare, Fastly, bunny.net)
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-xs text-c-muted">
                     B2 egress to CDN partners is free
                   </p>
                 </div>
@@ -304,26 +314,28 @@ function EgressStarterProfilePanel({
   const aeSummary = buildAeFriendlySuggestionSummary(suggestion);
 
   return (
-    <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-4 shadow-sm ring-1 ring-blue-100/60 dark:border-blue-400/30 dark:bg-blue-950/20">
+    // Bill-derived guess sits in a purple-tinted panel to read as a system suggestion, distinct from
+    // the AE's own answers; the primary "Apply" action is a solid purple button.
+    <div className="rounded-xl border border-c-purple bg-c-purple-soft p-4 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300">Bill Guess</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-c-purple">Bill Guess</p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <p className="text-sm font-semibold text-blue-950 dark:text-blue-100">
+            <p className="text-sm font-semibold text-c-text">
               Bill-Derived Egress Guess
             </p>
-            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-700 ring-1 ring-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:ring-blue-400/30">
+            <span className="rounded-full bg-c-purple-soft px-2 py-0.5 text-[11px] font-medium text-c-purple ring-1 ring-c-purple/40">
               {suggestion.confidence} confidence
             </span>
           </div>
-          <p className="mt-1 max-w-3xl text-sm leading-6 text-blue-900 dark:text-blue-200">{aeSummary}</p>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-c-text">{aeSummary}</p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
           <button
             type="button"
             onClick={() => setExpanded((value) => !value)}
             aria-expanded={expanded}
-            className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-800 shadow-sm hover:bg-blue-50 dark:border-blue-400/30 dark:bg-blue-950/30 dark:text-blue-100"
+            className="inline-flex items-center gap-1.5 rounded-md border border-c-border2 bg-c-surface px-3 py-2 text-sm font-semibold text-c-text shadow-sm hover:bg-c-surface2"
           >
             <svg
               className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
@@ -340,7 +352,7 @@ function EgressStarterProfilePanel({
           <button
             type="button"
             onClick={onApply}
-            className="rounded-md bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+            className="rounded-md bg-c-purple px-3 py-2 text-sm font-semibold text-white hover:opacity-90"
           >
             Apply Bill Guess
           </button>
@@ -348,16 +360,16 @@ function EgressStarterProfilePanel({
       </div>
 
       <Collapse open={expanded}>
-        <div className="mt-4 border-t border-blue-200 pt-4 dark:border-blue-400/20">
-          <p className="text-xs leading-5 text-blue-900 dark:text-blue-200">{suggestion.summary}</p>
+        <div className="mt-4 border-t border-c-purple/30 pt-4">
+          <p className="text-xs leading-5 text-c-text">{suggestion.summary}</p>
 
           {suggestion.metrics.length > 0 && (
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {suggestion.metrics.map((metric) => (
-                <div key={metric.label} className="rounded-md bg-white/80 p-3 ring-1 ring-blue-100 dark:bg-[#11141a] dark:ring-blue-400/20">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-500 dark:text-blue-300">{metric.label}</p>
-                  <p className="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">{metric.value}</p>
-                  <p className="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">{metric.detail}</p>
+                <div key={metric.label} className="rounded-md bg-c-surface p-3 ring-1 ring-c-border">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-c-purple">{metric.label}</p>
+                  <p className="mt-1 text-base font-semibold text-c-text">{metric.value}</p>
+                  <p className="mt-1 text-xs leading-5 text-c-muted">{metric.detail}</p>
                 </div>
               ))}
             </div>
@@ -397,11 +409,11 @@ function buildAeFriendlySuggestionSummary(suggestion: EgressProfileSuggestion): 
 function StarterProfileList({ title, items }: { title: string; items: string[] }) {
   return (
     <div>
-      <p className="text-xs font-semibold text-blue-900 dark:text-blue-200">{title}</p>
+      <p className="text-xs font-semibold text-c-text">{title}</p>
       <ul className="mt-2 space-y-1.5">
         {items.map((item) => (
-          <li key={item} className="flex gap-2 text-xs leading-5 text-blue-900 dark:text-blue-200">
-            <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-blue-500" />
+          <li key={item} className="flex gap-2 text-xs leading-5 text-c-muted">
+            <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-c-purple" />
             <span>{item}</span>
           </li>
         ))}
@@ -419,14 +431,16 @@ function ComputeSignalsPanel({ signals }: { signals: ComputeSignal[] }) {
   const topSignalNames = visibleSignals.slice(0, 3).map((signal) => signal.service);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm ring-1 ring-slate-100 dark:border-gray-700 dark:bg-[#101218]">
+    // Neutral read-only "bill clues" panel: sits on the subdued surface2 tint so it reads as
+    // context rather than an actionable form field.
+    <div className="rounded-xl border border-c-border bg-c-surface2 p-4 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-gray-500">Bill Clues</p>
-          <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-c-subtle">Bill Clues</p>
+          <p className="mt-1 text-sm font-semibold text-c-text">
             Compute and Delivery Services Detected
           </p>
-          <p className="mt-1 max-w-3xl text-xs leading-5 text-gray-500 dark:text-gray-400">
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-c-muted">
             Found {signals.length} bill clue{signals.length === 1 ? '' : 's'}
             {topSignalNames.length > 0 ? ` including ${topSignalNames.join(', ')}` : ''}.
           </p>
@@ -435,7 +449,7 @@ function ComputeSignalsPanel({ signals }: { signals: ComputeSignal[] }) {
           type="button"
           onClick={() => setExpanded((value) => !value)}
           aria-expanded={expanded}
-          className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-gray-700 dark:bg-[#11141a] dark:text-gray-100"
+          className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-md border border-c-border2 bg-c-surface px-3 py-2 text-sm font-semibold text-c-text shadow-sm hover:bg-c-surface2"
         >
           <svg
             className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
@@ -454,27 +468,27 @@ function ComputeSignalsPanel({ signals }: { signals: ComputeSignal[] }) {
       <Collapse open={expanded}>
         <div className="mt-3">
           {hiddenCount > 0 && (
-            <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+            <p className="mb-3 text-xs text-c-muted">
               {hiddenCount} more signal{hiddenCount === 1 ? '' : 's'} hidden
             </p>
           )}
           <div className="grid gap-3 md:grid-cols-2">
             {visibleSignals.map((signal) => (
-              <div key={signal.service} className="min-w-0 border-l-2 border-gray-200 pl-3 dark:border-gray-700">
+              <div key={signal.service} className="min-w-0 border-l-2 border-c-border2 pl-3">
                 <div className="flex min-w-0 items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{signal.service}</p>
-                    <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                    <p className="truncate text-sm font-medium text-c-text">{signal.service}</p>
+                    <p className="mt-0.5 text-xs text-c-muted">
                       {formatSignalType(signal.signalType)} - {formatCurrency(signal.costUsd)}
                     </p>
                   </div>
-                  <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                  <span className="shrink-0 rounded-full bg-c-surface px-2 py-0.5 text-[11px] font-medium text-c-muted ring-1 ring-c-border">
                     {signal.confidence}
                   </span>
                 </div>
-                <p className="mt-2 text-xs leading-5 text-gray-600 dark:text-gray-300">{signal.egressHint}</p>
+                <p className="mt-2 text-xs leading-5 text-c-muted">{signal.egressHint}</p>
                 {signal.regions?.length ? (
-                  <p className="mt-1 truncate text-[11px] text-gray-400 dark:text-gray-500">
+                  <p className="mt-1 truncate text-[11px] text-c-subtle">
                     Regions: {signal.regions.join(', ')}
                   </p>
                 ) : null}
@@ -554,14 +568,14 @@ function DataFlowPreview({
 
   return (
     <div
-      className="egress-flow-panel rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-[#101218] lg:h-[230px] lg:overflow-hidden"
+      className="egress-flow-panel rounded-lg border border-c-border bg-c-bg p-4 lg:h-[230px] lg:overflow-hidden"
     >
       <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between lg:min-h-[54px]">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Data Flow Preview</p>
-          <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{flow.title}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-c-subtle">Data Flow Preview</p>
+          <p className="mt-1 text-sm font-semibold text-c-text">{flow.title}</p>
         </div>
-        <p className="max-w-lg text-xs text-gray-500 dark:text-gray-400 sm:text-right">{flow.summary}</p>
+        <p className="max-w-lg text-xs text-c-muted sm:text-right">{flow.summary}</p>
       </div>
 
       <div
@@ -649,8 +663,10 @@ function FlowNodeCard({
       <div className="flex max-w-full items-center gap-2.5">
         <FlowNodeIcon icon={node.icon} tone={node.tone} />
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{node.label}</p>
-          <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">{node.detail}</p>
+          {/* Node label/detail inherit currentColor so the brand-red B2 and navy hyperscaler nodes
+              keep their white text; neutral nodes are themed below via flowNodeClasses. */}
+          <p className="text-sm font-semibold">{node.label}</p>
+          <p className="mt-1 text-xs leading-relaxed opacity-80">{node.detail}</p>
         </div>
       </div>
     </div>
@@ -740,20 +756,22 @@ function FlowNodeSvg({ icon }: { icon: Exclude<FlowIcon, 'backblaze'> }) {
   }
 }
 
+// Icon chip inside each node. On the filled navy/red nodes the chip is a translucent white tile so
+// the glyph stays legible; tinted and neutral nodes use matching soft/surface chips.
 function flowIconClasses(tone: FlowTone): string {
   switch (tone) {
     case 'compute':
-      return 'border-blue-200 bg-white text-blue-700 dark:border-blue-400/30 dark:bg-blue-950/40 dark:text-blue-300';
+      return 'border-white/25 bg-white/15 text-white';
     case 'storage':
-      return 'border-red-200 bg-white text-bb-red dark:border-red-400/30 dark:bg-red-950/30 dark:text-red-300';
+      return 'border-white/25 bg-white/15 text-white';
     case 'chargeable':
-      return 'border-amber-200 bg-white text-amber-700 dark:border-amber-400/30 dark:bg-amber-950/40 dark:text-amber-300';
+      return 'border-c-border bg-c-amber-soft text-c-amber';
     case 'free':
-      return 'border-green-200 bg-white text-green-700 dark:border-green-400/30 dark:bg-green-950/40 dark:text-green-300';
+      return 'border-c-border bg-c-green-soft text-c-green';
     case 'output':
     case 'neutral':
     default:
-      return 'border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-[#101218] dark:text-gray-300';
+      return 'border-c-border2 bg-c-surface2 text-c-muted';
   }
 }
 
@@ -934,38 +952,43 @@ function flowDelayClass(sequence: number): string {
   return `egress-flow-delay-${Math.min(sequence, 6)}`;
 }
 
+// Node skins per the data-flow design: the B2 node fills brand red with white text + flame, the
+// hyperscaler compute node fills navy with white text, and endpoint/neutral nodes sit on the plain
+// surface. The free/chargeable tones (partner alliance, training artifact) keep the soft semantic tints.
 function flowNodeClasses(tone: FlowTone): string {
   switch (tone) {
     case 'compute':
-      return 'border-blue-200 bg-blue-50 dark:border-blue-400/30 dark:bg-blue-950/30';
+      // Hyperscaler compute = navy node, white text.
+      return 'border-[#11113a] bg-[#11113a] text-white';
     case 'storage':
-      return 'border-bb-red/30 bg-bb-red-light/50 dark:border-red-400/30 dark:bg-red-950/20';
+      // Backblaze B2 = brand-red node, white text.
+      return 'border-[#e20626] bg-[#e20626] text-white';
     case 'chargeable':
-      return 'border-amber-200 bg-amber-50 dark:border-amber-400/30 dark:bg-amber-950/30';
+      return 'border-c-border bg-c-amber-soft text-c-amber';
     case 'free':
-      return 'border-green-200 bg-green-50 dark:border-green-400/30 dark:bg-green-950/30';
+      return 'border-c-border bg-c-green-soft text-c-green';
     case 'output':
-      return 'border-gray-200 bg-white dark:border-gray-700 dark:bg-[#11141a]';
     case 'neutral':
     default:
-      return 'border-gray-200 bg-white dark:border-gray-700 dark:bg-[#11141a]';
+      // Endpoint / customer node on the plain surface.
+      return 'border-c-border2 bg-c-surface text-c-text';
   }
 }
 
+// Edge pills carry the free/chargeable/neutral semantics from the design's flow legend: free egress
+// is green-soft, chargeable egress is red-soft, and anything still needing input stays neutral.
 function flowEdgeClasses(tone: FlowTone): string {
   switch (tone) {
     case 'chargeable':
-      return 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-400/30 dark:bg-amber-950/30 dark:text-amber-300';
-    case 'free':
-      return 'border-green-200 bg-green-50 text-green-800 dark:border-green-400/30 dark:bg-green-950/30 dark:text-green-300';
-    case 'compute':
-      return 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-400/30 dark:bg-blue-950/30 dark:text-blue-300';
     case 'storage':
-      return 'border-bb-red/30 bg-bb-red-light/50 text-bb-red-dark dark:border-red-400/30 dark:bg-red-950/20 dark:text-red-300';
+      return 'border-c-border bg-c-red-soft text-c-red';
+    case 'free':
+      return 'border-c-border bg-c-green-soft text-c-green';
+    case 'compute':
     case 'output':
     case 'neutral':
     default:
-      return 'border-gray-200 bg-white text-gray-600 dark:border-gray-700 dark:bg-[#11141a] dark:text-gray-300';
+      return 'border-c-border2 bg-c-surface2 text-c-subtle';
   }
 }
 
@@ -996,19 +1019,21 @@ function B2OutboundAllowanceSummary({
   const hasEgressInput = monthlyEgressGb > 0;
 
   return (
+    // Allowance band tints with the same soft semantic tokens as the cost summary: neutral while
+    // empty, green-soft when usage fits the free allowance, amber-soft when it spills into overage.
     <div className={`rounded-lg border p-4 ${
       !hasEgressInput
-        ? 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-[#101218]'
+        ? 'border-c-border bg-c-surface2'
         : overageTb > 0
-          ? 'border-amber-200 bg-amber-50 dark:border-amber-400/30 dark:bg-amber-950/30'
-          : 'border-green-200 bg-green-50 dark:border-green-400/30 dark:bg-green-950/30'
+          ? 'border-c-border bg-c-amber-soft'
+          : 'border-c-border bg-c-green-soft'
     }`}>
       <p className={`text-sm font-semibold ${
         !hasEgressInput
-          ? 'text-gray-900 dark:text-gray-100'
+          ? 'text-c-text'
           : overageTb > 0
-            ? 'text-amber-900 dark:text-amber-300'
-            : 'text-green-900 dark:text-green-300'
+            ? 'text-c-amber'
+            : 'text-c-green'
       }`}>
         {hasEgressInput
           ? overageTb > 0
@@ -1018,10 +1043,10 @@ function B2OutboundAllowanceSummary({
       </p>
       <p className={`mt-1 text-sm ${
         !hasEgressInput
-          ? 'text-gray-500 dark:text-gray-400'
+          ? 'text-c-muted'
           : overageTb > 0
-            ? 'text-amber-800 dark:text-amber-300'
-            : 'text-green-800 dark:text-green-300'
+            ? 'text-c-text'
+            : 'text-c-text'
       }`}>
         {hasEgressInput
           ? `${formatVolume(monthlyEgressTb)} TB/month from B2 versus ${formatVolume(freeAllowanceTb)} TB/month free allowance.`
@@ -1087,19 +1112,20 @@ function TrainingEgressInputs({
         />
       </div>
 
+      {/* Same soft-token tinting as the served-data allowance band: neutral, then green/amber by overage. */}
       <div className={`rounded-lg border p-4 ${
         !hasTrainingInputs
-          ? 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-[#101218]'
+          ? 'border-c-border bg-c-surface2'
           : overageTb > 0
-            ? 'border-amber-200 bg-amber-50 dark:border-amber-400/30 dark:bg-amber-950/30'
-            : 'border-green-200 bg-green-50 dark:border-green-400/30 dark:bg-green-950/30'
+            ? 'border-c-border bg-c-amber-soft'
+            : 'border-c-border bg-c-green-soft'
       }`}>
         <p className={`text-sm font-semibold ${
           !hasTrainingInputs
-            ? 'text-gray-900 dark:text-gray-100'
+            ? 'text-c-text'
             : overageTb > 0
-              ? 'text-amber-900 dark:text-amber-300'
-              : 'text-green-900 dark:text-green-300'
+              ? 'text-c-amber'
+              : 'text-c-green'
         }`}>
           {hasTrainingInputs
             ? overageTb > 0
@@ -1109,10 +1135,10 @@ function TrainingEgressInputs({
         </p>
         <p className={`mt-1 text-sm ${
           !hasTrainingInputs
-            ? 'text-gray-500 dark:text-gray-400'
+            ? 'text-c-muted'
             : overageTb > 0
-              ? 'text-amber-800 dark:text-amber-300'
-              : 'text-green-800 dark:text-green-300'
+              ? 'text-c-text'
+              : 'text-c-text'
         }`}>
           {hasTrainingInputs
             ? `${formatVolume(monthlyTrainingEgressTb)} TB/month read from B2 versus ${formatVolume(freeAllowanceTb)} TB/month free allowance.`
@@ -1150,11 +1176,13 @@ function VolumeInput({
   const displayValue = focused ? draft : formatVolumeInput(value);
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-[#101218]">
-      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+    // Labeled field card: subdued surface2 wrapper around a design-system input. The big number is
+    // set in the display face; the input row borders red on focus to match the brand.
+    <div className="rounded-lg border border-c-border bg-c-surface2 p-3">
+      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-c-subtle">
         {label}
       </label>
-      <div className="flex items-center rounded-md border border-gray-300 bg-white shadow-sm focus-within:border-bb-red focus-within:ring-2 focus-within:ring-red-100 dark:border-gray-700 dark:bg-[#11141a] dark:focus-within:ring-red-400/20">
+      <div className="flex items-center rounded-md border border-c-border2 bg-c-bg shadow-sm focus-within:border-[#e20626] focus-within:ring-2 focus-within:ring-[#e20626]/20">
         <input
           type="text"
           inputMode="decimal"
@@ -1181,12 +1209,12 @@ function VolumeInput({
               onValueChange(parsed);
             }
           }}
-          className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-lg font-bold text-bb-navy outline-none dark:text-gray-100"
+          className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 font-display text-lg font-bold text-c-text outline-none placeholder:text-c-subtle"
           placeholder={placeholder}
         />
-        <span className="pr-3 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">{unit}</span>
+        <span className="pr-3 text-xs font-semibold uppercase tracking-wide text-c-subtle">{unit}</span>
       </div>
-      <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">{helperText}</p>
+      <p className="mt-2 text-xs text-c-subtle">{helperText}</p>
     </div>
   );
 }
