@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { prefersReducedMotion } from './prefersReducedMotion';
 
 interface AnimatedMetricValueProps {
   value: number;
@@ -13,11 +14,6 @@ interface AnimatedMetricValueProps {
 
 function defaultFormatter(value: number): string {
   return Math.round(value).toLocaleString('en-US');
-}
-
-function prefersReducedMotion(): boolean {
-  if (typeof window.matchMedia !== 'function') return false;
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 /**

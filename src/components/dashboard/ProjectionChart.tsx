@@ -1,10 +1,12 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Area, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { TooltipContentProps } from 'recharts';
 import type { ProjectionPoint } from '@/types/model';
 import { formatCurrency } from '../shared/FormatCurrency';
 import { AnimatedMetricValue } from '../shared/AnimatedMetricValue';
+import { prefersReducedMotion } from '../shared/prefersReducedMotion';
 
 interface ProjectionChartProps {
   /** One entry per projected month; assumed ordered month 1..termMonths. */
@@ -28,6 +30,20 @@ export function ProjectionChart({
   growthLabel,
   providerLabel = 'Current Provider',
 }: ProjectionChartProps) {
+  // Draw the lines on deliberately when the chart first mounts, then freeze the
+  // animation. Recharts otherwise replays its draw-on every time the data changes,
+  // which makes flipping the projection term feel busy; freezing after the initial
+  // reveal lets term toggles update the lines in place. Starts off under
+  // prefers-reduced-motion so nothing animates for those users.
+  const [drawOn, setDrawOn] = useState(() => !prefersReducedMotion());
+  useEffect(() => {
+    if (!drawOn) return;
+    // Longest series finishes at animationBegin (300) + animationDuration (1100);
+    // a little headroom past that, then stop animating.
+    const timer = window.setTimeout(() => setDrawOn(false), 1500);
+    return () => window.clearTimeout(timer);
+  }, [drawOn]);
+
   // Break-even = first month cumulative savings turn non-negative (repaid the one-time migration cost).
   const breakEven = points.find((p) => p.cumulativeSavings >= 0);
   const finalPoint = points[points.length - 1];
@@ -139,7 +155,8 @@ export function ProjectionChart({
                   label={{ value: 'Break-Even', position: 'top', fill: '#4b5563', fontSize: 12 }}
                 />
               )}
-              {/* Cumulative-savings area: green stroke (#1F8A5B) over the soft green gradient fill. */}
+              {/* Cumulative-savings area: green stroke (#1F8A5B) over the soft green gradient fill.
+                  Draws on first, then the cost lines stagger in behind it. */}
               <Area
                 yAxisId="savings"
                 type="monotone"
@@ -149,6 +166,10 @@ export function ProjectionChart({
                 strokeWidth={2.5}
                 dot={false}
                 name="Cumulative Savings"
+                isAnimationActive={drawOn}
+                animationBegin={0}
+                animationDuration={1100}
+                animationEasing="ease-out"
               />
               {/* Current-provider cost line: navy (#000033) per the design spec. */}
               <Line
@@ -160,6 +181,10 @@ export function ProjectionChart({
                 dot={false}
                 activeDot={{ r: 5, strokeWidth: 0 }}
                 name={providerLabel}
+                isAnimationActive={drawOn}
+                animationBegin={150}
+                animationDuration={1100}
+                animationEasing="ease-out"
               />
               {/* B2 cost line: brand red (#E20626). */}
               <Line
@@ -171,6 +196,10 @@ export function ProjectionChart({
                 dot={false}
                 activeDot={{ r: 5, strokeWidth: 0 }}
                 name="Backblaze B2"
+                isAnimationActive={drawOn}
+                animationBegin={300}
+                animationDuration={1100}
+                animationEasing="ease-out"
               />
             </ComposedChart>
           </ResponsiveContainer>

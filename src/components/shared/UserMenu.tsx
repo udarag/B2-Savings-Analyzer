@@ -144,7 +144,7 @@ export function UserMenu() {
     <div className="flex items-center gap-2.5">
       <Link
         href="/analyses/new"
-        className="inline-flex items-center gap-1.5 rounded-[9px] bg-[#e20626] px-[15px] py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[#b40a23]"
+        className="inline-flex items-center gap-1.5 rounded-[9px] bg-[#e20626] px-[15px] py-2 text-[13px] font-semibold text-white transition-[background-color,box-shadow] duration-200 hover:bg-[#b40a23] hover:shadow-[0_8px_22px_rgba(226,6,38,0.4)]"
       >
         <span className="text-[15px] font-semibold leading-none">+</span>
         <span className="hidden sm:inline">New opportunity</span>

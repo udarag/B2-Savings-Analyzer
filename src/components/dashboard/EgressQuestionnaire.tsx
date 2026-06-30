@@ -55,6 +55,14 @@ export function EgressQuestionnaire({
         </p>
       </div>
       <div className="space-y-5 p-6">
+        {/* Modeled data-flow diagram is anchored at the top of the card so it holds a fixed position
+            while the questionnaire below expands/collapses; it still updates live from the current
+            answers (and re-animates when an answer reshapes the path). */}
+        <DataFlowPreview
+          config={config}
+          b2FreeAllowanceGb={b2FreeAllowanceGb}
+        />
+
         {computeSignals.length > 0 && (
           <ComputeSignalsPanel signals={computeSignals} />
         )}
@@ -175,11 +183,6 @@ export function EgressQuestionnaire({
             </div>
           </div>
         )}
-
-        <DataFlowPreview
-          config={config}
-          b2FreeAllowanceGb={b2FreeAllowanceGb}
-        />
 
         {hasPipelineStorageWrite && (
           <div className="space-y-4">

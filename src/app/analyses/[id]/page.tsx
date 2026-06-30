@@ -18,6 +18,7 @@ import { TransactionAnalysis } from '@/components/dashboard/TransactionAnalysis'
 import { FileUpload } from '@/components/upload/FileUpload';
 import { InlineEditText } from '@/components/shared/InlineEditText';
 import { AnimatedMetricValue } from '@/components/shared/AnimatedMetricValue';
+import { Reveal } from '@/components/shared/Reveal';
 import { formatCurrency, formatPercent } from '@/components/shared/FormatCurrency';
 import { useDocumentTitle } from '@/components/shared/useDocumentTitle';
 import { getPricingFreshnessWarning } from '@/lib/pricing/freshness';
@@ -368,7 +369,7 @@ export default function AnalysisDashboard() {
             href={`/analyses/${id}/report`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-[10px] bg-[#e20626] px-4 py-2.5 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(226,6,38,0.28)] transition-colors hover:bg-[#b40a23]"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[#e20626] px-4 py-2.5 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(226,6,38,0.28)] transition-[background-color,box-shadow] duration-200 hover:bg-[#b40a23] hover:shadow-[0_8px_22px_rgba(226,6,38,0.4)]"
             aria-label="Open customer-facing report"
           >
             <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" aria-hidden="true">
@@ -478,108 +479,145 @@ export default function AnalysisDashboard() {
 
       {/* Hero savings band */}
       {costModel && (
-        <div
-          className="relative mb-4 overflow-hidden rounded-[20px] bg-[#000033] p-7 text-white shadow-[0_18px_50px_rgba(0,0,51,0.30)] sm:p-8"
-          style={{ backgroundImage: "url('/gradient-dark.png')", backgroundSize: 'cover', backgroundPosition: 'center' }}
-        >
-          <div className="relative flex flex-wrap items-center justify-between gap-9">
-            <div className="min-w-[280px]">
-              <p className="font-display text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">Modeled outcome</p>
-              <p className="mt-3 font-display text-[44px] font-semibold leading-none sm:text-[58px]">
-                <AnimatedMetricValue value={costModel.annualSavings} formatter={(v) => formatCurrency(v, 0)} />
-                <span className="text-[22px] font-medium text-white/70"> / year</span>
-              </p>
-              <p className="mt-3 max-w-[380px] text-[15px] text-white/80">
-                Saved by moving <b className="text-white">{formatStorageTb(migratedStorageGb)}</b> of {formatProviderStorageLabel(data.meta.provider)} storage to Backblaze B2 Cloud Storage.
-              </p>
-            </div>
-            <div className="grid min-w-[300px] grid-cols-2 gap-3.5">
-              <HeroStat label="Monthly savings" value={formatCurrency(costModel.monthlySavings, 0)} />
-              <HeroStat label="Savings rate" value={formatPercent(costModel.savingsPercent)} />
-              <HeroStat
-                label="Migration cost"
-                value={costModel.udmEnabled ? '$0' : formatCurrency(costModel.migrationCost.total, 0)}
-                caption={costModel.udmEnabled ? 'Covered by UDM' : undefined}
-              />
-              <HeroStat label="Savings start" value={costModel.monthlySavings > 0 ? 'Day 1' : '—'} />
+        <Reveal index={0} className="mb-4">
+          <div
+            className="bb-gradient-drift relative overflow-hidden rounded-[20px] bg-[#000033] p-7 text-white shadow-[0_18px_50px_rgba(0,0,51,0.30)] sm:p-8"
+            style={{ backgroundImage: "url('/gradient-dark.png')" }}
+          >
+            <div className="relative flex flex-wrap items-center justify-between gap-9">
+              <div className="min-w-[280px]">
+                <p className="font-display text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">Modeled outcome</p>
+                <p className="mt-3 font-display text-[44px] font-semibold leading-none sm:text-[58px]">
+                  <AnimatedMetricValue value={costModel.annualSavings} formatter={(v) => formatCurrency(v, 0)} />
+                  <span className="text-[22px] font-medium text-white/70"> / year</span>
+                </p>
+                <p className="mt-3 max-w-[380px] text-[15px] text-white/80">
+                  Saved by moving <b className="text-white">{formatStorageTb(migratedStorageGb)}</b> of {formatProviderStorageLabel(data.meta.provider)} storage to Backblaze B2 Cloud Storage.
+                </p>
+              </div>
+              <div className="grid min-w-[300px] grid-cols-2 gap-3.5">
+                {/* Monthly savings + savings rate count up so the whole band animates as one when
+                    the AE changes tier selection or pricing; migration cost / start stay as labels. */}
+                <HeroStat label="Monthly savings" value={costModel.monthlySavings} formatter={(v) => formatCurrency(v, 0)} />
+                <HeroStat label="Savings rate" value={costModel.savingsPercent} formatter={formatPercent} />
+                <HeroStat
+                  label="Migration cost"
+                  value={costModel.udmEnabled ? '$0' : formatCurrency(costModel.migrationCost.total, 0)}
+                  caption={costModel.udmEnabled ? 'Covered by UDM' : undefined}
+                />
+                <HeroStat label="Savings start" value={costModel.monthlySavings > 0 ? 'Day 1' : '—'} />
+              </div>
             </div>
           </div>
-        </div>
+        </Reveal>
       )}
 
       {/* Cost comparison strip */}
       {costModel && (
-        <div className="mb-5 rounded-2xl border border-c-border bg-c-surface p-6 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-5">
-            <div className="min-w-[200px] flex-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.06em] text-c-subtle">Current modeled cost</p>
-              <p className="mt-1 font-display text-[30px] font-semibold text-c-text">
-                {formatCurrency(costModel.currentMonthly.total, 0)}<span className="text-sm font-medium text-c-subtle">/mo</span>
-              </p>
-            </div>
-            <div className="text-2xl text-c-subtle">→</div>
-            <div className="min-w-[200px] flex-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.06em] text-c-red">Estimated Backblaze B2 cost</p>
-              <p className="mt-1 font-display text-[30px] font-semibold text-c-red">
-                {formatCurrency(costModel.b2Monthly.total, 0)}<span className="text-sm font-medium text-c-subtle">/mo</span>
-              </p>
-            </div>
-            <div className="min-w-[240px] flex-[1.4]">
-              <div className="flex h-[30px] overflow-hidden rounded-lg bg-c-surface2">
-                <div
-                  className="flex items-center justify-center bg-[#000033] text-[11px] font-semibold text-white"
-                  style={{ width: `${costModel.currentMonthly.total > 0 ? Math.max(8, Math.min(100, (costModel.b2Monthly.total / costModel.currentMonthly.total) * 100)) : 0}%` }}
-                >
-                  B2
-                </div>
-                <div className="flex flex-1 items-center justify-center bg-[linear-gradient(90deg,#e20626,#f9733a)] text-[11px] font-bold text-white">
-                  {formatPercent(costModel.savingsPercent)} lower
-                </div>
+        <Reveal index={1} className="mb-5">
+          <div className="rounded-2xl border border-c-border bg-c-surface p-6 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-5">
+              {/* Both cost columns are equal width (flex-1) and centre their content, so the arrow —
+                  which sits at the boundary between them — lands exactly midway between the two figures. */}
+              <div className="min-w-[200px] flex-1 text-center">
+                <p className="text-xs font-semibold uppercase tracking-[0.06em] text-c-subtle">Current modeled cost</p>
+                <p className="mt-1 font-display text-[30px] font-semibold text-c-text">
+                  <AnimatedMetricValue value={costModel.currentMonthly.total} formatter={(v) => formatCurrency(v, 0)} /><span className="text-sm font-medium text-c-subtle">/mo</span>
+                </p>
               </div>
-              <p className="mt-2 text-[11.5px] text-c-muted">Storage, egress and transaction costs across the migrated scope.</p>
+              {/* Mirror the cost columns' label + value rows (with a transparent placeholder label) so
+                  the arrow lines up with the dollar figures instead of centering against the labels above them. */}
+              <div className="shrink-0" aria-hidden="true">
+                <p className="select-none text-xs font-semibold uppercase tracking-[0.06em] text-transparent">→</p>
+                <p className="mt-1 font-display text-[30px] font-semibold text-c-subtle">→</p>
+              </div>
+              <div className="min-w-[200px] flex-1 text-center">
+                <p className="text-xs font-semibold uppercase tracking-[0.06em] text-c-red">Estimated Backblaze B2 cost</p>
+                <p className="mt-1 font-display text-[30px] font-semibold text-c-red">
+                  <AnimatedMetricValue value={costModel.b2Monthly.total} formatter={(v) => formatCurrency(v, 0)} /><span className="text-sm font-medium text-c-subtle">/mo</span>
+                </p>
+              </div>
+              <div className="min-w-[240px] flex-[1.4]">
+                <div className="flex h-[30px] overflow-hidden rounded-lg bg-c-surface2">
+                  {/* The track is your migrated storage spend. Red = what you'd pay on Backblaze B2
+                      (matching the projection chart's red B2 line); navy = the savings. Both are sized
+                      from savingsPercent — the one official rate — so the navy width equals its
+                      "X% lower" label and the strip agrees with the hero. Sizing red from the raw
+                      $B2 / $current ratio would understate it, because savingsPercent also nets out any
+                      new hyperscaler-to-B2 transfer cost. The red width animates on change. */}
+                  <div
+                    className="flex items-center justify-center bg-[#e20626] text-[11px] font-semibold text-white transition-[width] duration-700 ease-out"
+                    style={{ width: `${Math.max(8, Math.min(92, 100 - costModel.savingsPercent))}%` }}
+                  >
+                    B2
+                  </div>
+                  <div className="flex flex-1 items-center justify-center bg-[#000033] text-[11px] font-bold text-white">
+                    {formatPercent(costModel.savingsPercent)} lower
+                  </div>
+                </div>
+                <p className="mt-2 text-[11.5px] text-c-muted">
+                  Share of your migrated storage spend — the red slice is the Backblaze B2 cost, the rest is your savings across storage, egress, and transactions.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        </Reveal>
       )}
 
       {/* Two-column layout: main analysis + internal-only sidebar */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_344px] lg:items-start">
-        {/* Main content */}
+        {/* Main content. Each block reveals on entry for a top-to-bottom cascade (indices continue
+            from the hero=0 / cost-strip=1 above). */}
         <div className="min-w-0 space-y-5">
           {projections.length > 0 && (
-            <ProjectionChart
-              points={projections}
-              termMonths={termMonths}
-              onTermChange={setTermMonths}
-              growthLabel={growthLabel}
-              providerLabel={formatProviderStorageLabel(data.meta.provider)}
-            />
+            <Reveal index={2}>
+              <ProjectionChart
+                points={projections}
+                termMonths={termMonths}
+                onTermChange={setTermMonths}
+                growthLabel={growthLabel}
+                providerLabel={formatProviderStorageLabel(data.meta.provider)}
+              />
+            </Reveal>
           )}
-          <TierInventory tiers={tiers} onToggle={handleToggleTier} accountBreakdowns={data.parsed.accountServiceBreakdowns} />
-          <TransactionAnalysis lineItems={data.parsed.lineItems} />
-          {costModel && <CostBreakdown result={costModel} provider={data.meta.provider} />}
-          <EgressQuestionnaire
-            config={egressConfig}
-            onChange={handleEgressChange}
-            partnerComputeScenario={costModel?.partnerComputeScenario}
-            // B2's free monthly egress allowance is a multiple of the data actually migrated to B2,
-            // so it scales with migrated (not total provider) storage.
-            b2FreeAllowanceGb={migratedStorageGb * b2Pricing.egress.freeMultiplier}
-            computeSignals={data.parsed.computeSignals}
-            egressProfileSuggestion={data.parsed.egressProfileSuggestion}
-          />
-          <ParseReview
-            parsed={data.parsed}
-            billType={data.meta.billType}
-            provider={data.meta.provider}
-            pricingDiscountConfirmed={pricingDiscountConfirmed}
-            onPricingDiscountConfirmedChange={setPricingDiscountConfirmed}
-          />
+          <Reveal index={3}>
+            <TierInventory tiers={tiers} onToggle={handleToggleTier} accountBreakdowns={data.parsed.accountServiceBreakdowns} />
+          </Reveal>
+          <Reveal index={4}>
+            <TransactionAnalysis lineItems={data.parsed.lineItems} />
+          </Reveal>
+          {costModel && (
+            <Reveal index={5}>
+              <CostBreakdown result={costModel} provider={data.meta.provider} />
+            </Reveal>
+          )}
+          <Reveal index={6}>
+            <EgressQuestionnaire
+              config={egressConfig}
+              onChange={handleEgressChange}
+              partnerComputeScenario={costModel?.partnerComputeScenario}
+              // B2's free monthly egress allowance is a multiple of the data actually migrated to B2,
+              // so it scales with migrated (not total provider) storage.
+              b2FreeAllowanceGb={migratedStorageGb * b2Pricing.egress.freeMultiplier}
+              computeSignals={data.parsed.computeSignals}
+              egressProfileSuggestion={data.parsed.egressProfileSuggestion}
+            />
+          </Reveal>
+          <Reveal index={7}>
+            <ParseReview
+              parsed={data.parsed}
+              billType={data.meta.billType}
+              provider={data.meta.provider}
+              pricingDiscountConfirmed={pricingDiscountConfirmed}
+              onPricingDiscountConfirmedChange={setPricingDiscountConfirmed}
+            />
+          </Reveal>
         </div>
 
         {/* Sidebar — internal only. Deal sizing and pricing-detection drivers live here, never in
-            the customer report, so internal pricing levers stay off the customer deliverable. */}
-        <div className="space-y-4">
+            the customer report, so internal pricing levers stay off the customer deliverable.
+            Revealed as one block alongside the top of the main column. */}
+        <Reveal index={2} className="space-y-4">
           <div className="rounded-xl border border-c-border bg-c-amber-soft p-3.5">
             <p className="text-xs font-bold text-c-amber">Internal only</p>
             <p className="mt-1 text-[11.5px] text-c-muted">These panels never appear in the customer report.</p>
@@ -602,18 +640,36 @@ export default function AnalysisDashboard() {
             />
           )}
           {pricingDetection.length > 0 && <PricingDetection results={pricingDetection} />}
-        </div>
+        </Reveal>
       </div>
     </div>
   );
 }
 
-/** A single stat tile inside the navy hero band. Colors are fixed (the band is always dark). */
-function HeroStat({ label, value, caption }: { label: string; value: string; caption?: string }) {
+/**
+ * A single stat tile inside the navy hero band. Colors are fixed (the band is always dark).
+ * A numeric `value` counts up via AnimatedMetricValue (mirrors ChartMetric); a string renders as-is
+ * for label-style stats like "Day 1" or "$0".
+ */
+function HeroStat({
+  label,
+  value,
+  formatter,
+  caption,
+}: {
+  label: string;
+  value: number | string;
+  formatter?: (value: number) => string;
+  caption?: string;
+}) {
   return (
     <div className="rounded-[14px] border border-white/12 bg-white/[0.08] px-4 py-[15px]">
       <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/60">{label}</p>
-      <p className="mt-1.5 font-display text-[26px] font-semibold text-[#8fe9be]">{value}</p>
+      <p className="mt-1.5 font-display text-[26px] font-semibold text-[#8fe9be]">
+        {typeof value === 'number'
+          ? <AnimatedMetricValue value={value} formatter={formatter} />
+          : value}
+      </p>
       {caption && <p className="mt-0.5 text-[11px] text-white/55">{caption}</p>}
     </div>
   );

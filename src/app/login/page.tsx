@@ -180,8 +180,8 @@ function isLocalDevMagicLink(value: unknown): value is string {
 function LoginFrame({ children }: { children: ReactNode }) {
   return (
     <div
-      className="relative flex flex-1 flex-col items-center justify-center overflow-hidden bg-[#000033] px-4 py-10"
-      style={{ backgroundImage: "url('/gradient-dark.png')", backgroundSize: 'cover', backgroundPosition: 'center' }}
+      className="bb-gradient-drift relative flex flex-1 flex-col items-center justify-center overflow-hidden bg-[#000033] px-4 py-10"
+      style={{ backgroundImage: "url('/gradient-dark.png')" }}
     >
       <div className="relative z-[2] flex w-full max-w-[400px] flex-col items-center">
         {children}

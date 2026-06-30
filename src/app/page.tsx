@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { AnalysisSummary } from './api/analyses/route';
 import { useDocumentTitle } from '@/components/shared/useDocumentTitle';
 import { AnimatedMetricValue } from '@/components/shared/AnimatedMetricValue';
+import { Reveal } from '@/components/shared/Reveal';
 import { projectStorageGbForMonth } from '@/lib/engine/projections';
 import type { PipelineStatus } from '@/types/analysis';
 
@@ -541,7 +542,7 @@ export default function HomePage() {
           <p className="mb-6 text-c-muted">Upload a customer cloud bill to get started.</p>
           <Link
             href="/analyses/new"
-            className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#e20626] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#b40a23]"
+            className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#e20626] px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,box-shadow] duration-200 hover:bg-[#b40a23] hover:shadow-[0_8px_22px_rgba(226,6,38,0.4)]"
           >
             <span className="text-[15px] leading-none">+</span>New opportunity
           </Link>
@@ -553,18 +554,18 @@ export default function HomePage() {
               {getFilterEmptyMessage(pipelineFilter, searchQuery)}
             </div>
           )}
-          {filteredAnalyses.map((a) => {
+          {filteredAnalyses.map((a, i) => {
             // Readiness is independent of pipeline status: a deal progresses draft (no bill) →
             // active (bill uploaded, not yet modeled) → reported (has a saved snapshot).
             const readinessStatus: ReadinessStatus = a.latestSnapshot ? 'reported' : a.hasBill ? 'active' : 'draft';
             const pipelineStatus = getPipelineStatus(a);
             const storageTcv = analysisTcvById.get(a.id) ?? 0;
             return (
-              <div
-                key={a.id}
-                data-analysis-id={a.id}
-                className="flex items-stretch overflow-hidden rounded-2xl border border-c-border bg-c-surface shadow-sm transition-all hover:-translate-y-px hover:shadow-md"
-              >
+              <Reveal key={a.id} index={i}>
+                <div
+                  data-analysis-id={a.id}
+                  className="flex items-stretch overflow-hidden rounded-2xl border border-c-border bg-c-surface shadow-sm transition-all hover:-translate-y-px hover:shadow-md"
+                >
                 {/* Status accent bar */}
                 <div className="w-1 shrink-0" style={{ background: cardAccent(readinessStatus, pipelineStatus) }} />
 
@@ -684,7 +685,8 @@ export default function HomePage() {
                     </svg>
                   </OpportunityActionButton>
                 </div>
-              </div>
+                </div>
+              </Reveal>
             );
           })}
         </div>
@@ -748,7 +750,7 @@ function PortfolioMetric({
   tone?: 'default' | 'pipeline';
 }) {
   return (
-    <div className="relative min-w-0 overflow-hidden rounded-2xl border border-c-border bg-c-surface px-[18px] py-4 shadow-sm">
+    <div className="relative min-w-0 overflow-hidden rounded-2xl border border-c-border bg-c-surface px-[18px] py-4 shadow-sm transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-md">
       <span className="absolute left-0 top-0 h-full w-[3px]" style={{ background: bar }} aria-hidden="true" />
       <p className="truncate text-[11px] font-semibold uppercase tracking-[0.1em] text-c-subtle">{label}</p>
       <p className={`mt-2 font-display text-[26px] font-semibold leading-[1.05] sm:text-[30px] ${tone === 'pipeline' ? 'text-c-red' : 'text-c-text'}`}>

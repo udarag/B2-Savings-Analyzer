@@ -534,11 +534,54 @@ select {
 .egress-flow-delay-3 { animation-delay: 165ms; }
 .egress-flow-delay-4 { animation-delay: 220ms; }
 
+/* ============================================================
+   Living hero gradient
+   ------------------------------------------------------------
+   A slow, looping drift of the "blaze" gradient image so the dark
+   hero band and the login backdrop feel alive without pulling
+   focus. The element is sized larger than cover so shifting the
+   background-position actually reveals movement. ~19s, eased, and
+   alternating so it never visibly jumps back to the start.
+   ============================================================ */
+@keyframes bb-gradient-drift {
+  0%   { background-position: 50% 50%; }
+  50%  { background-position: 56% 36%; }
+  100% { background-position: 44% 62%; }
+}
+.bb-gradient-drift {
+  background-size: 135% 135%;            /* > cover so position changes are visible */
+  animation: bb-gradient-drift 19s ease-in-out infinite alternate;
+}
+
+/* ============================================================
+   On-scroll entrance reveal
+   ------------------------------------------------------------
+   Opacity + a small upward rise, mirroring the egress-flow node
+   enter. The resting state is opacity:0; the Reveal component
+   (src/components/shared/Reveal.tsx) adds `.in-view` once the
+   element scrolls into view (or immediately if it is already
+   above the fold), which plays the entrance a single time.
+   ============================================================ */
+@keyframes bb-reveal {
+  0%   { opacity: 0; transform: translateY(11px); }
+  100% { opacity: 1; transform: none; }
+}
+.bb-reveal      { opacity: 0; }                 /* pre-reveal resting state */
+.bb-reveal.in-view {
+  animation: bb-reveal 0.55s cubic-bezier(.2, .8, .2, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .metric-value-update,
   .egress-flow-panel,
   .egress-flow-node,
-  .egress-flow-edge {
+  .egress-flow-edge,
+  .bb-gradient-drift,
+  .bb-reveal.in-view {
     animation: none !important;
+  }
+  /* Never leave reduced-motion users staring at a pre-reveal blank element. */
+  .bb-reveal {
+    opacity: 1 !important;
   }
 }
