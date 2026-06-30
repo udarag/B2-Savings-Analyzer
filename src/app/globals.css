@@ -2,43 +2,127 @@
 
 @variant dark (&:is(.dark *));
 
+/* ============================================================
+   Backblaze B2 Savings Analyzer — design system tokens
+   ------------------------------------------------------------
+   Light is the default (:root). Dark applies under `.dark`,
+   which the theme bootstrap in layout.tsx toggles before first
+   paint. Customer report routes are forced light and never get
+   the `.dark` class, so dark styling can't leak into a
+   customer-facing deliverable.
+
+   The `--c-*` tokens are the source of truth for the redesign.
+   They surface as Tailwind color utilities (bg-c-surface,
+   text-c-muted, border-c-border, …) via the `@theme inline`
+   block below, and flip automatically with the theme.
+   ============================================================ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --surface: #ffffff;
-  --surface-muted: #f9fafb;
-  --surface-raised: #ffffff;
-  --border: #e5e7eb;
-  --border-muted: #f3f4f6;
-  --input-background: #ffffff;
-  --input-foreground: #171717;
+  /* Surfaces & text */
+  --c-bg: #faf9f8;
+  --c-surface: #ffffff;
+  --c-surface2: #f5f3f1;
+  --c-raised: #ffffff;
+  --c-text: #000033;
+  --c-muted: #5f5f82;
+  --c-subtle: #9292ac;
+  --c-border: #e7e6ec;
+  --c-border2: #dad9e2;
+  /* Brand + semantic accents */
+  --c-red: #e20626;
+  --c-red-dark: #b40a23;
+  --c-red-soft: #fceaec;
+  --c-purple: #3430ff;
+  --c-purple-soft: #eeedff;
+  --c-green: #1f8a5b;
+  --c-green-soft: #e6f4ec;
+  --c-amber: #b45309;
+  --c-amber-soft: #fbf1df;
+  --c-nav: #000033;
+
+  /* Back-compat aliases consumed by html/body and a few base rules. */
+  --background: var(--c-bg);
+  --foreground: var(--c-text);
+  --surface: var(--c-surface);
+  --surface-muted: var(--c-surface2);
+  --surface-raised: var(--c-raised);
+  --border: var(--c-border);
+  --border-muted: var(--c-border);
+  --input-background: var(--c-surface);
+  --input-foreground: var(--c-text);
   color-scheme: light;
 }
 
 .dark {
-  --background: #090a0f;
-  --foreground: #e7e9ee;
-  --surface: #14171d;
-  --surface-muted: #101218;
-  --surface-raised: #191d25;
-  --border: #2a2f3a;
-  --border-muted: #20242d;
-  --input-background: #11141a;
-  --input-foreground: #f4f5f7;
+  --c-bg: #06061d;
+  --c-surface: #101031;
+  --c-surface2: #171740;
+  --c-raised: #15153c;
+  --c-text: #f2f2fb;
+  --c-muted: #a7a7c7;
+  --c-subtle: #6f6f94;
+  --c-border: rgba(255, 255, 255, 0.085);
+  --c-border2: rgba(255, 255, 255, 0.15);
+  --c-red: #ff6173;
+  --c-red-dark: #ff8593;
+  --c-red-soft: rgba(226, 6, 38, 0.17);
+  --c-purple: #a89df2;
+  --c-purple-soft: rgba(82, 77, 255, 0.2);
+  --c-green: #42d89a;
+  --c-green-soft: rgba(31, 138, 91, 0.2);
+  --c-amber: #fbbf24;
+  --c-amber-soft: rgba(180, 83, 9, 0.22);
+  --c-nav: #04041a;
+
+  --background: var(--c-bg);
+  --foreground: var(--c-text);
+  --surface: var(--c-surface);
+  --surface-muted: var(--c-surface2);
+  --surface-raised: var(--c-raised);
+  --border: var(--c-border);
+  --border-muted: var(--c-border);
+  --input-background: #11122e;
+  --input-foreground: var(--c-text);
   color-scheme: dark;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 
-  --color-bb-red: #D1232A;
-  --color-bb-red-dark: #B91C22;
-  --color-bb-red-light: #FEF2F2;
-  --color-bb-navy: #0E0A2A;
-  --color-bb-navy-light: #1E1B3A;
+  /* DM Sans (body) + Space Grotesk (display) are self-hosted in layout.tsx. */
+  --font-sans: var(--font-dm-sans), "DM Sans", ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-space-grotesk), "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Design-system semantic colors. Usable as bg-c-*, text-c-*, border-c-*,
+     ring-c-*, etc. They reference the --c-* vars, so they flip with the theme. */
+  --color-c-bg: var(--c-bg);
+  --color-c-surface: var(--c-surface);
+  --color-c-surface2: var(--c-surface2);
+  --color-c-raised: var(--c-raised);
+  --color-c-text: var(--c-text);
+  --color-c-muted: var(--c-muted);
+  --color-c-subtle: var(--c-subtle);
+  --color-c-border: var(--c-border);
+  --color-c-border2: var(--c-border2);
+  --color-c-red: var(--c-red);
+  --color-c-red-dark: var(--c-red-dark);
+  --color-c-red-soft: var(--c-red-soft);
+  --color-c-purple: var(--c-purple);
+  --color-c-purple-soft: var(--c-purple-soft);
+  --color-c-green: var(--c-green);
+  --color-c-green-soft: var(--c-green-soft);
+  --color-c-amber: var(--c-amber);
+  --color-c-amber-soft: var(--c-amber-soft);
+  --color-c-nav: var(--c-nav);
+
+  /* Legacy brand aliases (bb-*) re-pointed to the new palette so screens that
+     haven't been migrated to the --c-* tokens yet still pick up the new brand. */
+  --color-bb-red: #e20626;
+  --color-bb-red-dark: #b40a23;
+  --color-bb-red-light: #fceaec;
+  --color-bb-navy: #000033;
+  --color-bb-navy-light: #171740;
 }
 
 html {
@@ -48,7 +132,19 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/* Display face for headings, app-wide (matches the design system). */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
 }
 
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
@@ -59,15 +155,27 @@ select {
 }
 
 ::selection {
-  background: rgba(209, 35, 42, 0.22);
+  background: rgba(226, 6, 38, 0.22);
 }
 
+/* Signature dark-mode ambient gradient — deep navy base with red/purple blooms. */
 .dark body {
   background:
-    radial-gradient(circle at top left, rgba(209, 35, 42, 0.08), transparent 32rem),
+    radial-gradient(120% 70% at 12% -5%, rgba(226, 6, 38, 0.13), transparent 46%),
+    radial-gradient(120% 80% at 100% 0%, rgba(52, 48, 255, 0.12), transparent 50%),
     var(--background);
+  background-attachment: fixed;
 }
 
+/* ============================================================
+   Dark-mode utility overrides
+   ------------------------------------------------------------
+   These remap Tailwind's gray/brand/semantic utilities for dark
+   mode. They keep the not-yet-redesigned screens (dashboard,
+   upload, report chrome) legible in dark mode until each is
+   migrated to the --c-* tokens. Brand hexes track the new
+   palette (#e20626 red, #000033 navy).
+   ============================================================ */
 .dark .bg-white {
   background-color: var(--surface) !important;
 }
@@ -77,29 +185,29 @@ select {
 }
 
 .dark .bg-gray-100 {
-  background-color: #1f232c !important;
+  background-color: #1d1d44 !important;
 }
 
 .dark .bg-gray-200 {
-  background-color: #313641 !important;
+  background-color: #272758 !important;
 }
 
 .dark .bg-gray-300 {
-  background-color: #4a505d !important;
+  background-color: #3a3a70 !important;
 }
 
 .dark .bg-bb-navy {
-  background-color: #070711 !important;
+  background-color: #04041a !important;
 }
 
 .dark .bg-bb-navy-light {
-  background-color: #161827 !important;
+  background-color: #171740 !important;
 }
 
 .dark .bg-bb-red-light,
 .dark .bg-bb-red-light\/40,
 .dark .bg-bb-red-light\/50 {
-  background-color: rgba(209, 35, 42, 0.16) !important;
+  background-color: rgba(226, 6, 38, 0.16) !important;
 }
 
 .dark .text-gray-900 {
@@ -119,11 +227,11 @@ select {
 }
 
 .dark .text-gray-500 {
-  color: #8f98a7 !important;
+  color: #9292ac !important;
 }
 
 .dark .text-gray-400 {
-  color: #697386 !important;
+  color: #6f6f94 !important;
 }
 
 .dark .text-gray-300 {
@@ -135,11 +243,11 @@ select {
 }
 
 .dark .text-bb-red-dark {
-  color: #ff8b90 !important;
+  color: #ff8593 !important;
 }
 
 .dark .text-bb-red {
-  color: #ff6f75 !important;
+  color: #ff6173 !important;
 }
 
 .dark .border,
@@ -162,23 +270,23 @@ select {
 }
 
 .dark .border-gray-300 {
-  border-color: #3c4350 !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
 .dark .border-bb-red {
-  border-color: #d1232a !important;
+  border-color: #e20626 !important;
 }
 
 .dark .ring-gray-100 {
-  --tw-ring-color: #2a2f3a !important;
+  --tw-ring-color: var(--border) !important;
 }
 
 .dark .ring-gray-200 {
-  --tw-ring-color: #343a46 !important;
+  --tw-ring-color: rgba(255, 255, 255, 0.18) !important;
 }
 
 .dark .ring-red-100 {
-  --tw-ring-color: rgba(248, 113, 113, 0.22) !important;
+  --tw-ring-color: rgba(226, 6, 38, 0.28) !important;
 }
 
 .dark .shadow,
@@ -192,25 +300,25 @@ select {
 .dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 .dark textarea,
 .dark select {
-  border-color: #3c4350;
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .dark input::placeholder,
 .dark textarea::placeholder {
-  color: #697386;
+  color: #6f6f94;
 }
 
 .dark option {
-  background-color: #11141a;
+  background-color: #11122e;
   color: #f4f5f7;
 }
 
 .dark .hover\:bg-gray-50:hover {
-  background-color: #1a1e26 !important;
+  background-color: #1b1b46 !important;
 }
 
 .dark .hover\:bg-gray-100:hover {
-  background-color: #222732 !important;
+  background-color: #242458 !important;
 }
 
 .dark .hover\:bg-gray-200:hover {
@@ -218,7 +326,7 @@ select {
 }
 
 .dark .hover\:bg-bb-red-light:hover {
-  background-color: rgba(209, 35, 42, 0.2) !important;
+  background-color: rgba(226, 6, 38, 0.2) !important;
 }
 
 .dark .hover\:text-gray-900:hover {
@@ -233,13 +341,13 @@ select {
 .dark .bg-green-50,
 .dark .bg-green-50\/50,
 .dark .bg-green-50\/60 {
-  background-color: rgba(22, 101, 52, 0.18) !important;
+  background-color: rgba(31, 138, 91, 0.2) !important;
 }
 
 .dark .border-green-100,
 .dark .border-green-200,
 .dark .border-green-300 {
-  border-color: rgba(74, 222, 128, 0.28) !important;
+  border-color: rgba(66, 216, 154, 0.28) !important;
 }
 
 .dark .border-green-500 {
@@ -247,7 +355,7 @@ select {
 }
 
 .dark .text-green-600 {
-  color: #4ade80 !important;
+  color: #42d89a !important;
 }
 
 .dark .text-green-700,
@@ -257,27 +365,27 @@ select {
 
 .dark .bg-red-50,
 .dark .bg-red-100 {
-  background-color: rgba(153, 27, 27, 0.22) !important;
+  background-color: rgba(226, 6, 38, 0.22) !important;
 }
 
 .dark .border-red-100,
 .dark .border-red-200,
 .dark .border-red-300,
 .dark .border-red-400 {
-  border-color: rgba(248, 113, 113, 0.28) !important;
+  border-color: rgba(255, 97, 115, 0.28) !important;
 }
 
 .dark .text-red-500,
 .dark .text-red-600,
 .dark .text-red-700,
 .dark .text-red-800 {
-  color: #fca5a5 !important;
+  color: #ff8593 !important;
 }
 
 .dark .bg-amber-50,
 .dark .bg-yellow-50,
 .dark .bg-yellow-100 {
-  background-color: rgba(146, 64, 14, 0.2) !important;
+  background-color: rgba(180, 83, 9, 0.22) !important;
 }
 
 .dark .border-amber-100,
@@ -295,19 +403,19 @@ select {
 }
 
 .dark .bg-blue-50 {
-  background-color: rgba(30, 64, 175, 0.22) !important;
+  background-color: rgba(52, 48, 255, 0.22) !important;
 }
 
 .dark .text-blue-700 {
-  color: #93c5fd !important;
+  color: #a89df2 !important;
 }
 
 .dark .ring-blue-100 {
-  --tw-ring-color: rgba(147, 197, 253, 0.24) !important;
+  --tw-ring-color: rgba(168, 157, 242, 0.24) !important;
 }
 
 .dark .bg-purple-100 {
-  background-color: rgba(88, 28, 135, 0.24) !important;
+  background-color: rgba(82, 77, 255, 0.24) !important;
 }
 
 .dark .text-purple-800 {
@@ -330,26 +438,26 @@ select {
 .dark .recharts-cartesian-axis-line,
 .dark .recharts-cartesian-axis-tick-line,
 .dark .recharts-reference-line line {
-  stroke: #343a46 !important;
+  stroke: rgba(255, 255, 255, 0.14) !important;
 }
 
 .dark .recharts-text,
 .dark .recharts-label {
-  fill: #9ba4b3 !important;
+  fill: #9292ac !important;
 }
 
 @keyframes metric-value-update {
   0% {
     transform: translateY(3px);
-    text-shadow: 0 0 0 rgba(22, 163, 74, 0);
+    text-shadow: 0 0 0 rgba(31, 138, 91, 0);
   }
   42% {
     transform: translateY(0);
-    text-shadow: 0 0 18px rgba(22, 163, 74, 0.24);
+    text-shadow: 0 0 18px rgba(31, 138, 91, 0.24);
   }
   100% {
     transform: translateY(0);
-    text-shadow: 0 0 0 rgba(22, 163, 74, 0);
+    text-shadow: 0 0 0 rgba(31, 138, 91, 0);
   }
 }
 
@@ -360,15 +468,15 @@ select {
 @keyframes egress-flow-panel-update {
   0% {
     transform: translateY(3px);
-    box-shadow: 0 0 0 0 rgba(209, 35, 42, 0);
+    box-shadow: 0 0 0 0 rgba(226, 6, 38, 0);
   }
   35% {
     transform: translateY(0);
-    box-shadow: 0 0 0 3px rgba(209, 35, 42, 0.14);
+    box-shadow: 0 0 0 3px rgba(226, 6, 38, 0.14);
   }
   100% {
     transform: translateY(0);
-    box-shadow: 0 0 0 0 rgba(209, 35, 42, 0);
+    box-shadow: 0 0 0 0 rgba(226, 6, 38, 0);
   }
 }
 

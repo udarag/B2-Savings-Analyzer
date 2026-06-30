@@ -64,96 +64,93 @@ function LoginForm() {
 
   return (
     <LoginFrame>
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <Image
-            src="/backblaze-logo.png"
-            alt="Backblaze"
-            width={800}
-            height={286}
-            className="mx-auto mb-5 h-auto w-48 max-w-full dark:hidden"
-            priority
-          />
-          <Image
-            src="/backblaze-logo-white.png"
-            alt="Backblaze"
-            width={800}
-            height={286}
-            className="mx-auto mb-5 hidden h-auto w-48 max-w-full dark:block"
-            priority
-          />
-          <h1 className="text-2xl font-bold text-gray-900">Savings Analyzer</h1>
-          <p className="text-gray-500 mt-1">Sign in with your Backblaze email</p>
+      <div className="w-full">
+        {/* Brand lockup — the login screen owns its own branding (the app header is hidden here). */}
+        <div className="mb-7 text-center">
+          <div className="mb-5 inline-flex items-center gap-3">
+            <Image src="/flame-white.png" alt="Backblaze" width={698} height={1152} className="h-[34px] w-auto" priority />
+            <span className="font-display text-[26px] font-semibold text-white">Backblaze</span>
+          </div>
+          <h1 className="font-display text-[26px] font-semibold text-white">Savings Analyzer</h1>
+          <p className="mt-2 text-sm text-white/70">Sign in with your Backblaze email</p>
         </div>
 
         {urlError === 'invalid-token' && (
-          <div className="bg-red-50 text-red-700 text-sm rounded-lg p-3 mb-4">
+          <div className="mb-4 rounded-xl border border-white/15 bg-white/10 p-3 text-sm text-red-200">
             That link expired or is invalid. Request a new one below.
           </div>
         )}
 
         {status === 'sent' ? (
-          <div className="bg-white rounded-xl shadow-sm border p-6 text-center">
-            <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3">
-              <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <div className="rounded-[18px] border border-white/[0.14] bg-white/[0.06] p-6 text-center backdrop-blur-[12px]">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#1f8a5b]/25">
+              <svg className="h-6 w-6 text-[#8fe9be]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
               </svg>
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Check your email</h2>
-            <p className="text-sm text-gray-600">
-              We sent a secure sign-in link to <span className="font-medium text-gray-800">{email}</span>.
+            <h2 className="text-lg font-semibold text-white">Check your email</h2>
+            <p className="mt-1 text-sm text-white/70">
+              We sent a secure sign-in link to <span className="font-medium text-white">{email}</span>.
             </p>
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-white/50">
               It expires in 15 minutes. If you do not see it in your inbox, check your spam folder.
             </p>
             <button
               onClick={() => { setStatus('idle'); setEmail(''); }}
-              className="mt-5 text-sm font-medium text-bb-red hover:text-bb-red-dark"
+              className="mt-5 text-sm font-medium text-[#ff8593] transition-colors hover:text-white"
             >
               Use a different email
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} autoComplete="off" className="bg-white rounded-xl shadow-sm border p-6">
-            <label htmlFor="b2sa-access-address" className="block text-sm font-medium text-gray-700 mb-1.5">
+          <form
+            onSubmit={handleSubmit}
+            autoComplete="off"
+            className="rounded-[18px] border border-white/[0.14] bg-white/[0.06] p-6 backdrop-blur-[12px]"
+          >
+            <label htmlFor="b2sa-access-address" className="mb-2 block text-[13px] font-semibold text-white/85">
               Backblaze address
             </label>
-            <input
-              id="b2sa-access-address"
-              name="b2sa-access-address"
-              type="text"
-              required
-              inputMode="email"
-              enterKeyHint="send"
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="none"
-              spellCheck={false}
-              pattern="[^@\s]+@[^@\s]+\.[^@\s]+"
-              title="Enter a valid Backblaze email address."
-              data-1p-ignore="true"
-              data-lpignore="true"
-              data-bwignore="true"
-              data-form-type="other"
-              readOnly={emailReadOnly}
-              onFocus={() => setEmailReadOnly(false)}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@backblaze.com"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-bb-red focus:border-transparent outline-none"
-            />
+            <div className="mb-4 flex items-center gap-2.5 rounded-[11px] border border-white/[0.18] bg-white/[0.08] px-3.5 py-3 transition-colors focus-within:border-white/40">
+              <svg className="h-4 w-4 shrink-0 text-white/50" fill="none" viewBox="0 0 24 24" strokeWidth={1.6} stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+              </svg>
+              <input
+                id="b2sa-access-address"
+                name="b2sa-access-address"
+                type="text"
+                required
+                inputMode="email"
+                enterKeyHint="send"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                pattern="[^@\s]+@[^@\s]+\.[^@\s]+"
+                title="Enter a valid Backblaze email address."
+                data-1p-ignore="true"
+                data-lpignore="true"
+                data-bwignore="true"
+                data-form-type="other"
+                readOnly={emailReadOnly}
+                onFocus={() => setEmailReadOnly(false)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@backblaze.com"
+                className="min-w-0 flex-1 border-0 bg-transparent! text-sm text-white! outline-none placeholder:text-white/45!"
+              />
+            </div>
 
-            {errorMsg && (
-              <p className="text-sm text-red-600 mt-2">{errorMsg}</p>
-            )}
+            {errorMsg && <p className="mb-3 text-sm text-red-200">{errorMsg}</p>}
 
             <button
               type="submit"
               disabled={status === 'sending'}
-              className="w-full mt-4 px-4 py-2.5 bg-bb-red text-white text-sm font-medium rounded-lg hover:bg-bb-red-dark disabled:opacity-50 transition-colors"
+              className="w-full rounded-[11px] bg-[#e20626] py-3.5 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(226,6,38,0.4)] transition-colors hover:bg-[#b40a23] disabled:opacity-50"
             >
               {status === 'sending' ? 'Sending...' : 'Send sign-in link'}
             </button>
+            <p className="mt-3.5 text-center text-[11.5px] text-white/50">A secure magic link, valid for 15 minutes.</p>
           </form>
         )}
       </div>
@@ -178,11 +175,18 @@ function isLocalDevMagicLink(value: unknown): value is string {
   }
 }
 
+// Full-bleed navy gradient backdrop. The login screen is always dark regardless of the app theme,
+// so its colors are hard-coded (white/X overlays, brand red) rather than driven by the theme tokens.
 function LoginFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="flex flex-1 flex-col bg-gray-50 px-4 py-6">
-      <div className="flex flex-1 items-center justify-center">{children}</div>
-      <BuildNumber />
+    <div
+      className="relative flex flex-1 flex-col items-center justify-center overflow-hidden bg-[#000033] px-4 py-10"
+      style={{ backgroundImage: "url('/gradient-dark.png')", backgroundSize: 'cover', backgroundPosition: 'center' }}
+    >
+      <div className="relative z-[2] flex w-full max-w-[400px] flex-col items-center">
+        {children}
+        <BuildNumber />
+      </div>
     </div>
   );
 }
@@ -192,14 +196,14 @@ function LoginFrame({ children }: { children: ReactNode }) {
 function BuildNumber() {
   const hasCommit = BUILD_NUMBER !== 'local';
   return (
-    <p className="mt-4 shrink-0 text-center font-mono text-[11px] leading-none text-gray-400">
+    <p className="mt-6 shrink-0 text-center font-mono text-[11px] leading-none text-white/35">
       Build{' '}
       {hasCommit ? (
         <a
           href={`${GITHUB_REPO_URL}/commit/${BUILD_NUMBER}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="underline decoration-dotted underline-offset-2 transition-colors hover:text-gray-600"
+          className="underline decoration-dotted underline-offset-2 transition-colors hover:text-white/60"
         >
           {BUILD_NUMBER}
         </a>
@@ -213,10 +217,10 @@ function BuildNumber() {
 function LoginShell() {
   return (
     <LoginFrame>
-      <div className="w-full max-w-sm rounded-xl border bg-white p-6 shadow-sm">
-        <div className="mx-auto mb-5 h-12 w-48 max-w-full rounded bg-gray-100" />
-        <div className="mx-auto mb-3 h-6 w-40 rounded bg-gray-100" />
-        <div className="mx-auto h-4 w-56 rounded bg-gray-100" />
+      <div className="w-full rounded-[18px] border border-white/[0.14] bg-white/[0.06] p-6 backdrop-blur-[12px]">
+        <div className="mx-auto mb-5 h-12 w-48 max-w-full rounded bg-white/10" />
+        <div className="mx-auto mb-3 h-6 w-40 rounded bg-white/10" />
+        <div className="mx-auto h-4 w-56 rounded bg-white/10" />
       </div>
     </LoginFrame>
   );

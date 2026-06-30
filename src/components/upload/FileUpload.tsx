@@ -2,10 +2,18 @@
 
 import { useState, useCallback } from 'react';
 
+/** Lightweight file facts surfaced to the caller so it can render an "uploaded file" row. */
+export interface UploadedFileMeta {
+  name: string;
+  sizeBytes: number;
+  /** Wall-clock time from POST to parsed response, used for the "Parsed in Ns" label. */
+  elapsedMs: number;
+}
+
 interface FileUploadProps {
   analysisId: string;
-  /** Receives the parse response from the upload endpoint on success. */
-  onUploadComplete: (data: unknown) => void;
+  /** Receives the parse response from the upload endpoint on success, plus the uploaded file's facts. */
+  onUploadComplete: (data: unknown, fileMeta: UploadedFileMeta) => void;
   onError: (error: string) => void;
 }
 
@@ -38,7 +46,8 @@ export function FileUpload({ analysisId, onUploadComplete, onError }: FileUpload
     }
 
     setUploading(true);
-    setProgress('Uploading and Parsing Bill...');
+    setProgress('Uploading and parsing bill…');
+    const startedAt = performance.now();
 
     try {
       const formData = new FormData();
@@ -56,7 +65,7 @@ export function FileUpload({ analysisId, onUploadComplete, onError }: FileUpload
 
       const data = await res.json();
       setProgress('Done!');
-      onUploadComplete(data);
+      onUploadComplete(data, { name: file.name, sizeBytes: file.size, elapsedMs: performance.now() - startedAt });
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Upload failed');
     } finally {
@@ -67,8 +76,8 @@ export function FileUpload({ analysisId, onUploadComplete, onError }: FileUpload
   return (
     <div
       className={`
-        border-2 border-dashed rounded-lg p-12 text-center transition-colors
-        ${dragging ? 'border-bb-red bg-bb-red-light' : 'border-gray-300 hover:border-gray-400'}
+        rounded-2xl border-2 border-dashed bg-c-surface p-8 text-center transition-colors
+        ${dragging ? 'border-c-red bg-c-red-soft' : 'border-c-border2 hover:border-c-red'}
         ${uploading ? 'pointer-events-none opacity-60' : 'cursor-pointer'}
       `}
       onDragOver={(e) => {
@@ -96,20 +105,29 @@ export function FileUpload({ analysisId, onUploadComplete, onError }: FileUpload
     >
       {uploading ? (
         <div>
-          <div className="animate-spin inline-block w-8 h-8 border-4 border-bb-red border-t-transparent rounded-full mb-3" />
-          <p className="text-gray-600">{progress}</p>
+          <div className="mb-3 inline-block h-8 w-8 animate-spin rounded-full border-4 border-c-red border-t-transparent" />
+          <p className="text-c-muted">{progress}</p>
         </div>
       ) : (
         <div>
-          <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-          </svg>
-          <p className="text-lg font-medium text-gray-700 mb-1">
-            Drop a Cloud Bill Here
+          {/* Upload glyph in a soft-red tile, per the design. */}
+          <div className="mx-auto mb-3.5 flex h-[54px] w-[54px] items-center justify-center rounded-[14px] bg-c-red-soft">
+            <svg className="h-[26px] w-[26px] text-c-red" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 16V4m0 0L8 8m4-4 4 4" />
+              <path d="M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16" />
+            </svg>
+          </div>
+          <p className="text-base font-semibold text-c-text">
+            Drop your cloud bill here, or <span className="text-c-red">browse</span>
           </p>
-          <p className="text-sm text-gray-500">
-            PDF, CSV, or Excel — AWS or GCP Billing Export
-          </p>
+          <p className="mt-1.5 text-[12.5px] text-c-muted">PDF, CSV, or Excel — AWS or GCP billing export</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            {['AWS detailed PDF', 'S3 cost CSV', 'GCP cost CSV', 'Excel → CSV'].map((label) => (
+              <span key={label} className="rounded-full bg-c-surface2 px-2.5 py-1 text-[11px] font-semibold text-c-muted">
+                {label}
+              </span>
+            ))}
+          </div>
         </div>
       )}
     </div>
