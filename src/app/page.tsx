@@ -557,9 +557,11 @@ export default function HomePage() {
             </div>
           )}
           {filteredAnalyses.map((a, i) => {
-            // Readiness is independent of pipeline status: a deal progresses draft (no bill) →
-            // active (bill uploaded, not yet modeled) → reported (has a saved snapshot).
-            const readinessStatus: ReadinessStatus = a.latestSnapshot ? 'reported' : a.hasBill ? 'active' : 'draft';
+            // Readiness is independent of pipeline status: a deal progresses draft (no bill/usage) →
+            // active (bill uploaded or usage entered, not yet modeled) → reported (has a saved snapshot).
+            // commit-upsell analyses have no bill at all, so hasB2Usage is their equivalent signal.
+            const hasInput = a.hasBill || a.hasB2Usage;
+            const readinessStatus: ReadinessStatus = a.latestSnapshot ? 'reported' : hasInput ? 'active' : 'draft';
             const pipelineStatus = getPipelineStatus(a);
             const storageTcv = analysisTcvById.get(a.id) ?? 0;
             return (
@@ -599,7 +601,7 @@ export default function HomePage() {
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-3 text-[12.5px] text-c-muted">
                       <span className="rounded-md bg-c-surface2 px-2 py-[3px] text-[11px] font-bold tracking-[0.04em] text-c-muted">
-                        {PROVIDER_LABELS[a.provider] || a.provider}
+                        {a.opportunityType === 'commit-upsell' ? 'B2 Upsell' : PROVIDER_LABELS[a.provider] || a.provider}
                       </span>
                       {a.billingPeriod && <span>{a.billingPeriod}</span>}
                       <span className="text-c-subtle">Updated {timeAgo(a.updatedAt)}</span>
@@ -619,16 +621,18 @@ export default function HomePage() {
                     </div>
                   )}
 
-                  {!a.latestSnapshot && a.hasBill && (
+                  {!a.latestSnapshot && hasInput && (
                     <div className="min-w-0 sm:min-w-[180px] sm:text-right">
-                      <p className="text-sm italic text-c-subtle">Bill uploaded</p>
+                      <p className="text-sm italic text-c-subtle">{a.hasB2Usage && !a.hasBill ? 'Usage entered' : 'Bill uploaded'}</p>
                       <p className="text-xs text-c-subtle">No report yet</p>
                     </div>
                   )}
 
-                  {!a.hasBill && (
+                  {!hasInput && (
                     <div className="min-w-0 sm:min-w-[180px] sm:text-right">
-                      <p className="text-sm italic text-c-subtle">Awaiting bill</p>
+                      <p className="text-sm italic text-c-subtle">
+                        {a.opportunityType === 'commit-upsell' ? 'Awaiting usage details' : 'Awaiting bill'}
+                      </p>
                     </div>
                   )}
                 </Link>

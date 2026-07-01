@@ -4,6 +4,7 @@ import {
   listAnalyses,
   saveAnalysisMeta,
   hasParsedBill,
+  hasB2UsageInput,
   getLatestSnapshot,
   getStorageErrorDetails,
 } from '@/lib/storage/storage';
@@ -28,6 +29,8 @@ type AnalysisSummarySnapshot = Pick<
 export interface AnalysisSummary extends Analysis {
   /** Whether a parsed bill exists yet — drives the "needs upload" vs. ready state in the list. */
   hasBill: boolean;
+  /** Whether a commit-upsell analysis has saved B2 usage input yet — the no-bill analog of hasBill. */
+  hasB2Usage: boolean;
   latestSnapshot: AnalysisSummarySnapshot | null;
 }
 
@@ -57,13 +60,15 @@ export async function GET() {
     analyses,
     8,
     async (a) => {
-      const [parsed, snapshot] = await Promise.all([
+      const [parsed, b2Usage, snapshot] = await Promise.all([
         hasParsedBill(userEmail, a.id).catch(() => false),
+        hasB2UsageInput(userEmail, a.id).catch(() => false),
         getLatestSnapshot(userEmail, a.id).catch(() => null),
       ]);
       return {
         ...a,
         hasBill: parsed,
+        hasB2Usage: b2Usage,
         latestSnapshot: snapshot
           ? {
               annualSavings: snapshot.annualSavings,
@@ -105,6 +110,8 @@ export async function POST(req: Request) {
     pipelineStatus: 'open',
     // Fulfilled by the upload route once a bill is parsed — there's no parsed bill to clone yet.
     pendingOverdriveVariant: body.createOverdriveVariant ? true : undefined,
+    // Absent means 'migration' (the default flow); only set the field for the non-default case.
+    opportunityType: body.opportunityType === 'commit-upsell' ? 'commit-upsell' : undefined,
     createdAt: now,
     updatedAt: now,
   };

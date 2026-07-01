@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { Analysis, ParsedBill, ModelConfig, Provider } from '@/types/analysis';
+import type { Analysis, ParsedBill, ModelConfig, OpportunityType, Provider } from '@/types/analysis';
 import { FileUpload, type UploadedFileMeta } from '@/components/upload/FileUpload';
 import { ParseReview } from '@/components/upload/ParseReview';
+import { B2UsageForm } from '@/components/upload/B2UsageForm';
 import { useDocumentTitle } from '@/components/shared/useDocumentTitle';
 
 // What POST /api/analyses/[id]/upload returns — enough to render the parse review inline.
@@ -40,6 +41,7 @@ function fileTypeBadge(name: string): string {
  */
 export default function NewAnalysisPage() {
   const router = useRouter();
+  const [opportunityType, setOpportunityType] = useState<OpportunityType>('migration');
   const [prospectName, setProspectName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [notes, setNotes] = useState('');
@@ -73,7 +75,8 @@ export default function NewAnalysisPage() {
           prospectName: prospectName.trim(),
           companyName: companyName.trim() || undefined,
           notes: notes.trim() || undefined,
-          createOverdriveVariant,
+          createOverdriveVariant: opportunityType === 'migration' && createOverdriveVariant,
+          opportunityType,
         }),
       });
 
@@ -116,15 +119,33 @@ export default function NewAnalysisPage() {
   return (
     <div className="mx-auto max-w-[880px] px-4 pb-16 pt-7 sm:px-6 sm:pt-8">
       <p className="mb-2 font-display text-xs font-semibold uppercase tracking-[0.14em] text-c-red">New opportunity</p>
-      <h1 className="text-[28px] font-semibold text-c-text sm:text-[30px]">Upload a customer bill</h1>
+      <h1 className="text-[28px] font-semibold text-c-text sm:text-[30px]">
+        {opportunityType === 'commit-upsell' ? 'Pitch a B2 commitment upgrade' : 'Upload a customer bill'}
+      </h1>
       <p className="mt-1.5 text-[15px] text-c-muted">
-        We isolate the addressable storage spend and model the move to Backblaze B2.
+        {opportunityType === 'commit-upsell'
+          ? 'For an existing B2 customer on Uncommitted — model the throughput gain from signing a contract.'
+          : 'We isolate the addressable storage spend and model the move to Backblaze B2.'}
       </p>
 
-      <Stepper current={currentStep} className="mb-6 mt-6" />
+      <Stepper current={currentStep} usageStep={opportunityType === 'commit-upsell'} className="mb-6 mt-6" />
 
       {!analysisId ? (
         <div className="space-y-4">
+          <div className="grid gap-3.5 sm:grid-cols-2">
+            <OpportunityTypeCard
+              label="Migrating from another cloud"
+              description="Upload an AWS, GCP, or Azure bill and model the move to B2."
+              active={opportunityType === 'migration'}
+              onClick={() => setOpportunityType('migration')}
+            />
+            <OpportunityTypeCard
+              label="Existing B2 customer — pitch a contract"
+              description="Move an Uncommitted customer to Committed or Overdrive for higher throughput."
+              active={opportunityType === 'commit-upsell'}
+              onClick={() => setOpportunityType('commit-upsell')}
+            />
+          </div>
           <div className="grid gap-3.5 sm:grid-cols-2">
             <FieldCard label="Opportunity name">
               <input
@@ -157,20 +178,22 @@ export default function NewAnalysisPage() {
               className="w-full resize-none rounded-[9px] border border-c-border2 bg-c-bg px-3 py-2.5 text-sm text-c-text outline-none focus:border-c-red"
             />
           </FieldCard>
-          <label className="flex items-center gap-2.5 rounded-xl border border-c-border bg-c-surface px-4 py-3 text-sm">
-            <input
-              type="checkbox"
-              checked={createOverdriveVariant}
-              onChange={(e) => setCreateOverdriveVariant(e.target.checked)}
-              className="h-4 w-4 accent-[#e20626]"
-            />
-            <span>
-              <span className="font-medium text-c-text">Also create a linked Overdrive variant</span>
-              <span className="block text-xs text-c-muted">
-                After the bill is uploaded, we&apos;ll spin up a second, linked opportunity modeled at B2 Overdrive pricing so you can show the customer both side by side.
+          {opportunityType === 'migration' && (
+            <label className="flex items-center gap-2.5 rounded-xl border border-c-border bg-c-surface px-4 py-3 text-sm">
+              <input
+                type="checkbox"
+                checked={createOverdriveVariant}
+                onChange={(e) => setCreateOverdriveVariant(e.target.checked)}
+                className="h-4 w-4 accent-[#e20626]"
+              />
+              <span>
+                <span className="font-medium text-c-text">Also create a linked Overdrive variant</span>
+                <span className="block text-xs text-c-muted">
+                  After the bill is uploaded, we&apos;ll spin up a second, linked opportunity modeled at B2 Overdrive pricing so you can show the customer both side by side.
+                </span>
               </span>
-            </span>
-          </label>
+            </label>
+          )}
           {error && <p className="text-sm text-c-red">{error}</p>}
           <div className="flex justify-end">
             <button
@@ -178,7 +201,7 @@ export default function NewAnalysisPage() {
               disabled={creating}
               className="inline-flex items-center gap-2 rounded-[10px] bg-[#e20626] px-5 py-2.5 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(226,6,38,0.28)] transition-colors hover:bg-[#b40a23] disabled:opacity-50"
             >
-              {creating ? 'Creating…' : 'Continue to upload →'}
+              {creating ? 'Creating…' : opportunityType === 'commit-upsell' ? 'Continue →' : 'Continue to upload →'}
             </button>
           </div>
         </div>
@@ -194,98 +217,130 @@ export default function NewAnalysisPage() {
             </FieldCard>
           </div>
 
-          {/* Dropzone stays visible so the AE can swap the bill; dropping a new file re-parses. */}
-          <FileUpload
-            analysisId={analysisId}
-            onUploadComplete={(data, file) => {
-              setError('');
-              setReview({ data: data as UploadResult, file });
-            }}
-            onError={setError}
-          />
-
-          {error && (
-            <div className="rounded-xl border border-c-red/40 bg-c-red-soft px-4 py-3">
-              <p className="text-sm text-c-red-dark">{error}</p>
-            </div>
-          )}
-
-          {review && (
+          {opportunityType === 'commit-upsell' ? (
+            <B2UsageForm analysisId={analysisId} onSaved={() => router.push(`/analyses/${analysisId}`)} />
+          ) : (
             <>
-              {/* Uploaded-file row */}
-              <div className="flex items-center gap-3.5 rounded-xl border border-c-border bg-c-surface px-4 py-3.5 shadow-sm">
-                <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[9px] bg-c-red-soft text-[13px] font-bold text-c-red">
-                  {fileTypeBadge(review.file.name)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13.5px] font-semibold text-c-text">{review.file.name}</p>
-                  <p className="text-xs text-c-subtle">
-                    {formatBytes(review.file.sizeBytes)} · Parsed in {(review.file.elapsedMs / 1000).toFixed(1)}s
-                  </p>
-                </div>
-                <span className="shrink-0 rounded-full bg-c-green-soft px-2.5 py-1 text-[11px] font-semibold text-c-green">✓ Parsed</span>
-              </div>
-
-              {review.data.overdriveVariant && (
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-c-red/40 bg-c-red-soft px-4 py-3">
-                  <p className="text-sm text-c-red-dark">Overdrive variant created for {review.data.overdriveVariant.prospectName}.</p>
-                  <Link
-                    href={`/analyses/${review.data.overdriveVariant.id}`}
-                    className="shrink-0 text-sm font-semibold text-c-red underline hover:text-c-red-dark"
-                  >
-                    View it →
-                  </Link>
-                </div>
-              )}
-
-              <ParseReview
-                parsed={review.data.parsed}
-                billType={review.data.meta.billType}
-                provider={review.data.meta.provider}
-                pricingDiscountConfirmed={pricingDiscountConfirmed}
-                onPricingDiscountConfirmedChange={handlePricingDiscountConfirmedChange}
+              {/* Dropzone stays visible so the AE can swap the bill; dropping a new file re-parses. */}
+              <FileUpload
+                analysisId={analysisId}
+                onUploadComplete={(data, file) => {
+                  setError('');
+                  setReview({ data: data as UploadResult, file });
+                }}
+                onError={setError}
               />
 
-              {showSourceOverride && (
-                <div className="flex max-w-full flex-wrap items-center gap-2 rounded-lg border border-c-border bg-c-surface2 px-3 py-2">
-                  <label htmlFor="new-source-override" className="text-xs font-medium text-c-muted">Parser source override</label>
-                  <select
-                    id="new-source-override"
-                    value={review.data.meta.provider}
-                    onChange={(e) => handleSourceOverride(e.target.value as Provider)}
-                    className="cursor-pointer rounded-md border border-c-border2 bg-c-surface px-2 py-1 pr-7 text-sm font-semibold text-c-text focus:border-c-red focus:outline-none"
-                  >
-                    <option value="aws">Amazon Web Services (AWS)</option>
-                    <option value="gcp">Google Cloud Platform (GCP)</option>
-                    <option value="azure">Microsoft Azure</option>
-                    <option value="r2">Cloudflare R2</option>
-                  </select>
-                  <span className="text-xs text-c-subtle">Use only when the detected source is clearly wrong.</span>
+              {error && (
+                <div className="rounded-xl border border-c-red/40 bg-c-red-soft px-4 py-3">
+                  <p className="text-sm text-c-red-dark">{error}</p>
                 </div>
               )}
 
-              <div className="flex justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setShowSourceOverride((shown) => !shown)}
-                  aria-expanded={showSourceOverride}
-                  className="rounded-[10px] border border-c-border2 bg-c-surface px-4 py-2.5 text-[13px] font-semibold text-c-muted transition-colors hover:bg-c-surface2"
-                >
-                  Fix source
-                </button>
-                <button
-                  type="button"
-                  onClick={() => router.push(`/analyses/${analysisId}`)}
-                  className="inline-flex items-center gap-2 rounded-[10px] bg-[#e20626] px-5 py-2.5 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(226,6,38,0.28)] transition-colors hover:bg-[#b40a23]"
-                >
-                  Build the model →
-                </button>
-              </div>
+              {review && (
+                <>
+                  {/* Uploaded-file row */}
+                  <div className="flex items-center gap-3.5 rounded-xl border border-c-border bg-c-surface px-4 py-3.5 shadow-sm">
+                    <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[9px] bg-c-red-soft text-[13px] font-bold text-c-red">
+                      {fileTypeBadge(review.file.name)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13.5px] font-semibold text-c-text">{review.file.name}</p>
+                      <p className="text-xs text-c-subtle">
+                        {formatBytes(review.file.sizeBytes)} · Parsed in {(review.file.elapsedMs / 1000).toFixed(1)}s
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-c-green-soft px-2.5 py-1 text-[11px] font-semibold text-c-green">✓ Parsed</span>
+                  </div>
+
+                  {review.data.overdriveVariant && (
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-c-red/40 bg-c-red-soft px-4 py-3">
+                      <p className="text-sm text-c-red-dark">Overdrive variant created for {review.data.overdriveVariant.prospectName}.</p>
+                      <Link
+                        href={`/analyses/${review.data.overdriveVariant.id}`}
+                        className="shrink-0 text-sm font-semibold text-c-red underline hover:text-c-red-dark"
+                      >
+                        View it →
+                      </Link>
+                    </div>
+                  )}
+
+                  <ParseReview
+                    parsed={review.data.parsed}
+                    billType={review.data.meta.billType}
+                    provider={review.data.meta.provider}
+                    pricingDiscountConfirmed={pricingDiscountConfirmed}
+                    onPricingDiscountConfirmedChange={handlePricingDiscountConfirmedChange}
+                  />
+
+                  {showSourceOverride && (
+                    <div className="flex max-w-full flex-wrap items-center gap-2 rounded-lg border border-c-border bg-c-surface2 px-3 py-2">
+                      <label htmlFor="new-source-override" className="text-xs font-medium text-c-muted">Parser source override</label>
+                      <select
+                        id="new-source-override"
+                        value={review.data.meta.provider}
+                        onChange={(e) => handleSourceOverride(e.target.value as Provider)}
+                        className="cursor-pointer rounded-md border border-c-border2 bg-c-surface px-2 py-1 pr-7 text-sm font-semibold text-c-text focus:border-c-red focus:outline-none"
+                      >
+                        <option value="aws">Amazon Web Services (AWS)</option>
+                        <option value="gcp">Google Cloud Platform (GCP)</option>
+                        <option value="azure">Microsoft Azure</option>
+                        <option value="r2">Cloudflare R2</option>
+                      </select>
+                      <span className="text-xs text-c-subtle">Use only when the detected source is clearly wrong.</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setShowSourceOverride((shown) => !shown)}
+                      aria-expanded={showSourceOverride}
+                      className="rounded-[10px] border border-c-border2 bg-c-surface px-4 py-2.5 text-[13px] font-semibold text-c-muted transition-colors hover:bg-c-surface2"
+                    >
+                      Fix source
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/analyses/${analysisId}`)}
+                      className="inline-flex items-center gap-2 rounded-[10px] bg-[#e20626] px-5 py-2.5 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(226,6,38,0.28)] transition-colors hover:bg-[#b40a23]"
+                    >
+                      Build the model →
+                    </button>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>
       )}
     </div>
+  );
+}
+
+/** Selectable card for the opportunity-type choice (migration vs. commit-upsell). */
+function OpportunityTypeCard({
+  label,
+  description,
+  active,
+  onClick,
+}: {
+  label: string;
+  description: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-2xl border p-4 text-left shadow-sm transition-colors ${
+        active ? 'border-c-red bg-c-red-soft' : 'border-c-border bg-c-surface hover:border-c-border2'
+      }`}
+    >
+      <p className={`text-sm font-semibold ${active ? 'text-c-red-dark' : 'text-c-text'}`}>{label}</p>
+      <p className="mt-1 text-xs text-c-muted">{description}</p>
+    </button>
   );
 }
 
@@ -302,9 +357,9 @@ function FieldCard({ label, hint, children }: { label: string; hint?: string; ch
   );
 }
 
-/** Three-step progress indicator: Details → Upload bill → Review (the modeled dashboard). */
-function Stepper({ current, className = '' }: { current: number; className?: string }) {
-  const steps = ['Details', 'Upload bill', 'Review'];
+/** Three-step progress indicator: Details → Upload bill/Usage → Review (the modeled dashboard). */
+function Stepper({ current, usageStep, className = '' }: { current: number; usageStep?: boolean; className?: string }) {
+  const steps = ['Details', usageStep ? 'Usage' : 'Upload bill', 'Review'];
   return (
     <div className={`flex items-center ${className}`}>
       {steps.map((label, i) => {

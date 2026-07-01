@@ -14,6 +14,7 @@ import { ProjectionChart } from '@/components/dashboard/ProjectionChart';
 import { PricingDetection } from '@/components/dashboard/PricingDetection';
 import { PricingFreshnessWarning } from '@/components/dashboard/PricingFreshnessWarning';
 import { DealSizing } from '@/components/dashboard/DealSizing';
+import { CommitUpsellDashboard } from '@/components/dashboard/CommitUpsellDashboard';
 import { TransactionAnalysis } from '@/components/dashboard/TransactionAnalysis';
 import { FileUpload } from '@/components/upload/FileUpload';
 import { InlineEditText } from '@/components/shared/InlineEditText';
@@ -239,6 +240,10 @@ export default function AnalysisDashboard() {
         </div>
       </div>
     );
+  }
+
+  if (data.meta.opportunityType === 'commit-upsell') {
+    return <CommitUpsellDashboard analysisId={id} meta={data.meta} />;
   }
 
   if (!data.parsed) {

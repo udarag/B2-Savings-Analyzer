@@ -3,7 +3,7 @@
 // behaves the same whichever backend is active. Each entity is one row keyed by
 // (user_email, id/analysis_id); writes upsert so re-saving is idempotent.
 import { dbQuery, dbTransaction, isDatabaseStorageEnabled } from '@/lib/db/client';
-import type { Analysis, ModelConfig, ParsedBill } from '@/types/analysis';
+import type { Analysis, B2UsageInput, ModelConfig, ParsedBill } from '@/types/analysis';
 import type { ReportSnapshot } from '@/types/model';
 import type { UserProfile } from './storage';
 
@@ -26,6 +26,7 @@ interface JsonRow<T> {
   config?: T | string;
   profile?: T | string;
   snapshot?: T | string;
+  usage?: T | string;
 }
 
 interface UploadRow {
@@ -146,6 +147,46 @@ export async function saveDatabaseModelConfig(userEmail: string, id: string, con
       DO UPDATE SET config = EXCLUDED.config, updated_at = EXCLUDED.updated_at
     `,
     [userEmail, id, JSON.stringify(config)],
+  );
+}
+
+export async function getDatabaseB2Usage(userEmail: string, id: string): Promise<B2UsageInput | null> {
+  const { rows } = await dbQuery<JsonRow<B2UsageInput>>(
+    `
+      SELECT usage
+      FROM analysis_b2_usage
+      WHERE user_email = $1 AND analysis_id = $2
+      LIMIT 1
+    `,
+    [userEmail, id],
+  );
+
+  return rows[0] ? parseJson<B2UsageInput>(rows[0].usage) : null;
+}
+
+export async function hasDatabaseB2Usage(userEmail: string, id: string): Promise<boolean> {
+  const { rowCount } = await dbQuery(
+    `
+      SELECT 1
+      FROM analysis_b2_usage
+      WHERE user_email = $1 AND analysis_id = $2
+      LIMIT 1
+    `,
+    [userEmail, id],
+  );
+
+  return (rowCount ?? 0) > 0;
+}
+
+export async function saveDatabaseB2Usage(userEmail: string, id: string, usage: B2UsageInput): Promise<void> {
+  await dbQuery(
+    `
+      INSERT INTO analysis_b2_usage (user_email, analysis_id, usage, updated_at)
+      VALUES ($1, $2, $3::jsonb, now())
+      ON CONFLICT (user_email, analysis_id)
+      DO UPDATE SET usage = EXCLUDED.usage, updated_at = EXCLUDED.updated_at
+    `,
+    [userEmail, id, JSON.stringify(usage)],
   );
 }
 

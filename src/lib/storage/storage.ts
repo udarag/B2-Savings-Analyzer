@@ -13,28 +13,32 @@ import { getB2Client, getBucketName } from './b2-client';
 import {
   deleteDatabaseAnalysis,
   getDatabaseAnalysisMeta,
+  getDatabaseB2Usage,
   getDatabaseModelConfig,
   getDatabaseParsedBill,
   getDatabaseUserProfile,
   getLatestDatabaseSnapshot,
   getLatestDatabaseUpload,
+  hasDatabaseB2Usage,
   hasDatabaseParsedBill,
   isDatabaseStorageEnabled,
   listDatabaseAnalyses,
   listDatabaseReportSnapshots,
   recordDatabaseUpload,
   saveDatabaseAnalysisMeta,
+  saveDatabaseB2Usage,
   saveDatabaseModelConfig,
   saveDatabaseParsedBill,
   saveDatabaseReportSnapshot,
   saveDatabaseUserProfile,
 } from './postgres';
-import type { Analysis, ParsedBill, ModelConfig } from '@/types/analysis';
+import type { Analysis, ParsedBill, ModelConfig, B2UsageInput } from '@/types/analysis';
 import type { ReportSnapshot } from '@/types/model';
 import {
   parseStoredAnalysis,
   parseStoredParsedBill,
   parseStoredModelConfig,
+  parseStoredB2Usage,
   parseStoredSnapshot,
   safeJsonParse,
   isRecord,
@@ -304,6 +308,35 @@ export async function saveModelConfig(userEmail: string, id: string, config: Mod
   }
 
   await putObject(`${analysisPath(userEmail, id)}/model-config.json`, JSON.stringify(config, null, 2));
+}
+
+/** Loads the AE-entered B2 usage input for a commit-upsell analysis, or null if absent/invalid. */
+export async function getB2UsageInput(userEmail: string, id: string): Promise<B2UsageInput | null> {
+  if (isDatabaseStorageEnabled()) {
+    return getDatabaseB2Usage(userEmail, id);
+  }
+
+  const data = await getObject(`${analysisPath(userEmail, id)}/b2-usage.json`);
+  return data ? parseStoredB2Usage(data) : null;
+}
+
+/** Cheap existence check for a saved B2 usage input, without fetching/validating its contents. */
+export async function hasB2UsageInput(userEmail: string, id: string): Promise<boolean> {
+  if (isDatabaseStorageEnabled()) {
+    return hasDatabaseB2Usage(userEmail, id);
+  }
+
+  return objectExists(`${analysisPath(userEmail, id)}/b2-usage.json`);
+}
+
+/** Persists the B2 usage input for a commit-upsell analysis. */
+export async function saveB2UsageInput(userEmail: string, id: string, usage: B2UsageInput): Promise<void> {
+  if (isDatabaseStorageEnabled()) {
+    await saveDatabaseB2Usage(userEmail, id, usage);
+    return;
+  }
+
+  await putObject(`${analysisPath(userEmail, id)}/b2-usage.json`, JSON.stringify(usage, null, 2));
 }
 
 /**

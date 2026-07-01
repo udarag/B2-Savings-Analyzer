@@ -38,6 +38,7 @@ import { buildReportFilename, getFilenameFromContentDisposition } from '@/lib/re
 import { formatCurrency, formatNumber, formatPercent } from '@/components/shared/FormatCurrency';
 import { useDocumentTitle } from '@/components/shared/useDocumentTitle';
 import b2Pricing from '@/lib/pricing/b2.json';
+import { CommitUpsellReport } from '@/components/report/CommitUpsellReport';
 
 // Account-executive attribution shown in the report footer ("Prepared by ...").
 interface AEInfo {
@@ -218,6 +219,10 @@ function ReportPageContent() {
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!costModel]);
+
+  if (!loading && meta?.opportunityType === 'commit-upsell') {
+    return <CommitUpsellReport analysisId={id} meta={meta} />;
+  }
 
   if (loading || !meta || !parsed || !costModel || !modelConfig || !egressConfig) {
     return (

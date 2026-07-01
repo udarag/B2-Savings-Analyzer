@@ -8,6 +8,10 @@ export type BillType = 'summary-invoice' | 'detailed-statement' | 'sku-export';
 
 export type PipelineStatus = 'open' | 'closed-won' | 'closed-lost';
 
+/** What kind of deal this is. Absent/undefined means 'migration' — every record created before
+ *  this field existed is a migration analysis, so this default preserves full backward compatibility. */
+export type OpportunityType = 'migration' | 'commit-upsell';
+
 /** Which half of a linked Standard/Overdrive variant pair this analysis is, when one exists.
  *  Absent entirely means this analysis has no variant sibling. */
 export type ServiceTierVariant = 'standard' | 'overdrive';
@@ -62,6 +66,9 @@ export interface Analysis {
   /** Transient: set on step-1 create when the AE checked "also create an Overdrive variant",
    *  cleared once the upload route fulfills it after the first successful bill parse. */
   pendingOverdriveVariant?: boolean;
+  /** Absent means 'migration' (the original flow: upload a hyperscaler bill). 'commit-upsell'
+   *  analyses have no source bill and use B2UsageInput instead of ParsedBill. */
+  opportunityType?: OpportunityType;
   createdAt: string;
   updatedAt: string;
 }
@@ -239,6 +246,37 @@ export interface ModelConfig {
   projectionTermMonths: number;
   /** AE has confirmed the quoted B2 discount is real, gating any below-list pricing in the customer report. */
   pricingDiscountConfirmed?: boolean;
+}
+
+/** Committed-tier target the AE is pitching an existing Uncommitted customer toward. Derived from
+ *  B2ServiceTier (rather than a hand-parallel union) so the two can't drift. */
+export type TargetB2ServiceTier = Exclude<B2ServiceTier, 'uncommitted'>;
+
+/**
+ * AE-entered facts about an existing B2 customer's current usage, for the commit-upsell flow.
+ * This is the commit-upsell analog of ParsedBill — but there's no bill, so it's hand-entered (or,
+ * in the future, extracted from a dashboard screenshot; see `source`).
+ */
+export interface B2UsageInput {
+  /** Current stored volume, decimal TB (the app's usual GB x 1000 basis, matching every other TB figure). */
+  currentStorageTb: number;
+  /** Current all-in monthly B2 spend in USD, as the AE observed it. */
+  currentMonthlySpendUsd: number;
+  /** Reuses the exact EgressConfig growth vocabulary/semantics so the projection helpers in
+   *  engine/projections.ts need no adapter. */
+  dataGrowthMode: 'percent' | 'fixed-tb';
+  dataGrowthRatePercent: number;
+  dataGrowthFixedTbPerMonth: number;
+  dataGrowthPeriod: 'monthly' | 'yearly';
+  /** The tier this opportunity is pitching the customer toward. */
+  targetTier: TargetB2ServiceTier;
+  /** AE-entered committed-tier discount off the customer's current implied $/TB, if one has been
+   *  negotiated (0 if not — Committed is typically flat $/TB vs Uncommitted). Percent, e.g. 5 = 5% off. */
+  committedDiscountPercent: number;
+  /** How this record was populated; surfaces on the dashboard as a provenance note. */
+  source: 'manual' | 'screenshot-stub';
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Bump when the tier auto-selection heuristic changes; saved configs below this re-derive their

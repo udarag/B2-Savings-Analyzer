@@ -3,14 +3,16 @@ import {
   getAnalysisMeta,
   getParsedBill,
   getModelConfig,
+  getB2UsageInput,
   saveAnalysisMeta,
   saveModelConfig,
   saveParsedBill,
+  saveB2UsageInput,
   deleteAnalysis,
 } from '@/lib/storage/storage';
 import { getSessionUser } from '@/lib/auth/session';
 import { storageErrorResponse } from '@/lib/api/route-helpers';
-import type { ModelConfig } from '@/types/analysis';
+import type { ModelConfig, B2UsageInput } from '@/types/analysis';
 
 /** Load one analysis in full: metadata, parsed bill, and saved model config. */
 export async function GET(
@@ -24,19 +26,20 @@ export async function GET(
   const { id } = await params;
 
   try {
-    // parsed/modelConfig may be null for a freshly created analysis with no bill yet; only missing
-    // metadata counts as a 404.
-    const [meta, parsed, modelConfig] = await Promise.all([
+    // parsed/modelConfig/b2Usage may be null for a freshly created analysis with no bill (or, for a
+    // commit-upsell analysis, no bill at all) yet; only missing metadata counts as a 404.
+    const [meta, parsed, modelConfig, b2Usage] = await Promise.all([
       getAnalysisMeta(userEmail, id),
       getParsedBill(userEmail, id),
       getModelConfig(userEmail, id),
+      getB2UsageInput(userEmail, id),
     ]);
 
     if (!meta) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ meta, parsed, modelConfig });
+    return NextResponse.json({ meta, parsed, modelConfig, b2Usage });
   } catch (error) {
     return storageErrorResponse(error, `Failed to load analysis ${id}`);
   }
@@ -85,6 +88,10 @@ export async function PATCH(
 
     if (body.modelConfig) {
       await saveModelConfig(userEmail, id, body.modelConfig as ModelConfig);
+    }
+
+    if (body.b2Usage) {
+      await saveB2UsageInput(userEmail, id, body.b2Usage as B2UsageInput);
     }
 
     return NextResponse.json({ ok: true });

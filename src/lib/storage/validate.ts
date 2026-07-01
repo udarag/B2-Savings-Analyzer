@@ -1,4 +1,4 @@
-import type { Analysis, ParsedBill, ModelConfig } from '@/types/analysis';
+import type { Analysis, ParsedBill, ModelConfig, B2UsageInput } from '@/types/analysis';
 import type { ReportSnapshot } from '@/types/model';
 
 // Lenient validation at the storage read boundary. Durable B2/Postgres JSON is
@@ -94,6 +94,25 @@ export function parseStoredModelConfig(raw: string): ModelConfig | null {
     return null;
   }
   return v as unknown as ModelConfig;
+}
+
+/**
+ * Validates a stored B2-usage-input record (the commit-upsell analog of parseStoredParsedBill).
+ * Guards the fields the commit-upsell compute path can't run without.
+ */
+export function parseStoredB2Usage(raw: string): B2UsageInput | null {
+  const v = safeJsonParse(raw, 'B2 usage input');
+  if (!isRecord(v)) return null;
+  if (
+    !isNum(v.currentStorageTb) ||
+    !isNum(v.currentMonthlySpendUsd) ||
+    !isStr(v.targetTier) ||
+    !isStr(v.createdAt)
+  ) {
+    console.warn('Ignoring B2 usage input with unexpected shape');
+    return null;
+  }
+  return v as unknown as B2UsageInput;
 }
 
 /**
