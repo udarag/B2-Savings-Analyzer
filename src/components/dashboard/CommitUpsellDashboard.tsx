@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import type { Analysis, B2UsageInput, TargetB2ServiceTier } from '@/types/analysis';
+import type { Analysis, B2UsageInput } from '@/types/analysis';
 import { computeCommitUpsellView, type CommitUpsellView } from '@/lib/analysis/commit-upsell-model';
 import type { ServiceTierSpec } from '@/lib/pricing/service-levels';
 import { B2UsageForm } from '@/components/upload/B2UsageForm';
@@ -16,8 +16,8 @@ interface CommitUpsellDashboardProps {
 /**
  * Deal-sizing page for a commit-upsell opportunity: an existing B2 Uncommitted customer with no
  * source-cloud bill. The usage step captures current storage/spend; here the AE sizes the deal —
- * growth, target tier, and the contract discount they're offering to land the commitment — and sees
- * the current-vs-target comparison update live before generating the customer report. Edits autosave.
+ * growth and the contract discount they're offering to land the Committed-tier commitment — and sees
+ * the current-vs-Committed comparison update live before generating the customer report. Edits autosave.
  */
 export function CommitUpsellDashboard({ analysisId, meta }: CommitUpsellDashboardProps) {
   const [usage, setUsage] = useState<B2UsageInput | null>(null);
@@ -106,21 +106,11 @@ export function CommitUpsellDashboard({ analysisId, meta }: CommitUpsellDashboar
                   <h4 className="text-sm font-semibold text-c-text">Size the deal</h4>
                   <span className="rounded-full bg-c-amber-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-c-amber">Internal</span>
                 </div>
-                <p className="mt-1 text-xs text-c-subtle">Growth, target tier, and any contract discount.</p>
+                <p className="mt-1 text-xs text-c-subtle">Growth and any contract discount.</p>
               </div>
               <div className="space-y-4 p-5">
-                {/* Target tier */}
-                <div>
-                  <label className="mb-2 block text-xs font-medium text-c-muted">Target service tier</label>
-                  <Segmented
-                    options={[{ value: 'committed', label: 'Committed' }, { value: 'overdrive', label: 'Overdrive' }]}
-                    value={usage.targetTier}
-                    onChange={(v) => updateUsage({ targetTier: v as TargetB2ServiceTier })}
-                  />
-                </div>
-
                 {/* Growth assumption */}
-                <div className="border-t border-c-border pt-4">
+                <div>
                   <label className="mb-2 block text-xs font-medium text-c-muted">Data growth</label>
                   <Segmented
                     className="mb-2"
@@ -144,29 +134,19 @@ export function CommitUpsellDashboard({ analysisId, meta }: CommitUpsellDashboar
                   )}
                 </div>
 
-                {/* Discount (Committed) / custom-pricing note (Overdrive) */}
+                {/* Contract discount — most AEs discount to land the commitment. */}
                 <div className="border-t border-c-border pt-4">
-                  {usage.targetTier === 'committed' ? (
-                    <>
-                      <label className="mb-2 block text-xs font-medium text-c-muted">Contract discount off current rate</label>
-                      <NumberField
-                        value={usage.committedDiscountPercent}
-                        suffix="% off"
-                        max={100}
-                        onChange={(n) => updateUsage({ committedDiscountPercent: Math.min(Math.max(n, 0), 100) })}
-                      />
-                      <p className="mt-2 text-xs text-c-subtle">
-                        Committed rate: <span className="font-semibold text-c-text">{formatCurrency(view.targetRatePerTb)}/TB</span>
-                        {' '}· <span className="font-semibold text-c-text">{formatCurrency(view.projectedTargetMonthlyCostUsd)}/mo</span> at today&apos;s volume
-                      </p>
-                    </>
-                  ) : (
-                    <p className="text-xs text-c-subtle">
-                      Overdrive is custom-priced from ${view.targetSpec.startingPerTbMonth}/TB — modeled at{' '}
-                      <span className="font-semibold text-c-text">{formatCurrency(view.targetRatePerTb)}/TB</span>
-                      {' '}· <span className="font-semibold text-c-text">{formatCurrency(view.projectedTargetMonthlyCostUsd)}/mo</span>. {view.targetSpec.minimumCommitmentNote}.
-                    </p>
-                  )}
+                  <label className="mb-2 block text-xs font-medium text-c-muted">Contract discount off current rate</label>
+                  <NumberField
+                    value={usage.committedDiscountPercent}
+                    suffix="% off"
+                    max={100}
+                    onChange={(n) => updateUsage({ committedDiscountPercent: Math.min(Math.max(n, 0), 100) })}
+                  />
+                  <p className="mt-2 text-xs text-c-subtle">
+                    Committed rate: <span className="font-semibold text-c-text">{formatCurrency(view.targetRatePerTb)}/TB</span>
+                    {' '}· <span className="font-semibold text-c-text">{formatCurrency(view.projectedTargetMonthlyCostUsd)}/mo</span>{' '}at today&apos;s volume
+                  </p>
                 </div>
               </div>
             </div>

@@ -248,10 +248,6 @@ export interface ModelConfig {
   pricingDiscountConfirmed?: boolean;
 }
 
-/** Committed-tier target the AE is pitching an existing Uncommitted customer toward. Derived from
- *  B2ServiceTier (rather than a hand-parallel union) so the two can't drift. */
-export type TargetB2ServiceTier = Exclude<B2ServiceTier, 'uncommitted'>;
-
 /**
  * AE-entered facts about an existing B2 customer's current usage, for the commit-upsell flow.
  * This is the commit-upsell analog of ParsedBill — but there's no bill, so it's hand-entered (or,
@@ -268,8 +264,9 @@ export interface B2UsageInput {
   dataGrowthRatePercent: number;
   dataGrowthFixedTbPerMonth: number;
   dataGrowthPeriod: 'monthly' | 'yearly';
-  /** The tier this opportunity is pitching the customer toward. */
-  targetTier: TargetB2ServiceTier;
+  /** The commit-upsell pitch is always toward the Committed tier — moving an existing pay-as-you-go
+   *  customer onto a contract. (Overdrive is a separate, custom-negotiated motion, not this flow.) */
+  targetTier: 'committed';
   /** AE-entered committed-tier discount off the customer's current implied $/TB, if one has been
    *  negotiated (0 if not — Committed is typically flat $/TB vs Uncommitted). Percent, e.g. 5 = 5% off. */
   committedDiscountPercent: number;

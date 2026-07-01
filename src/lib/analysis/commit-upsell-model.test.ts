@@ -40,13 +40,6 @@ describe('computeCommitUpsellView', () => {
     expect(view.monthlyDeltaUsd).toBeCloseTo(69.5, 2);
   });
 
-  it('targets Overdrive using its starting rate, not the customer implied rate', () => {
-    const view = computeCommitUpsellView(usage({ targetTier: 'overdrive' }));
-    expect(view.targetSpec.tier).toBe('overdrive');
-    expect(view.projectedTargetMonthlyCostUsd).toBeCloseTo(1500, 2); // 100 TB * $15/TB
-    expect(view.monthlyDeltaUsd).toBeLessThan(0); // honestly reported as a cost increase
-  });
-
   it('produces a 12-month projection series honoring the growth assumption', () => {
     const view = computeCommitUpsellView(usage());
     expect(view.projections).toHaveLength(12);

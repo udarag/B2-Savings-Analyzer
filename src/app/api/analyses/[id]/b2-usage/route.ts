@@ -56,7 +56,7 @@ export async function POST(
       dataGrowthRatePercent: Number(body.dataGrowthRatePercent) || 0,
       dataGrowthFixedTbPerMonth: Number(body.dataGrowthFixedTbPerMonth) || 0,
       dataGrowthPeriod: body.dataGrowthPeriod === 'monthly' ? 'monthly' : 'yearly',
-      targetTier: body.targetTier === 'overdrive' ? 'overdrive' : 'committed',
+      targetTier: 'committed', // commit-upsell always targets Committed; Overdrive isn't part of this flow
       committedDiscountPercent: Number(body.committedDiscountPercent) || 0,
       source: 'manual',
       createdAt: existing?.createdAt ?? now,

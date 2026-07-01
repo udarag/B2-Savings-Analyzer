@@ -1,9 +1,9 @@
 'use client';
 
-// Customer-facing report for the commit-upsell flow: an existing B2 Uncommitted customer being
-// pitched to sign a contract (or jump to Overdrive). There's no source-cloud bill and usually no
-// dollar savings — the pitch is throughput headroom — so this leads with a throughput ladder
-// instead of the migration report's dollar-savings hero, and never fabricates a "savings" figure.
+// Customer-facing report for the commit-upsell flow: an existing B2 Uncommitted (pay-as-you-go)
+// customer being pitched to sign a contract and move to the Committed tier. There's no source-cloud
+// bill and usually no dollar savings — the pitch is throughput headroom — so this leads with a
+// throughput ladder instead of the migration report's dollar-savings hero, never a fabricated "savings".
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -173,9 +173,7 @@ export function CommitUpsellReport({ analysisId, meta }: CommitUpsellReportProps
                   {' '}
                   {view.discountPercent > 0
                     ? `The contract also includes a ${view.discountPercent}% discount, bringing storage to ${formatCurrency(view.targetRatePerTb)}/TB.`
-                    : view.targetSpec.unlimitedEgress
-                      ? `Storage is modeled at ${formatCurrency(view.targetRatePerTb)}/TB, and egress becomes unlimited.`
-                      : `Storage stays at ${formatCurrency(view.targetRatePerTb)}/TB — the gain is the throughput headroom and removing throttling risk.`}
+                    : `Storage stays at ${formatCurrency(view.targetRatePerTb)}/TB — the gain is the throughput headroom and removing throttling risk.`}
                 </p>
               </div>
 

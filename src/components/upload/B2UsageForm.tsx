@@ -14,10 +14,10 @@ interface B2UsageFormProps {
 
 /**
  * Captures an existing B2 customer's *current usage* for the commit-upsell flow — storage and
- * monthly spend, from a Bzadmin usage export or typed in. The deal levers (growth, target tier,
- * discount) live on the deal-sizing dashboard, not here; this step is just the facts. Growth parsed
- * from the export (and any prior deal settings when editing) ride along as saved defaults so the
- * deal-sizing page opens with them.
+ * monthly spend, from a Bzadmin usage export or typed in. The deal levers (growth, discount) live on
+ * the deal-sizing dashboard, not here; this step is just the facts. Growth parsed from the export
+ * (and any prior deal settings when editing) ride along as saved defaults so the deal-sizing page
+ * opens with them.
  */
 export function B2UsageForm({ analysisId, onSaved, initialValue, submitLabel }: B2UsageFormProps) {
   const [currentStorageTb, setCurrentStorageTb] = useState(initialValue ? String(initialValue.currentStorageTb) : '');
@@ -53,7 +53,7 @@ export function B2UsageForm({ analysisId, onSaved, initialValue, submitLabel }: 
           dataGrowthRatePercent: growthRatePercent,
           dataGrowthFixedTbPerMonth: growthFixedTbPerMonth,
           // Deal levers keep their prior/default values; tuned on the deal-sizing dashboard.
-          targetTier: initialValue?.targetTier ?? 'committed',
+          targetTier: 'committed', // commit-upsell always targets Committed
           committedDiscountPercent: initialValue?.committedDiscountPercent ?? 0,
         }),
       });
