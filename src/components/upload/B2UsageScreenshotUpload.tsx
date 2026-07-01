@@ -1,19 +1,22 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import type { ParsedUsageFields } from '@/lib/analysis/usage-screenshot-parse';
 
 interface B2UsageScreenshotUploadProps {
   analysisId: string;
+  /** Called with the extracted fields when the screenshot is read successfully, so the form pre-fills. */
+  onParsed?: (parsed: ParsedUsageFields) => void;
 }
 
 /**
- * Optional, supplementary affordance next to the manual B2UsageForm fields: upload a screenshot
- * of the customer's B2 usage dashboard. Screenshot parsing is NOT implemented — the backend route
- * stores the image and returns 501, which this component treats as an expected, neutral outcome
- * (not an error) since the AE is always expected to fill in the manual fields regardless.
+ * Optional, supplementary affordance next to the manual B2UsageForm fields: upload a screenshot of
+ * the customer's B2 usage summary. When the backend has vision parsing configured it extracts the
+ * numbers and pre-fills the form; otherwise (or on failure) it shows a neutral note and the AE fills
+ * the fields in by hand. Either way this never blocks manual entry.
  */
-export function B2UsageScreenshotUpload({ analysisId }: B2UsageScreenshotUploadProps) {
-  const [status, setStatus] = useState<'idle' | 'uploading' | 'not-implemented' | 'error'>('idle');
+export function B2UsageScreenshotUpload({ analysisId, onParsed }: B2UsageScreenshotUploadProps) {
+  const [status, setStatus] = useState<'idle' | 'uploading' | 'parsed' | 'manual' | 'error'>('idle');
 
   const handleFile = useCallback(async (file: File) => {
     setStatus('uploading');
@@ -24,11 +27,22 @@ export function B2UsageScreenshotUpload({ analysisId }: B2UsageScreenshotUploadP
         method: 'POST',
         body: formData,
       });
-      setStatus(res.status === 501 ? 'not-implemented' : res.ok ? 'not-implemented' : 'error');
+      if (!res.ok) {
+        setStatus('error');
+        return;
+      }
+      const data = await res.json();
+      if (data.status === 'parsed' && data.parsed) {
+        onParsed?.(data.parsed as ParsedUsageFields);
+        setStatus('parsed');
+      } else {
+        // 'unavailable' (no key configured) or 'failed' (couldn't read) — both fall back to manual.
+        setStatus('manual');
+      }
     } catch {
       setStatus('error');
     }
-  }, [analysisId]);
+  }, [analysisId, onParsed]);
 
   return (
     <div>
@@ -54,7 +68,7 @@ export function B2UsageScreenshotUpload({ analysisId }: B2UsageScreenshotUploadP
         }}
       >
         {status === 'uploading' ? (
-          <p className="text-sm text-c-muted">Uploading…</p>
+          <p className="text-sm text-c-muted">Reading screenshot…</p>
         ) : (
           <>
             <p className="text-sm font-semibold text-c-text">
@@ -64,8 +78,11 @@ export function B2UsageScreenshotUpload({ analysisId }: B2UsageScreenshotUploadP
           </>
         )}
       </div>
-      {status === 'not-implemented' && (
-        <p className="mt-2 text-xs text-c-subtle">Couldn&apos;t auto-read this yet — please fill in the fields below.</p>
+      {status === 'parsed' && (
+        <p className="mt-2 text-xs text-c-green">Read the screenshot and filled in the fields below — double-check them before saving.</p>
+      )}
+      {status === 'manual' && (
+        <p className="mt-2 text-xs text-c-subtle">Couldn&apos;t auto-read this — please fill in the fields below.</p>
       )}
       {status === 'error' && (
         <p className="mt-2 text-xs text-c-red">Couldn&apos;t upload the screenshot — please fill in the fields below.</p>

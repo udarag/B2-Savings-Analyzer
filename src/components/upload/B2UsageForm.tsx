@@ -175,7 +175,16 @@ export function B2UsageForm({ analysisId, onSaved, initialValue, submitLabel }: 
         )}
       </FieldCard>
 
-      <B2UsageScreenshotUpload analysisId={analysisId} />
+      <B2UsageScreenshotUpload
+        analysisId={analysisId}
+        onParsed={(parsed) => {
+          // Pre-fill from the screenshot; AE reviews/edits before saving. Growth may be omitted.
+          setCurrentStorageTb(String(parsed.currentStorageTb));
+          setCurrentMonthlySpendUsd(String(parsed.currentMonthlySpendUsd));
+          if (parsed.dataGrowthMode) setGrowthMode(parsed.dataGrowthMode);
+          if (parsed.dataGrowthRatePercent != null) setGrowthRatePercent(String(parsed.dataGrowthRatePercent));
+        }}
+      />
 
       {error && <p className="text-sm text-c-red">{error}</p>}
       <div className="flex justify-end">
