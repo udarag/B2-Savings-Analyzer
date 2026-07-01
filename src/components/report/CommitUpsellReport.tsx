@@ -11,6 +11,12 @@ import type { Analysis, B2UsageInput } from '@/types/analysis';
 import { computeCommitUpsellView } from '@/lib/analysis/commit-upsell-model';
 import { formatCurrency } from '@/components/shared/FormatCurrency';
 
+// Local throughput formatter (rolls Gbit/s over to Tbps at ≥1000) so this report stays
+// self-contained. Kept separate from the deal-builder's helper on purpose.
+function formatBandwidth(gbit: number): string {
+  return gbit >= 1000 ? `${(gbit / 1000).toLocaleString()} Tbps` : `${gbit.toLocaleString()} Gbit/s`;
+}
+
 function BackblazeLogo({ compact = false }: { compact?: boolean }) {
   return (
     <div className="flex shrink-0 items-center" aria-label="Backblaze">
@@ -159,32 +165,39 @@ export function CommitUpsellReport({ analysisId, meta }: CommitUpsellReportProps
               <div className="mb-6 report-narrative-section">
                 <h2 className="text-lg font-semibold mb-3 border-l-4 border-bb-red pl-3">What changes for {reportCompanyName}?</h2>
                 <p className="text-sm text-gray-700 leading-relaxed">
-                  {reportCompanyName} is currently on B2&apos;s Uncommitted (pay-as-you-go) tier, capped at {view.currentSpec.throughputGbitPut} Gbit/s throughput
-                  and {view.currentSpec.rpsPut?.toLocaleString() ?? 'a limited number of'} requests per second on PUT and GET each. Moving to
-                  the {view.targetSpec.customerLabel} tier raises that ceiling to {view.targetSpec.throughputGbitPut} Gbit/s{view.targetSpec.throughputGbitMax ? ` (scaling to ${view.targetSpec.throughputGbitMax} Gbit/s)` : ''}
-                  {view.targetSpec.rpsPut === null ? ', with request throughput that scales alongside it' : `, with a ${view.targetSpec.rpsPut.toLocaleString()} RPS ceiling`}.
+                  {reportCompanyName} is currently on B2&apos;s Uncommitted (pay-as-you-go) tier at about {formatCurrency(view.currentRatePerTb)}/TB, capped
+                  at {formatBandwidth(view.currentSpec.throughputGbitGet)} of throughput and {view.currentSpec.rpsPut?.toLocaleString() ?? 'a limited number of'} requests
+                  per second on PUT and GET each. Committing to a contract moves them to the {view.targetSpec.customerLabel} tier —{' '}
+                  {formatBandwidth(view.targetSpec.throughputGbitGet)}{view.targetSpec.throughputGbitMax ? ` (scaling to ${formatBandwidth(view.targetSpec.throughputGbitMax)})` : ''}
+                  {view.targetSpec.rpsGet === null ? ' with request throughput that scales alongside it' : ` and ${view.targetSpec.rpsGet.toLocaleString()} requests per second`}.
                   {' '}
-                  {Math.abs(view.monthlyDeltaUsd) < 1
-                    ? 'Storage pricing stays essentially flat — the value here is capacity headroom, not a lower bill.'
-                    : view.monthlyDeltaUsd > 0
-                      ? `Storage pricing also comes down slightly, to an estimated ${formatCurrency(view.projectedTargetMonthlyCostUsd)}/month.`
-                      : `Storage pricing moves to an estimated ${formatCurrency(view.projectedTargetMonthlyCostUsd)}/month — the value here is capacity headroom and removing throttling risk, not a lower bill.`}
+                  {view.discountPercent > 0
+                    ? `The contract also includes a ${view.discountPercent}% discount, bringing storage to ${formatCurrency(view.targetRatePerTb)}/TB.`
+                    : view.targetSpec.unlimitedEgress
+                      ? `Storage is modeled at ${formatCurrency(view.targetRatePerTb)}/TB, and egress becomes unlimited.`
+                      : `Storage stays at ${formatCurrency(view.targetRatePerTb)}/TB — the gain is the throughput headroom and removing throttling risk.`}
                 </p>
               </div>
 
+              {/* Current vs committed across price and rate limits — the core of the pitch. */}
               <div className="mb-6 rounded-lg border border-gray-200 overflow-hidden print:break-inside-avoid keep-together">
-                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                  <h2 className="text-base font-semibold text-gray-900">Estimated Cost</h2>
-                </div>
-                <div className="grid grid-cols-2 gap-px bg-gray-200 text-sm">
-                  <div className="bg-white p-4">
-                    <p className="text-xs font-medium text-gray-500">Today (Uncommitted)</p>
-                    <p className="mt-1 font-display text-base font-bold text-gray-900">{formatCurrency(view.currentMonthlyCostUsd)}/mo</p>
-                  </div>
-                  <div className="bg-white p-4">
-                    <p className="text-xs font-medium text-gray-500">At {view.targetSpec.customerLabel}</p>
-                    <p className="mt-1 font-display text-base font-bold text-bb-red-dark">{formatCurrency(view.projectedTargetMonthlyCostUsd)}/mo</p>
-                  </div>
+                <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-px bg-gray-200 text-sm">
+                  <div className="bg-gray-50 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-gray-500">What you get</div>
+                  <div className="bg-gray-50 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-gray-500">Today · Pay-as-you-go</div>
+                  <div className="bg-bb-red-light px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-bb-red-dark">With {view.targetSpec.customerLabel}</div>
+                  {[
+                    { label: 'Storage rate', a: `${formatCurrency(view.currentRatePerTb)}/TB`, b: `${formatCurrency(view.targetRatePerTb)}/TB` },
+                    { label: 'Bandwidth (PUT/GET)', a: formatBandwidth(view.currentSpec.throughputGbitGet), b: view.targetSpec.throughputGbitMax ? `${formatBandwidth(view.targetSpec.throughputGbitGet)}, up to ${formatBandwidth(view.targetSpec.throughputGbitMax)}` : formatBandwidth(view.targetSpec.throughputGbitGet) },
+                    { label: 'Requests/sec (PUT/GET)', a: view.currentSpec.rpsGet?.toLocaleString() ?? '—', b: view.targetSpec.rpsGet === null ? 'Scales with throughput' : view.targetSpec.rpsGet.toLocaleString() },
+                    { label: 'Included egress', a: view.currentSpec.unlimitedEgress ? 'Unlimited' : '3× stored data', b: view.targetSpec.unlimitedEgress ? 'Unlimited' : '3× stored data' },
+                    { label: 'Estimated monthly', a: `${formatCurrency(view.currentMonthlyCostUsd)}/mo`, b: `${formatCurrency(view.projectedTargetMonthlyCostUsd)}/mo` },
+                  ].map((row) => (
+                    <div key={row.label} className="contents">
+                      <div className="bg-white px-4 py-3 text-xs font-medium text-gray-600">{row.label}</div>
+                      <div className="bg-white px-4 py-3 text-gray-900">{row.a}</div>
+                      <div className="bg-bb-red-light/50 px-4 py-3 font-semibold text-gray-900">{row.b}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -195,8 +208,8 @@ export function CommitUpsellReport({ analysisId, meta }: CommitUpsellReportProps
                     <tr>
                       <td className="py-2 font-medium text-gray-600 w-1/3">Current usage</td>
                       <td className="py-2">
-                        {usage.currentStorageTb.toLocaleString()} TB, {formatCurrency(usage.currentMonthlySpendUsd)}/month
-                        ({usage.source === 'manual' ? 'entered by your account team' : 'from a usage screenshot'})
+                        {usage.currentStorageTb.toLocaleString()} TB at {formatCurrency(view.currentRatePerTb)}/TB, {formatCurrency(usage.currentMonthlySpendUsd)}/month
+                        ({usage.source === 'manual' ? 'entered by your account team' : 'from a usage export'})
                       </td>
                     </tr>
                     <tr>
@@ -205,7 +218,10 @@ export function CommitUpsellReport({ analysisId, meta }: CommitUpsellReportProps
                     </tr>
                     <tr>
                       <td className="py-2 font-medium text-gray-600">Target service tier</td>
-                      <td className="py-2">{view.targetSpec.customerLabel}</td>
+                      <td className="py-2">
+                        {view.targetSpec.customerLabel} at {formatCurrency(view.targetRatePerTb)}/TB
+                        {view.discountPercent > 0 ? ` (${view.discountPercent}% contract discount)` : ''}
+                      </td>
                     </tr>
                     <tr>
                       <td className="py-2 font-medium text-gray-600">Pricing date</td>

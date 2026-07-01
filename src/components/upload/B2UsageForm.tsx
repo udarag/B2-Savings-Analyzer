@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { B2UsageInput, TargetB2ServiceTier } from '@/types/analysis';
+import type { B2UsageInput } from '@/types/analysis';
 import { B2UsageExportUpload } from './B2UsageExportUpload';
 
 interface B2UsageFormProps {
@@ -13,19 +13,20 @@ interface B2UsageFormProps {
 }
 
 /**
- * Manual-entry form for the commit-upsell flow: an existing B2 Uncommitted customer with no
- * source-cloud bill to parse. Collects just what the throughput-upgrade pitch needs — current
- * usage/spend, a growth assumption (reusing the same vocabulary as the migration flow's growth
- * control), and which tier the AE is pitching toward.
+ * Captures an existing B2 customer's *current usage* for the commit-upsell flow — storage and
+ * monthly spend, from a Bzadmin usage export or typed in. The deal levers (growth, target tier,
+ * discount) live on the deal-sizing dashboard, not here; this step is just the facts. Growth parsed
+ * from the export (and any prior deal settings when editing) ride along as saved defaults so the
+ * deal-sizing page opens with them.
  */
 export function B2UsageForm({ analysisId, onSaved, initialValue, submitLabel }: B2UsageFormProps) {
   const [currentStorageTb, setCurrentStorageTb] = useState(initialValue ? String(initialValue.currentStorageTb) : '');
   const [currentMonthlySpendUsd, setCurrentMonthlySpendUsd] = useState(initialValue ? String(initialValue.currentMonthlySpendUsd) : '');
+  // Deal-sizing fields aren't edited here — carried through so the saved record stays complete and
+  // the deal-sizing page opens with the parsed growth / prior settings.
   const [growthMode, setGrowthMode] = useState<'percent' | 'fixed-tb'>(initialValue?.dataGrowthMode ?? 'percent');
-  const [growthRatePercent, setGrowthRatePercent] = useState(initialValue ? String(initialValue.dataGrowthRatePercent) : '10');
-  const [growthFixedTbPerMonth, setGrowthFixedTbPerMonth] = useState(initialValue ? String(initialValue.dataGrowthFixedTbPerMonth) : '0');
-  const [targetTier, setTargetTier] = useState<TargetB2ServiceTier>(initialValue?.targetTier ?? 'committed');
-  const [committedDiscountPercent, setCommittedDiscountPercent] = useState(initialValue ? String(initialValue.committedDiscountPercent) : '0');
+  const [growthRatePercent, setGrowthRatePercent] = useState(initialValue ? initialValue.dataGrowthRatePercent : 10);
+  const [growthFixedTbPerMonth] = useState(initialValue ? initialValue.dataGrowthFixedTbPerMonth : 0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -49,10 +50,11 @@ export function B2UsageForm({ analysisId, onSaved, initialValue, submitLabel }: 
           currentStorageTb: Number(currentStorageTb),
           currentMonthlySpendUsd: Number(currentMonthlySpendUsd),
           dataGrowthMode: growthMode,
-          dataGrowthRatePercent: Number(growthRatePercent) || 0,
-          dataGrowthFixedTbPerMonth: Number(growthFixedTbPerMonth) || 0,
-          targetTier,
-          committedDiscountPercent: Number(committedDiscountPercent) || 0,
+          dataGrowthRatePercent: growthRatePercent,
+          dataGrowthFixedTbPerMonth: growthFixedTbPerMonth,
+          // Deal levers keep their prior/default values; tuned on the deal-sizing dashboard.
+          targetTier: initialValue?.targetTier ?? 'committed',
+          committedDiscountPercent: initialValue?.committedDiscountPercent ?? 0,
         }),
       });
       if (!res.ok) throw new Error('Failed to save usage');
@@ -69,11 +71,11 @@ export function B2UsageForm({ analysisId, onSaved, initialValue, submitLabel }: 
       <B2UsageExportUpload
         analysisId={analysisId}
         onParsed={(parsed) => {
-          // Pre-fill from the export; AE reviews/edits before saving. Growth may be omitted.
+          // Pre-fill from the export; AE reviews before saving. Growth rides along to deal sizing.
           setCurrentStorageTb(String(parsed.currentStorageTb));
           setCurrentMonthlySpendUsd(String(parsed.currentMonthlySpendUsd));
           if (parsed.dataGrowthMode) setGrowthMode(parsed.dataGrowthMode);
-          if (parsed.dataGrowthRatePercent != null) setGrowthRatePercent(String(parsed.dataGrowthRatePercent));
+          if (parsed.dataGrowthRatePercent != null) setGrowthRatePercent(parsed.dataGrowthRatePercent);
         }}
       />
 
@@ -107,90 +109,7 @@ export function B2UsageForm({ analysisId, onSaved, initialValue, submitLabel }: 
           />
         </FieldCard>
       </div>
-
-      <FieldCard label="Growth assumption">
-        <div className="mb-3 grid grid-cols-2 gap-1.5 rounded-lg bg-c-surface2 p-1">
-          <button
-            type="button"
-            onClick={() => setGrowthMode('percent')}
-            className={`rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
-              growthMode === 'percent' ? 'bg-[#e20626] text-white' : 'text-c-muted hover:text-c-text'
-            }`}
-          >
-            % Growth
-          </button>
-          <button
-            type="button"
-            onClick={() => setGrowthMode('fixed-tb')}
-            className={`rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
-              growthMode === 'fixed-tb' ? 'bg-[#e20626] text-white' : 'text-c-muted hover:text-c-text'
-            }`}
-          >
-            Fixed TB/Month
-          </button>
-        </div>
-        {growthMode === 'percent' ? (
-          <input
-            type="number"
-            min={0}
-            step={1}
-            value={growthRatePercent}
-            onChange={(e) => setGrowthRatePercent(e.target.value)}
-            placeholder="Annual growth %"
-            className="w-full rounded-[9px] border border-c-border2 bg-c-bg px-3 py-2.5 text-sm font-medium text-c-text outline-none focus:border-c-red"
-          />
-        ) : (
-          <input
-            type="number"
-            min={0}
-            step={0.1}
-            value={growthFixedTbPerMonth}
-            onChange={(e) => setGrowthFixedTbPerMonth(e.target.value)}
-            placeholder="Added TB per month"
-            className="w-full rounded-[9px] border border-c-border2 bg-c-bg px-3 py-2.5 text-sm font-medium text-c-text outline-none focus:border-c-red"
-          />
-        )}
-      </FieldCard>
-
-      <FieldCard label="Target service tier">
-        <div className="grid grid-cols-2 gap-1.5 rounded-lg bg-c-surface2 p-1">
-          <button
-            type="button"
-            onClick={() => setTargetTier('committed')}
-            className={`rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
-              targetTier === 'committed' ? 'bg-[#e20626] text-white' : 'text-c-muted hover:text-c-text'
-            }`}
-          >
-            Committed
-          </button>
-          <button
-            type="button"
-            onClick={() => setTargetTier('overdrive')}
-            className={`rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
-              targetTier === 'overdrive' ? 'bg-[#e20626] text-white' : 'text-c-muted hover:text-c-text'
-            }`}
-          >
-            Overdrive
-          </button>
-        </div>
-        {targetTier === 'committed' && (
-          <div className="mt-3">
-            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-c-subtle">
-              Negotiated discount off current rate (optional)
-            </label>
-            <input
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              value={committedDiscountPercent}
-              onChange={(e) => setCommittedDiscountPercent(e.target.value)}
-              placeholder="0"
-              className="w-full rounded-[9px] border border-c-border2 bg-c-bg px-3 py-2.5 text-sm font-medium text-c-text outline-none focus:border-c-red"
-            />
-          </div>
-        )}
-      </FieldCard>
+      <p className="text-xs text-c-subtle">Next you&apos;ll size the deal — growth, target tier, and any contract discount.</p>
 
       {error && <p className="text-sm text-c-red">{error}</p>}
       <div className="flex justify-end">
@@ -199,7 +118,7 @@ export function B2UsageForm({ analysisId, onSaved, initialValue, submitLabel }: 
           disabled={saving}
           className="inline-flex items-center gap-2 rounded-[10px] bg-[#e20626] px-5 py-2.5 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(226,6,38,0.28)] transition-colors hover:bg-[#b40a23] disabled:opacity-50"
         >
-          {saving ? 'Saving…' : submitLabel ?? 'Save usage →'}
+          {saving ? 'Saving…' : submitLabel ?? 'Continue to deal sizing →'}
         </button>
       </div>
     </div>

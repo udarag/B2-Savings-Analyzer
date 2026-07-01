@@ -11,11 +11,18 @@ import { getServiceTierSpec, type ServiceTierSpec } from '@/lib/pricing/service-
 export interface CommitUpsellView {
   currentSpec: ServiceTierSpec;
   targetSpec: ServiceTierSpec;
+  /** The customer's current pay-as-you-go rate, implied from spend / storage. */
+  currentRatePerTb: number;
+  /** The rate at the target tier: current rate minus the AE's contract discount (Committed), or
+   *  Overdrive's starting rate. */
+  targetRatePerTb: number;
+  /** The contract discount the AE is modeling, as a %. Only meaningful for a Committed target. */
+  discountPercent: number;
   currentMonthlyCostUsd: number;
   projectedTargetMonthlyCostUsd: number;
-  /** currentMonthlyCostUsd - projectedTargetMonthlyCostUsd. Usually ~0 for Committed (flat $/TB);
-   *  can be negative for Overdrive if its rate exceeds the customer's current one — reported
-   *  honestly as a cost increase, never hidden or reframed as savings. */
+  /** currentMonthlyCostUsd - projectedTargetMonthlyCostUsd. Usually ~0 for Committed at no discount
+   *  (flat $/TB); positive when the AE discounts to close the contract; can be negative for
+   *  Overdrive if its rate exceeds the customer's current one — reported honestly, never hidden. */
   monthlyDeltaUsd: number;
   projections: ProjectionPoint[];
   growthLabel: string;
@@ -60,6 +67,9 @@ export function computeCommitUpsellView(usage: B2UsageInput): CommitUpsellView {
   return {
     currentSpec,
     targetSpec,
+    currentRatePerTb: round2(impliedRatePerTb),
+    targetRatePerTb: round2(targetRatePerTb),
+    discountPercent: usage.targetTier === 'overdrive' ? 0 : usage.committedDiscountPercent,
     currentMonthlyCostUsd,
     projectedTargetMonthlyCostUsd,
     monthlyDeltaUsd,
