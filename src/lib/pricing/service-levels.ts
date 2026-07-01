@@ -37,3 +37,14 @@ export function getServiceTierSpec(tier: B2ServiceTier): ServiceTierSpec {
 export function hasUnlimitedEgress(tier: B2ServiceTier): boolean {
   return SERVICE_LEVELS[tier].unlimitedEgress;
 }
+
+/**
+ * Human-readable throughput label for a Gbit/s figure. Rolls over to Tbps at/above 1000 Gbit/s so
+ * Overdrive's ceiling reads "1 Tbps" instead of "1000 Gbit/s". Kept next to the specs so every
+ * surface (deal builder, customer report) formats throughput the same way.
+ */
+export function formatThroughput(gbitPerSec: number): string {
+  return gbitPerSec >= 1000
+    ? `${(gbitPerSec / 1000).toLocaleString()} Tbps`
+    : `${gbitPerSec.toLocaleString()} Gbit/s`;
+}

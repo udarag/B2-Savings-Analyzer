@@ -24,6 +24,7 @@ import {
   getServiceTierComparison,
   getServiceTierSpec,
   hasUnlimitedEgress,
+  formatThroughput,
   type ServiceTierSpec,
 } from '@/lib/analysis/service-tier-comparison';
 import {
@@ -871,7 +872,7 @@ function ReportPageContent() {
             <tr>
               <td className="py-2 font-medium text-gray-600">B2 Service Level</td>
               <td className="py-2">
-                {serviceTierComparison[0].customerLabel} — {serviceTierComparison[0].throughputGbitPut} Gbit/s PUT / {serviceTierComparison[0].throughputGbitGet} Gbit/s GET
+                {serviceTierComparison[0].customerLabel} — {formatThroughput(serviceTierComparison[0].throughputGbitGet)} GET / {formatThroughput(serviceTierComparison[0].throughputGbitPut)} PUT
               </td>
             </tr>
             <tr>
@@ -1672,22 +1673,48 @@ function ServiceTierColumn({ spec, isSelected }: { spec: ServiceTierSpec; isSele
         <p className={`text-sm font-semibold ${isSelected ? 'text-bb-red-dark' : 'text-gray-900'}`}>{spec.customerLabel}</p>
         {isSelected && <span className="rounded-full bg-bb-red px-2 py-0.5 text-[10px] font-bold uppercase text-white">Modeled</span>}
       </div>
-      <dl className="space-y-1 text-xs">
-        <div className="flex justify-between">
-          <dt className="text-gray-500">Throughput</dt>
-          <dd className="font-medium text-gray-900">{spec.throughputGbitPut} Gbit/s PUT / {spec.throughputGbitGet} Gbit/s GET</dd>
+      <dl className="space-y-2.5 text-xs">
+        {/* Bandwidth and RPS are split into GET/PUT rows so each figure is easy to scan instead of
+            being crammed onto one "X PUT / Y GET" line. */}
+        <div>
+          <dt className="mb-1 font-semibold uppercase tracking-wide text-gray-500 text-[10px]">Bandwidth</dt>
+          <dd className="space-y-0.5 font-medium text-gray-900">
+            <ReportSpecRow label="GET" value={formatThroughput(spec.throughputGbitGet)} />
+            <ReportSpecRow label="PUT" value={formatThroughput(spec.throughputGbitPut)} />
+            {spec.throughputGbitMax != null && (
+              <p className="text-[11px] font-normal text-gray-400">Scales up to {formatThroughput(spec.throughputGbitMax)}</p>
+            )}
+          </dd>
         </div>
-        <div className="flex justify-between">
-          <dt className="text-gray-500">RPS</dt>
-          <dd className="font-medium text-gray-900">
-            {spec.rpsPut === null ? 'Scales with throughput' : `${spec.rpsPut.toLocaleString()} PUT / ${spec.rpsGet!.toLocaleString()} GET`}
+        <div>
+          <dt className="mb-1 font-semibold uppercase tracking-wide text-gray-500 text-[10px]">RPS</dt>
+          <dd className="space-y-0.5 font-medium text-gray-900">
+            {spec.rpsGet === null ? (
+              <p>Scales with throughput</p>
+            ) : (
+              <>
+                <ReportSpecRow label="GET" value={spec.rpsGet.toLocaleString()} />
+                <ReportSpecRow label="PUT" value={spec.rpsPut!.toLocaleString()} />
+              </>
+            )}
           </dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-gray-500">Egress</dt>
-          <dd className="font-medium text-gray-900">{spec.unlimitedEgress ? 'Unlimited, free' : '3x stored data free'}</dd>
+          <dt className="font-semibold uppercase tracking-wide text-gray-500 text-[10px]">Egress</dt>
+          <dd className="font-medium text-gray-900">{spec.unlimitedEgress ? 'Unlimited, free' : '3× stored data free'}</dd>
         </div>
       </dl>
+    </div>
+  );
+}
+
+/** One GET/PUT figure row inside a service-tier column (e.g. "GET … 100 Gbit/s"). Right-aligned,
+ *  tabular figures so the two rows line up cleanly under their Bandwidth/RPS heading. */
+function ReportSpecRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="text-gray-400">{label}</span>
+      <span className="tabular-nums">{value}</span>
     </div>
   );
 }

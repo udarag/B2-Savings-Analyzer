@@ -1,18 +1,15 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatCurrency } from '../shared/FormatCurrency';
 import b2Pricing from '@/lib/pricing/b2.json';
 import type { EgressConfig, B2ServiceTier } from '@/types/analysis';
 import { formatGrowthAssumption, projectStorageGbForMonth } from '@/lib/engine/projections';
-import { getServiceTierSpec } from '@/lib/pricing/service-levels';
+import { getServiceTierSpec, formatThroughput } from '@/lib/pricing/service-levels';
 
+// Left-to-right order for the segmented control; the labels themselves come from each tier's spec
+// (getServiceTierSpec(...).label) so the control can't drift from the pricing source of truth.
 const SERVICE_TIERS: readonly B2ServiceTier[] = ['uncommitted', 'committed', 'overdrive'];
-const SERVICE_TIER_LABELS: Record<B2ServiceTier, string> = {
-  uncommitted: 'Uncommitted',
-  committed: 'Committed',
-  overdrive: 'Overdrive',
-};
 
 const B2_LIST_PRICE_PER_TB = b2Pricing.storage.perTbMonth;
 // Tolerance for matching the live price back to a preset. Preset prices are rounded to cents, so an
@@ -73,22 +70,28 @@ export function DealSizing({
   udmCostToBackblaze,
 }: DealSizingProps) {
   const priceInputRef = useRef<HTMLInputElement>(null);
-  const inferredPreset = getActivePreset(
-    b2PricePerTb,
-    roundPrice(B2_LIST_PRICE_PER_TB * 0.95),
-    roundPrice(B2_LIST_PRICE_PER_TB * 0.9),
-  );
+  // The $/TB the AE was modeling before switching into Overdrive. Overdrive suggests its premium
+  // starting rate on entry; stashing the prior price here lets us restore it on the way back out so
+  // leaving Overdrive never strands that premium rate on a Standard tier. null = not captured yet.
+  const preOverdrivePriceRef = useRef<number | null>(null);
+  // Reference ("list") price the presets and revenue comparison build around. Standard tiers anchor
+  // on B2's published storage list price; Overdrive is negotiated down from its own suggested
+  // starting rate, so its List/Discount tiles anchor on that instead (see tierPresetPrices). Recomputed
+  // whenever the tier changes so the tiles always reflect the selected tier's pricing.
+  const { list: listPrice, discount5: discount5Price, discount10: discount10Price } = tierPresetPrices(b2ServiceTier);
+  const inferredPreset = getActivePreset(b2PricePerTb, listPrice, discount5Price, discount10Price);
   const [customMode, setCustomMode] = useState(inferredPreset === 'custom');
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
   const [priceInputFocused, setPriceInputFocused] = useState(false);
   const [priceInputDraft, setPriceInputDraft] = useState(() => formatPriceNumber(b2PricePerTb));
 
-  const discount5Price = roundPrice(B2_LIST_PRICE_PER_TB * 0.95);
-  const discount10Price = roundPrice(B2_LIST_PRICE_PER_TB * 0.9);
-  const activePreset = customMode ? 'custom' : getActivePreset(b2PricePerTb, discount5Price, discount10Price);
-  const isCustom = activePreset === 'custom';
-  const discountPercent = B2_LIST_PRICE_PER_TB > 0
-    ? (1 - b2PricePerTb / B2_LIST_PRICE_PER_TB) * 100
+  // Uncommitted is pay-as-you-go: billed at the published list price with no negotiated discount. While
+  // it's selected the deal builder hides the discount/custom presets and locks the price to list.
+  const isFixedListPrice = b2ServiceTier === 'uncommitted';
+  const activePreset = customMode ? 'custom' : getActivePreset(b2PricePerTb, listPrice, discount5Price, discount10Price);
+  const isCustom = !isFixedListPrice && activePreset === 'custom';
+  const discountPercent = listPrice > 0
+    ? (1 - b2PricePerTb / listPrice) * 100
     : 0;
   // App basis is decimal TB (1 TB = 1000 GB), matching how B2 and hyperscaler bills price storage.
   const storageTb = totalStorageGb / 1000;
@@ -115,7 +118,7 @@ export function DealSizing({
   const listRevenue = getProjectedRevenueProfile({
     baseStorageGb: totalStorageGb,
     baseNonStorageRevenue,
-    pricePerTb: B2_LIST_PRICE_PER_TB,
+    pricePerTb: listPrice,
     termMonths,
     growthMode,
     growthRatePercent,
@@ -126,6 +129,16 @@ export function DealSizing({
   const listAnnualRevenue = listRevenue.firstYearRevenue;
   const listTermValue = listRevenue.termRevenue;
   const revenueDelta = termValue - listTermValue;
+
+  // Pin a fixed-list tier (Uncommitted) to the list price, even if a stale/legacy config loaded a
+  // discounted or custom rate for it. Only the parent price needs correcting here (a prop callback);
+  // the local custom/draft UI state derives from isFixedListPrice during render, so no local setState.
+  // Guarded by pricesMatch so it corrects once and then no-ops.
+  useEffect(() => {
+    if (isFixedListPrice && !pricesMatch(b2PricePerTb, listPrice)) {
+      onB2PriceChange(listPrice);
+    }
+  }, [isFixedListPrice, b2PricePerTb, listPrice, onB2PriceChange]);
 
   const handlePresetClick = (preset: PresetId) => {
     if (preset === 'custom') {
@@ -138,7 +151,7 @@ export function DealSizing({
 
     setCustomMode(false);
     const nextPrice = preset === 'list'
-      ? B2_LIST_PRICE_PER_TB
+      ? listPrice
       : preset === 'discount5'
         ? discount5Price
         : discount10Price;
@@ -148,16 +161,42 @@ export function DealSizing({
   };
 
   const handleServiceTierClick = (tier: B2ServiceTier) => {
+    // Re-clicking the active tier is a no-op. Without this guard, re-clicking Overdrive would run
+    // the "entering Overdrive" branch again and overwrite the stashed pre-Overdrive price with the
+    // current $15, breaking the restore-on-exit below.
+    if (tier === b2ServiceTier) return;
+
     const wasOverdrive = b2ServiceTier === 'overdrive';
     onServiceTierChange(tier);
-    // One-time suggestion, exactly like clicking a discount preset: sets the price but leaves it
-    // fully editable afterward. Only fires switching INTO Overdrive from a different tier, so it
-    // doesn't re-suggest $15 on every re-render while already on Overdrive.
-    if (tier === 'overdrive' && !wasOverdrive) {
-      const suggestedPrice = b2Pricing.serviceLevels.overdrive.startingPerTbMonth;
-      setCustomMode(true);
-      setPriceInputDraft(formatPriceNumber(suggestedPrice));
-      onB2PriceChange(suggestedPrice);
+
+    if (tier === 'uncommitted') {
+      // Uncommitted is pay-as-you-go: fixed at list, no discount/custom. Pin the price to list so a
+      // discount or custom rate carried over from another tier can't linger. Drop any stashed
+      // pre-Overdrive price — there's nothing to restore into a fixed-list tier.
+      preOverdrivePriceRef.current = null;
+      const uncommittedList = tierPresetPrices('uncommitted').list;
+      setCustomMode(false);
+      setPriceInputDraft(formatPriceNumber(uncommittedList));
+      onB2PriceChange(uncommittedList);
+    } else if (tier === 'overdrive') {
+      // Entering Overdrive: remember the current Standard-tier price, then land on Overdrive's own
+      // list rate — its starting reference, which the tiles now anchor on — so the "List" tile shows
+      // active. Fully editable afterward, exactly like clicking a preset.
+      preOverdrivePriceRef.current = b2PricePerTb;
+      const overdrivePrices = tierPresetPrices('overdrive');
+      setCustomMode(false);
+      setPriceInputDraft(formatPriceNumber(overdrivePrices.list));
+      onB2PriceChange(overdrivePrices.list);
+    } else {
+      // Committed. Coming from Overdrive, restore the price the AE had before Overdrive (falling back
+      // to list if none was captured); coming from Uncommitted, the price is already list. Either way
+      // re-sync the preset highlight against Committed's prices so a stale custom flag can't linger.
+      const targetPrices = tierPresetPrices('committed');
+      const nextPrice = wasOverdrive ? preOverdrivePriceRef.current ?? targetPrices.list : b2PricePerTb;
+      preOverdrivePriceRef.current = null;
+      setCustomMode(getActivePreset(nextPrice, targetPrices.list, targetPrices.discount5, targetPrices.discount10) === 'custom');
+      setPriceInputDraft(formatPriceNumber(nextPrice));
+      if (!pricesMatch(nextPrice, b2PricePerTb)) onB2PriceChange(nextPrice);
     }
   };
 
@@ -176,8 +215,8 @@ export function DealSizing({
 
     const parsedValue = Number(priceInputDraft);
     if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
-      setPriceInputDraft(formatPriceNumber(B2_LIST_PRICE_PER_TB));
-      onB2PriceChange(B2_LIST_PRICE_PER_TB);
+      setPriceInputDraft(formatPriceNumber(listPrice));
+      onB2PriceChange(listPrice);
       return;
     }
 
@@ -194,7 +233,7 @@ export function DealSizing({
       `Growth assumption: ${growthLabel}`,
       `Year 1 ARR with growth: ${formatCurrency(annualRevenue)}`,
       `TCV with growth (${formatTermLabel(termMonths)}): ${formatCurrency(termValue)}`,
-      `B2 list comparison with growth: ${formatCurrency(listAnnualRevenue)} Year 1 ARR / ${formatCurrency(listTermValue)} TCV at ${formatRate(B2_LIST_PRICE_PER_TB)}`,
+      `B2 list comparison with growth: ${formatCurrency(listAnnualRevenue)} Year 1 ARR / ${formatCurrency(listTermValue)} TCV at ${formatRate(listPrice)}`,
       `Revenue vs. list: ${revenueDelta >= 0 ? '+' : ''}${formatCurrency(revenueDelta)} over ${formatTermLabel(termMonths)}${discountPercent > 0 ? ` (${discountPercent.toFixed(1)}% discount)` : discountPercent < 0 ? ` (${Math.abs(discountPercent).toFixed(1)}% premium)` : ''}`,
       `UDM: ${udmEnabled ? `Enabled; estimated Backblaze migration cost ${formatCurrency(udmCostToBackblaze)}` : 'Not enabled'}`,
     ].join('\n');
@@ -223,42 +262,76 @@ export function DealSizing({
         <p className="mt-1 text-xs text-c-subtle">Internal Only — B2 Revenue Estimate</p>
       </div>
       <div className="p-5 space-y-4">
-        {/* B2 price control */}
+        {/* ARR / TCV summary sits first: the AE should see revenue-to-Backblaze — and how discounting
+            moves it — before touching the price levers below, since it drives the eventual commission. */}
         <div>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-xs font-medium text-c-muted">ARR / TCV Summary</p>
+          </div>
+          {/* Two rows only: the proposed price (active navy row — reflects whatever discount/custom
+              rate is entered) and the book list rate beneath it for comparison. No separate "custom"
+              row, since the proposed row already is the entered amount. */}
+          <div className="overflow-hidden rounded-xl border border-c-border">
+            <RevenueSummaryRow
+              label={isFixedListPrice ? 'List Price (fixed)' : 'Proposed B2 Price'}
+              rate={formatRate(b2PricePerTb)}
+              arr={annualRevenue}
+              tcv={termValue}
+              active
+            />
+            {/* Uncommitted is fixed at list, so the proposed price already is the list price — the
+                separate List comparison row only applies to the negotiable tiers. */}
+            {!isFixedListPrice && (
+              <RevenueSummaryRow
+                label="List Price"
+                rate={formatRate(listPrice)}
+                arr={listAnnualRevenue}
+                tcv={listTermValue}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* B2 price control */}
+        <div className="border-t border-c-border pt-3">
           <label className="block text-xs font-medium text-c-muted mb-1.5">
             B2 Price per TB/month
           </label>
-          {/* Editable rate input on the recessed surface2 fill with a red focus ring. */}
+          {/* Rate input on the recessed surface2 fill. Editable with a red focus ring on the
+              negotiable tiers; read-only (locked to list) on the fixed-price Uncommitted tier. */}
           <div className="mb-3 rounded-xl border border-c-border2 bg-c-surface2 p-3">
-            <div className="flex items-center rounded-lg border border-c-border2 bg-c-surface focus-within:border-[#e20626] focus-within:ring-2 focus-within:ring-c-red-soft">
+            <div className={`flex items-center rounded-lg border border-c-border2 bg-c-surface ${isFixedListPrice ? '' : 'focus-within:border-[#e20626] focus-within:ring-2 focus-within:ring-c-red-soft'}`}>
               <span className="pl-3 text-sm font-semibold text-c-subtle">$</span>
               <input
                 ref={priceInputRef}
                 type="text"
                 inputMode="decimal"
-                value={priceInputFocused ? priceInputDraft : formatPriceNumber(b2PricePerTb)}
-                onFocus={() => {
+                readOnly={isFixedListPrice}
+                tabIndex={isFixedListPrice ? -1 : undefined}
+                aria-readonly={isFixedListPrice}
+                value={priceInputFocused && !isFixedListPrice ? priceInputDraft : formatPriceNumber(b2PricePerTb)}
+                onFocus={isFixedListPrice ? undefined : () => {
                   setPriceInputFocused(true);
                   setPriceInputDraft(formatPriceNumber(b2PricePerTb));
                 }}
-                onBlur={handlePriceInputBlur}
-                onChange={(e) => handlePriceInputChange(e.target.value)}
-                className="min-w-0 flex-1 border-0 bg-transparent px-2 py-2 font-display text-lg font-semibold text-c-text outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                onBlur={isFixedListPrice ? undefined : handlePriceInputBlur}
+                onChange={isFixedListPrice ? undefined : (e) => handlePriceInputChange(e.target.value)}
+                className={`min-w-0 flex-1 border-0 bg-transparent px-2 py-2 font-display text-lg font-semibold outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${isFixedListPrice ? 'text-c-muted cursor-default' : 'text-c-text'}`}
               />
               <span className="pr-3 text-xs font-semibold uppercase tracking-wide text-c-subtle">/TB</span>
             </div>
             <div className="mt-2 flex items-center justify-between gap-2">
               <p className="text-xs text-c-subtle">
-                List: {formatRate(B2_LIST_PRICE_PER_TB)}
-                {isCustom && b2PricePerTb < B2_LIST_PRICE_PER_TB && ` · ${((1 - b2PricePerTb / B2_LIST_PRICE_PER_TB) * 100).toFixed(1)}% Discount`}
-                {isCustom && b2PricePerTb > B2_LIST_PRICE_PER_TB && ` · ${(((b2PricePerTb / B2_LIST_PRICE_PER_TB) - 1) * 100).toFixed(1)}% Premium`}
+                List: {formatRate(listPrice)}
+                {isCustom && b2PricePerTb < listPrice && ` · ${((1 - b2PricePerTb / listPrice) * 100).toFixed(1)}% Discount`}
+                {isCustom && b2PricePerTb > listPrice && ` · ${(((b2PricePerTb / listPrice) - 1) * 100).toFixed(1)}% Premium`}
               </p>
               {isCustom && (
                 <button
                   onClick={() => {
                     setCustomMode(false);
-                    setPriceInputDraft(formatPriceNumber(B2_LIST_PRICE_PER_TB));
-                    onB2PriceChange(B2_LIST_PRICE_PER_TB);
+                    setPriceInputDraft(formatPriceNumber(listPrice));
+                    onB2PriceChange(listPrice);
                   }}
                   className="shrink-0 text-xs font-semibold text-c-red hover:text-c-red-dark"
                 >
@@ -267,32 +340,41 @@ export function DealSizing({
               )}
             </div>
           </div>
-          <div className="mb-3 grid grid-cols-2 gap-1.5">
-            <PresetButton
-              label="List"
-              detail={formatRate(B2_LIST_PRICE_PER_TB)}
-              active={activePreset === 'list'}
-              onClick={() => handlePresetClick('list')}
-            />
-            <PresetButton
-              label="5% Discount"
-              detail={formatRate(discount5Price)}
-              active={activePreset === 'discount5'}
-              onClick={() => handlePresetClick('discount5')}
-            />
-            <PresetButton
-              label="10% Discount"
-              detail={formatRate(discount10Price)}
-              active={activePreset === 'discount10'}
-              onClick={() => handlePresetClick('discount10')}
-            />
-            <PresetButton
-              label="Custom"
-              detail={isCustom ? formatRate(b2PricePerTb) : 'Manual'}
-              active={isCustom}
-              onClick={() => handlePresetClick('custom')}
-            />
-          </div>
+          {isFixedListPrice ? (
+            // Uncommitted has no negotiated pricing, so there are no presets to offer — explain why
+            // and point to the tier that unlocks discounts.
+            <div className="mb-3 rounded-lg border border-c-border2 bg-c-surface2 px-3 py-2.5 text-[11.5px] leading-snug text-c-subtle">
+              Pay-as-you-go is billed at the published list price — no negotiated discount. Switch to{' '}
+              <span className="font-semibold text-c-muted">Committed</span> to model discount pricing.
+            </div>
+          ) : (
+            <div className="mb-3 grid grid-cols-2 gap-1.5">
+              <PresetButton
+                label="List"
+                detail={formatRate(listPrice)}
+                active={activePreset === 'list'}
+                onClick={() => handlePresetClick('list')}
+              />
+              <PresetButton
+                label="5% Discount"
+                detail={formatRate(discount5Price)}
+                active={activePreset === 'discount5'}
+                onClick={() => handlePresetClick('discount5')}
+              />
+              <PresetButton
+                label="10% Discount"
+                detail={formatRate(discount10Price)}
+                active={activePreset === 'discount10'}
+                onClick={() => handlePresetClick('discount10')}
+              />
+              <PresetButton
+                label="Custom"
+                detail={isCustom ? formatRate(b2PricePerTb) : 'Manual'}
+                active={isCustom}
+                onClick={() => handlePresetClick('custom')}
+              />
+            </div>
+          )}
         </div>
 
         {/* B2 Service Tier: 3-way segmented toggle, same active-fill pattern as the %/Fixed growth toggle below. */}
@@ -312,7 +394,7 @@ export function DealSizing({
                     : 'text-c-muted hover:text-c-text'
                 }`}
               >
-                {SERVICE_TIER_LABELS[tier]}
+                {getServiceTierSpec(tier).label}
               </button>
             ))}
           </div>
@@ -472,50 +554,12 @@ export function DealSizing({
           })()}
         </div>
 
-        <div className="border-t border-c-border pt-3">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-xs font-medium text-c-muted">ARR / TCV Summary</p>
-          </div>
-          <div className="overflow-hidden rounded-xl border border-c-border">
-            <RevenueSummaryRow
-              label="Current B2 Price"
-              rate={formatRate(b2PricePerTb)}
-              arr={annualRevenue}
-              tcv={termValue}
-              active
-            />
-            <RevenueSummaryRow
-              label="List Price"
-              rate={formatRate(B2_LIST_PRICE_PER_TB)}
-              arr={listAnnualRevenue}
-              tcv={listTermValue}
-            />
-            {isCustom ? (
-              <RevenueSummaryRow
-                label="Custom Price"
-                rate={formatRate(b2PricePerTb)}
-                arr={annualRevenue}
-                tcv={termValue}
-              />
-            ) : (
-              <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2 border-t border-c-border px-2.5 py-2 text-xs bg-c-surface">
-                <div>
-                  <p className="font-medium text-c-muted">Custom Price</p>
-                  <p className="text-[11px] text-c-subtle">Select Custom to model</p>
-                </div>
-                <span className="text-right text-c-subtle">—</span>
-                <span className="text-right text-c-subtle">—</span>
-              </div>
-            )}
-          </div>
-        </div>
-
         {/* Revenue impact vs list — green when the deal lifts revenue, red when it cuts it. */}
         {isCustom && (
           <div className={`border-t border-c-border pt-3 ${revenueDelta < 0 ? 'text-c-red' : 'text-c-green'}`}>
             <p className="text-xs font-medium text-c-muted mb-1">Revenue vs. List Price</p>
             <div className="flex justify-between text-sm">
-              <span className="text-c-muted">{formatTermLabel(termMonths)} at List (${B2_LIST_PRICE_PER_TB}/TB)</span>
+              <span className="text-c-muted">{formatTermLabel(termMonths)} at List ({formatRate(listPrice)})</span>
               <span className="text-c-text font-medium">{formatCurrency(listTermValue)}</span>
             </div>
             <div className="flex justify-between text-sm">
@@ -547,14 +591,26 @@ function roundPrice(price: number): number {
   return Math.round(price * 100) / 100;
 }
 
+// The List / 5% / 10% preset prices for a given service tier. Standard tiers anchor on B2's published
+// storage list price; Overdrive anchors on its own suggested starting rate ($15/TB), since Overdrive
+// is custom-negotiated down from that reference rather than off standard list. Keeping this in one
+// place means the tiles, the "List:" line, and the revenue-vs-list comparison can't disagree.
+function tierPresetPrices(tier: B2ServiceTier): { list: number; discount5: number; discount10: number } {
+  const list = tier === 'overdrive'
+    ? getServiceTierSpec('overdrive').startingPerTbMonth ?? B2_LIST_PRICE_PER_TB
+    : B2_LIST_PRICE_PER_TB;
+  return { list, discount5: roundPrice(list * 0.95), discount10: roundPrice(list * 0.9) };
+}
+
 function pricesMatch(a: number, b: number): boolean {
   return Math.abs(a - b) <= PRICE_EPSILON;
 }
 
 // Infer which preset chip a live price corresponds to, falling back to 'custom' when it matches none.
 // Used to re-highlight the right chip after the price is loaded or round-tripped through the input.
-function getActivePreset(price: number, discount5Price: number, discount10Price: number): PresetId {
-  if (pricesMatch(price, B2_LIST_PRICE_PER_TB)) return 'list';
+// listPrice is passed in (not read from a constant) so it tracks the selected tier's reference rate.
+function getActivePreset(price: number, listPrice: number, discount5Price: number, discount10Price: number): PresetId {
+  if (pricesMatch(price, listPrice)) return 'list';
   if (pricesMatch(price, discount5Price)) return 'discount5';
   if (pricesMatch(price, discount10Price)) return 'discount10';
   return 'custom';
@@ -661,32 +717,65 @@ function getProjectedRevenueProfile({
   };
 }
 
-/** Read-only reference card showing the selected tier's throughput/RPS ceiling, sourced from
+/** Read-only reference card showing the selected tier's bandwidth/RPS ceiling, sourced from
  *  b2.json — not computed from bill data, since nothing in a parsed bill implies required
- *  throughput. Purely contextual for the AE, mirroring the UDM detail panel's visual treatment. */
+ *  throughput. Purely contextual for the AE, mirroring the UDM detail panel's visual treatment.
+ *  Bandwidth and RPS are split into GET/PUT rows so each figure is scannable at a glance rather
+ *  than crammed onto one "X PUT / Y GET" line. */
 function ServiceTierSpecCard({ tier }: { tier: B2ServiceTier }) {
   const spec = getServiceTierSpec(tier);
+  const scalesWithThroughput = spec.rpsGet === null;
   return (
-    <div className="mt-2 bg-c-red-soft rounded-xl p-2.5 space-y-2">
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-c-red-dark font-medium">{spec.label} throughput</span>
+    <div className="mt-2 space-y-3 rounded-xl bg-c-red-soft p-3">
+      {/* Bandwidth */}
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-wide text-c-red-dark">Bandwidth</p>
+        <div className="mt-1.5 space-y-1">
+          <SpecStatRow label="GET" value={formatThroughput(spec.throughputGbitGet)} />
+          <SpecStatRow label="PUT" value={formatThroughput(spec.throughputGbitPut)} />
+        </div>
+        {spec.throughputGbitMax != null && (
+          <p className="mt-1 text-[11px] text-c-subtle">Scales up to {formatThroughput(spec.throughputGbitMax)}.</p>
+        )}
+      </div>
+
+      {/* RPS */}
+      <div className="border-t border-[#e20626]/20 pt-2.5">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-c-red-dark">RPS</p>
+        {scalesWithThroughput ? (
+          <p className="mt-1.5 text-xs font-semibold text-c-text">Scales with throughput</p>
+        ) : (
+          <div className="mt-1.5 space-y-1">
+            <SpecStatRow label="GET" value={spec.rpsGet!.toLocaleString()} />
+            <SpecStatRow label="PUT" value={spec.rpsPut!.toLocaleString()} />
+          </div>
+        )}
+      </div>
+
+      {/* Egress */}
+      <div className="flex items-center justify-between border-t border-[#e20626]/20 pt-2.5 text-xs">
+        <span className="font-semibold uppercase tracking-wide text-c-red-dark text-[10px]">Egress</span>
         <span className="font-semibold text-c-text">
-          {spec.throughputGbitPut} Gbit/s PUT / {spec.throughputGbitGet} Gbit/s GET
+          {spec.unlimitedEgress ? 'Unlimited, free' : '3× stored data free'}
         </span>
       </div>
-      <div className="flex items-center justify-between text-xs border-t border-[#e20626]/20 pt-2">
-        <span className="text-c-red-dark font-medium">RPS ceiling</span>
-        <span className="font-semibold text-c-text">
-          {spec.rpsPut === null
-            ? 'Scales with throughput'
-            : `${spec.rpsPut.toLocaleString()} PUT / ${spec.rpsGet!.toLocaleString()} GET`}
-        </span>
-      </div>
+
       {tier === 'overdrive' && (
-        <p className="text-xs text-c-subtle">
-          Unlimited free egress, zero API transaction fees. {spec.minimumCommitmentNote}. Pricing is usually custom-negotiated — the suggested ${spec.startingPerTbMonth}/TB above is a starting point only.
+        <p className="border-t border-[#e20626]/20 pt-2.5 text-xs text-c-subtle">
+          Zero API transaction fees. {spec.minimumCommitmentNote}. Pricing is usually custom-negotiated — the suggested ${spec.startingPerTbMonth}/TB above is a starting point only.
         </p>
       )}
+    </div>
+  );
+}
+
+/** One label/value row inside the service-tier card (e.g. "GET … 100 Gbit/s"). Right-aligned,
+ *  tabular figures so the GET/PUT values line up cleanly under their section heading. */
+function SpecStatRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2 text-xs">
+      <span className="font-medium text-c-red-dark/80">{label}</span>
+      <span className="font-semibold tabular-nums text-c-text">{value}</span>
     </div>
   );
 }

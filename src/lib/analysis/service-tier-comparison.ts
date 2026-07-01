@@ -1,8 +1,8 @@
 import type { B2ServiceTier } from '@/types/analysis';
-import { getServiceTierSpec, hasUnlimitedEgress, type ServiceTierSpec } from '@/lib/pricing/service-levels';
+import { getServiceTierSpec, hasUnlimitedEgress, formatThroughput, type ServiceTierSpec } from '@/lib/pricing/service-levels';
 
 export type { ServiceTierSpec };
-export { getServiceTierSpec, hasUnlimitedEgress };
+export { getServiceTierSpec, hasUnlimitedEgress, formatThroughput };
 
 const TIER_ORDER: readonly B2ServiceTier[] = ['uncommitted', 'committed', 'overdrive'];
 
