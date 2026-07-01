@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import type { Analysis, ParsedBill, ModelConfig, Provider } from '@/types/analysis';
 import { FileUpload, type UploadedFileMeta } from '@/components/upload/FileUpload';
 import { ParseReview } from '@/components/upload/ParseReview';
@@ -12,6 +13,7 @@ interface UploadResult {
   parsed: ParsedBill;
   meta: Analysis;
   modelConfig: ModelConfig;
+  overdriveVariant?: Analysis | null;
 }
 
 function formatBytes(bytes: number): string {
@@ -41,6 +43,7 @@ export default function NewAnalysisPage() {
   const [prospectName, setProspectName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [notes, setNotes] = useState('');
+  const [createOverdriveVariant, setCreateOverdriveVariant] = useState(false);
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
@@ -70,6 +73,7 @@ export default function NewAnalysisPage() {
           prospectName: prospectName.trim(),
           companyName: companyName.trim() || undefined,
           notes: notes.trim() || undefined,
+          createOverdriveVariant,
         }),
       });
 
@@ -153,6 +157,20 @@ export default function NewAnalysisPage() {
               className="w-full resize-none rounded-[9px] border border-c-border2 bg-c-bg px-3 py-2.5 text-sm text-c-text outline-none focus:border-c-red"
             />
           </FieldCard>
+          <label className="flex items-center gap-2.5 rounded-xl border border-c-border bg-c-surface px-4 py-3 text-sm">
+            <input
+              type="checkbox"
+              checked={createOverdriveVariant}
+              onChange={(e) => setCreateOverdriveVariant(e.target.checked)}
+              className="h-4 w-4 accent-[#e20626]"
+            />
+            <span>
+              <span className="font-medium text-c-text">Also create a linked Overdrive variant</span>
+              <span className="block text-xs text-c-muted">
+                After the bill is uploaded, we&apos;ll spin up a second, linked opportunity modeled at B2 Overdrive pricing so you can show the customer both side by side.
+              </span>
+            </span>
+          </label>
           {error && <p className="text-sm text-c-red">{error}</p>}
           <div className="flex justify-end">
             <button
@@ -207,6 +225,18 @@ export default function NewAnalysisPage() {
                 </div>
                 <span className="shrink-0 rounded-full bg-c-green-soft px-2.5 py-1 text-[11px] font-semibold text-c-green">✓ Parsed</span>
               </div>
+
+              {review.data.overdriveVariant && (
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-c-red/40 bg-c-red-soft px-4 py-3">
+                  <p className="text-sm text-c-red-dark">Overdrive variant created for {review.data.overdriveVariant.prospectName}.</p>
+                  <Link
+                    href={`/analyses/${review.data.overdriveVariant.id}`}
+                    className="shrink-0 text-sm font-semibold text-c-red underline hover:text-c-red-dark"
+                  >
+                    View it →
+                  </Link>
+                </div>
+              )}
 
               <ParseReview
                 parsed={review.data.parsed}

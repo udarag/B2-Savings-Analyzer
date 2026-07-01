@@ -10,6 +10,7 @@ import { getSessionUser } from '@/lib/auth/session';
 import { storageErrorResponse } from '@/lib/api/route-helpers';
 import { detectAndParse } from '@/lib/parsers/detect';
 import { buildTierState } from '@/lib/analysis/analysis-model';
+import { createOverdriveVariant } from '@/lib/analysis/variant';
 import { DEFAULT_MODEL_CONFIG } from '@/types/analysis';
 
 /**
@@ -87,11 +88,29 @@ export async function POST(
     const { tiers, modelConfig } = buildTierState(result.parsedBill, DEFAULT_MODEL_CONFIG);
     await saveModelConfig(userEmail, id, modelConfig);
 
+    // Fulfill a "also create an Overdrive variant" checkbox ticked at New Opportunity creation:
+    // this is the first point a parsed bill exists to clone. Best-effort — a clone failure here
+    // shouldn't fail the upload the AE is actually waiting on.
+    let overdriveVariant = null;
+    if (meta.pendingOverdriveVariant) {
+      try {
+        overdriveVariant = await createOverdriveVariant(userEmail, id);
+        // createOverdriveVariant wrote these onto the original's stored meta; mirror them onto the
+        // in-memory copy so this response reflects the link without a second read-back.
+        meta.linkedAnalysisId = overdriveVariant.id;
+        meta.serviceTierVariant = meta.serviceTierVariant ?? 'standard';
+        meta.pendingOverdriveVariant = undefined;
+      } catch (error) {
+        console.error(`Failed to auto-create Overdrive variant for ${id}:`, error);
+      }
+    }
+
     return NextResponse.json({
       parsed: result.parsedBill,
       meta,
       modelConfig,
       tiers,
+      overdriveVariant,
     });
   } catch (error) {
     return storageErrorResponse(error, `Failed to save parsed analysis ${id}`);

@@ -8,6 +8,10 @@ export type BillType = 'summary-invoice' | 'detailed-statement' | 'sku-export';
 
 export type PipelineStatus = 'open' | 'closed-won' | 'closed-lost';
 
+/** Which half of a linked Standard/Overdrive variant pair this analysis is, when one exists.
+ *  Absent entirely means this analysis has no variant sibling. */
+export type ServiceTierVariant = 'standard' | 'overdrive';
+
 /**
  * Buckets a line item into the storage-economics model. Only 'storage' is migrated to B2;
  * 'egress'/'operations'/'retrieval' are storage-scope costs B2 changes, 'storage-adjacent' is
@@ -47,6 +51,17 @@ export interface Analysis {
   /** Human-readable trail of how the parser decided the format; internal-only, never shown in the customer report. */
   detectionSignals?: string[];
   pipelineStatus?: PipelineStatus;
+  /** Bidirectional pointer to this analysis's Standard/Overdrive twin, when one exists via the
+   *  New Opportunity "also create an Overdrive variant" flow. A dangling pointer (sibling deleted)
+   *  is expected and handled gracefully — never treated as a data-integrity error. */
+  linkedAnalysisId?: string;
+  /** Denormalized tag for list-page badging/linking without fetching the full ModelConfig; the
+   *  actual pricing-engine input is ModelConfig.b2ServiceTier. Set only when this analysis is one
+   *  half of a linked pair; absent means "not part of a variant pair." */
+  serviceTierVariant?: ServiceTierVariant;
+  /** Transient: set on step-1 create when the AE checked "also create an Overdrive variant",
+   *  cleared once the upload route fulfills it after the first successful bill parse. */
+  pendingOverdriveVariant?: boolean;
   createdAt: string;
   updatedAt: string;
 }

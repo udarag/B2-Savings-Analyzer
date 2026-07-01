@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef, type MouseEvent, type ReactNode } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { AnalysisSummary } from './api/analyses/route';
 import { useDocumentTitle } from '@/components/shared/useDocumentTitle';
 import { AnimatedMetricValue } from '@/components/shared/AnimatedMetricValue';
@@ -151,6 +152,7 @@ function cardAccent(readiness: ReadinessStatus, pipeline: PipelineStatus): strin
  */
 export default function HomePage() {
   useDocumentTitle('Opportunities');
+  const router = useRouter();
 
   const [analyses, setAnalyses] = useState<AnalysisSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -589,6 +591,11 @@ export default function HomePage() {
                           {getPipelineStatusLabel(pipelineStatus)}
                         </StatusPill>
                       )}
+                      {a.serviceTierVariant && (
+                        <StatusPill className="bg-c-surface2 text-c-muted">
+                          {a.serviceTierVariant === 'overdrive' ? 'Overdrive variant' : 'Standard'}
+                        </StatusPill>
+                      )}
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-3 text-[12.5px] text-c-muted">
                       <span className="rounded-md bg-c-surface2 px-2 py-[3px] text-[11px] font-bold tracking-[0.04em] text-c-muted">
@@ -628,6 +635,20 @@ export default function HomePage() {
 
                 {/* Row actions */}
                 <div className="flex flex-col items-center justify-center gap-1.5 border-l border-c-border px-3">
+                  {a.linkedAnalysisId && (
+                    <OpportunityActionButton
+                      label={`View ${a.serviceTierVariant === 'overdrive' ? 'Standard' : 'Overdrive'} variant`}
+                      toneClass="hover:bg-c-red-soft hover:text-c-red focus-visible:bg-c-red-soft focus-visible:text-c-red"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        router.push(`/analyses/${a.linkedAnalysisId}`);
+                      }}
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.6} stroke="currentColor" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.65 0a2.25 2.25 0 0 1 1.586 2.152v1.276M12 21.75a9.75 9.75 0 1 0 0-19.5" />
+                      </svg>
+                    </OpportunityActionButton>
+                  )}
                   {pipelineStatus === 'open' ? (
                     <>
                       <OpportunityActionButton

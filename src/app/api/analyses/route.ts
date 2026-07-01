@@ -103,6 +103,8 @@ export async function POST(req: Request) {
     provider: body.provider || 'aws',
     billType: body.billType || 'detailed-statement',
     pipelineStatus: 'open',
+    // Fulfilled by the upload route once a bill is parsed — there's no parsed bill to clone yet.
+    pendingOverdriveVariant: body.createOverdriveVariant ? true : undefined,
     createdAt: now,
     updatedAt: now,
   };

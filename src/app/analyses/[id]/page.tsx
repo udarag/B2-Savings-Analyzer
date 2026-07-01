@@ -413,6 +413,14 @@ export default function AnalysisDashboard() {
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
             PDF
           </a>
+          {data.meta.linkedAnalysisId && (
+            <Link
+              href={`/analyses/${data.meta.linkedAnalysisId}`}
+              className="inline-flex items-center gap-1.5 rounded-[10px] border border-c-border2 bg-c-surface px-3 py-2.5 text-[13px] font-semibold text-c-muted transition-colors hover:bg-c-surface2"
+            >
+              View {data.meta.serviceTierVariant === 'overdrive' ? 'Standard' : 'Overdrive'} variant →
+            </Link>
+          )}
         </div>
       </div>
 
