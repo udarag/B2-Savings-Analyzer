@@ -2,7 +2,7 @@
 
 This file is tracked on purpose. It gives any coding agent shared repo context without depending on one person's local notes. Keep secrets, customer bills, private credentials, local screenshots, and machine-only observations in `PROJECT_CONTEXT.local.md` instead.
 
-Last updated: 2026-06-25.
+Last updated: 2026-06-30.
 
 ## Source Of Truth
 
@@ -79,21 +79,25 @@ Database storage is enabled only when `DATABASE_URL` is present and `DATABASE_ST
 - `src/app/analyses/[id]/report/page.tsx`: customer-facing report screen used by PDF export.
 - `src/app/api/analyses/route.ts`: list/create analyses for the signed-in user.
 - `src/app/api/analyses/[id]/route.ts`: read/update/delete one analysis.
-- `src/app/api/analyses/[id]/upload/route.ts`: upload bill, parse it, save parsed bill and initial model config.
+- `src/app/api/analyses/[id]/upload/route.ts`: upload bill, parse it, save parsed bill and initial model config; also fulfills a pending Overdrive-variant clone after the first successful parse.
+- `src/app/api/analyses/[id]/create-overdrive-variant/route.ts`: clone an existing analysis into a linked Overdrive-tier variant.
+- `src/app/api/analyses/[id]/b2-usage/route.ts`: get/save the commit-upsell flow's AE-entered usage input.
+- `src/app/api/analyses/[id]/usage-screenshot/route.ts`: stub — stores an uploaded usage screenshot and returns 501; no parsing is implemented.
 - `src/app/api/analyses/[id]/snapshot/route.ts`: create/list durable report snapshots.
 - `src/app/api/analyses/[id]/pdf/route.ts`: Playwright-based PDF generation.
 - `src/app/api/analyses/rerun/route.ts`: rerun every opportunity owned by the signed-in user.
 - `src/app/api/auth/*`: magic-link login, session lookup, profile, logout, verification.
-- `src/components/dashboard/`: internal dashboard widgets.
-- `src/components/upload/`: upload and parse review UI.
+- `src/components/dashboard/`: internal dashboard widgets, including `CommitUpsellDashboard.tsx` for the no-bill commit-upsell opportunity type.
+- `src/components/report/`: `CommitUpsellReport.tsx`, the commit-upsell flow's customer-facing report (dispatched from `report/page.tsx`).
+- `src/components/upload/`: upload and parse review UI, plus `B2UsageForm.tsx`/`B2UsageScreenshotUpload.tsx` for the commit-upsell flow.
 - `src/components/shared/`: shared formatting, user menu, theme controller, document title helper, inline editing.
 - `src/lib/parsers/`: deterministic bill parsers and provider detection.
 - `src/lib/engine/`: tier inventory, tier selection, egress model, cost model, projections.
-- `src/lib/pricing/`: provider pricing JSON, lookup helpers, freshness checks, pricing detection.
+- `src/lib/pricing/`: provider pricing JSON, lookup helpers, freshness checks, pricing detection, and `service-levels.ts` (B2 service-tier specs).
 - `src/lib/storage/`: B2 storage helpers and optional Postgres persistence adapters.
 - `src/lib/db/`: Postgres connection helper.
-- `src/lib/analysis/`: shared rerun, readiness, action-cost, and access-cost helpers.
-- `src/types/`: durable TypeScript interfaces for parsed bills, model config, and snapshots.
+- `src/lib/analysis/`: shared rerun, readiness, action-cost, access-cost, service-tier-comparison, Overdrive-variant cloning (`variant.ts`), and commit-upsell compute (`commit-upsell-model.ts`) helpers.
+- `src/types/`: durable TypeScript interfaces for parsed bills, model config, B2 usage input, and snapshots.
 - `migrations/`: SQL migrations for optional Postgres mode.
 - `scripts/`: pricing refresh, DB migration, and DB backfill scripts.
 
@@ -114,11 +118,20 @@ Database storage is enabled only when `DATABASE_URL` is present and `DATABASE_ST
 
 ## Core Types
 
-- `Analysis`: opportunity metadata such as id, prospect name, optional company name, notes, provider, bill type, billing period, account id, detection signals, timestamps.
+- `Analysis`: opportunity metadata such as id, prospect name, optional company name, notes, provider, bill type, billing period, account id, detection signals, timestamps, pipeline status, opportunity type, and Overdrive-variant linkage fields.
 - `ParsedBill`: parsed line items, account/service breakdowns, compute signals, egress profile suggestion, total, warnings, discounts, and optional commercial signals.
-- `ModelConfig`: tier toggles, egress config, B2 price/TB, projection term, pricing discount confirmation.
+- `ModelConfig`: tier toggles, egress config, B2 price/TB, B2 service tier, projection term, pricing discount confirmation.
+- `B2UsageInput`: the commit-upsell flow's ParsedBill analog — AE-entered current storage/spend, growth assumption, and target tier, with no source bill involved.
 - `ReportSnapshot`: durable rollup used by list previews, report views, PDF downloads, and reruns. Trigger values include `pdf-download`, `report-view`, and `analysis-rerun`.
 - `TIER_SELECTION_VERSION`: currently `2`; rerun logic normalizes stored configs to current defaults and version.
+
+## B2 Service Tiers, Overdrive Variants, And Opportunity Types
+
+- `ModelConfig.b2ServiceTier` (`'uncommitted' | 'committed' | 'overdrive'`, default `'committed'`) drives throughput/RPS display and Overdrive's unlimited-egress treatment in the cost/egress engine (`src/lib/engine/cost-model.ts`, `egress-model.ts`). Tier specs (throughput Gbit/s, RPS ceiling, egress/fee treatment) live in `src/lib/pricing/b2.json`'s `serviceLevels` object; read them via `src/lib/pricing/service-levels.ts`, never by re-deriving in a second place.
+- The dashboard's "Build the deal" panel (`DealSizing.tsx`) has a 3-way service-tier segmented control next to the price control; switching to Overdrive suggests (does not force) the tier's starting $/TB. The customer report shows a service-tier comparison card via `src/lib/analysis/service-tier-comparison.ts`.
+- **Linked Overdrive variants**: an AE can check "also create a linked Overdrive variant" at New Opportunity creation. The clone (same parsed bill, `b2ServiceTier: 'overdrive'`, suggested $15/TB) happens right after the first successful bill upload, via the shared `createOverdriveVariant()` helper in `src/lib/analysis/variant.ts` (also exposed as `POST /api/analyses/[id]/create-overdrive-variant` for triggering it later). The two analyses are bidirectionally linked via `Analysis.linkedAnalysisId`/`serviceTierVariant`; deleting one half intentionally does not cascade-delete the other, and a dangling cross-link is expected to 404 gracefully rather than being treated as an error.
+- **Commit-upsell opportunities** (`Analysis.opportunityType === 'commit-upsell'`, absent means the default `'migration'` flow): for an existing B2 Uncommitted customer with no source-cloud bill, pitching a move to Committed or Overdrive. New Opportunity branches to a manual usage form (`B2UsageForm`) instead of the bill-upload step; the dashboard/report pages each do a thin early dispatch to `CommitUpsellDashboard`/`CommitUpsellReport` rather than threading a branch through the bill-shaped migration UI. The compute path (`src/lib/analysis/commit-upsell-model.ts`) reuses the migration flow's growth-projection helpers but is otherwise separate from `ParsedBill`/`computeCostModel`, and never fabricates a dollar-savings figure — Committed is typically flat $/TB vs. Uncommitted, and the report leads with a throughput comparison instead of a savings hero.
+- A B2-usage screenshot-upload affordance exists on the commit-upsell form, but real parsing is **not implemented** — `POST /api/analyses/[id]/usage-screenshot` stores the image and returns 501. Wiring up actual extraction needs its own scoping conversation first (this codebase has no existing LLM/vision integration: no SDK, API key, or vision-parsing code anywhere).
 
 ## Product Boundaries
 
