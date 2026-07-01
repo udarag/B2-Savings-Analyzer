@@ -205,6 +205,11 @@ export interface EgressConfig {
   udmEnabled: boolean;
 }
 
+/** B2 service level the analysis models: uncommitted (pay-as-you-go), committed (contracted), or
+ *  overdrive (premium high-throughput). Throughput/RPS ceilings and egress/fee treatment differ by
+ *  tier; storage $/TB does not, except Overdrive's which is separately negotiated. */
+export type B2ServiceTier = 'uncommitted' | 'committed' | 'overdrive';
+
 /** The complete saved model state for an analysis: tier selections, egress assumptions, and B2 pricing inputs. */
 export interface ModelConfig {
   /** Per-tier migrate on/off, keyed by tier id; gated/normalized against tierSelectionVersion. */
@@ -214,6 +219,8 @@ export interface ModelConfig {
   egressConfig: EgressConfig;
   /** B2 storage price the model quotes against, in $/TB-month (overridable for negotiated pricing). */
   b2PricePerTb: number;
+  /** B2 service tier this analysis models; drives throughput/RPS spec display and Overdrive's unlimited-egress treatment. */
+  b2ServiceTier: B2ServiceTier;
   projectionTermMonths: number;
   /** AE has confirmed the quoted B2 discount is real, gating any below-list pricing in the customer report. */
   pricingDiscountConfirmed?: boolean;
@@ -293,6 +300,9 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
   egressConfig: DEFAULT_EGRESS_CONFIG,
   // Seed from B2's published list price so a fresh analysis quotes list until an AE overrides it.
   b2PricePerTb: b2Pricing.storage.perTbMonth,
+  // Committed is today's implicit baseline — every analysis saved before this field existed
+  // modeled these economics, so defaulting here keeps their behavior unchanged.
+  b2ServiceTier: 'committed',
   projectionTermMonths: 12,
   pricingDiscountConfirmed: false,
 };

@@ -14,6 +14,9 @@ export interface EgressModelResult {
   newEgressCost: number;
   /** Ongoing B2 egress to end users, after the free allowance / partner-CDN exemption. */
   b2EgressCost: number;
+  /** True when the modeled B2 tier (Overdrive) has unlimited free egress, so b2EgressCost is
+   *  unconditionally $0 rather than "$0 because usage happened to fall under the free allowance." */
+  unlimitedEgress: boolean;
   /** One-time cost to pull all migrated data out of the source provider (paid unless UDM covers it). */
   migrationEgressCost: number;
   /** One-time retrieval cost to thaw cold tiers so they can be migrated. */
@@ -38,6 +41,9 @@ export function computeEgressModel(
   lineItems: ParsedLineItem[],
   tiers: TierInventoryRow[],
   config: EgressConfig,
+  /** Overdrive's unlimited-free-egress benefit; defaults to metered egress (today's behavior) so
+   *  existing callers that don't pass it see no change. */
+  unlimitedEgress: boolean = false,
 ): EgressModelResult {
   const migratedTiers = tiers.filter((t) => t.migrateToB2);
   const totalStorageGb = migratedTiers.reduce((s, t) => s + t.gbStored, 0);
@@ -92,7 +98,9 @@ export function computeEgressModel(
   const isTrainingWorkflow = config.hasHyperscalerCompute && !config.hyperscalerComputeFeedsStorage;
   let b2EgressCost = 0;
 
-  if (config.usesPartnerCdn && !isTrainingWorkflow) {
+  if (unlimitedEgress) {
+    b2EgressCost = 0; // Overdrive: unlimited free egress, no allowance/overage split to compute
+  } else if (config.usesPartnerCdn && !isTrainingWorkflow) {
     b2EgressCost = 0; // Egress over a B2 partner CDN (Cloudflare, Fastly, ...) is free regardless of volume
   } else {
     const overageGb = Math.max(0, totalEgressGb - b2FreeAllowanceGb);
@@ -126,6 +134,7 @@ export function computeEgressModel(
     eliminatedEgressCost: round2(eliminatedEgressCost),
     newEgressCost: round2(newEgressCost),
     b2EgressCost: round2(b2EgressCost),
+    unlimitedEgress,
     migrationEgressCost: round2(migrationEgressCost),
     migrationRestoreCost: round2(migrationRestoreCost),
     netEgressSavings: round2(eliminatedEgressCost - newEgressCost - b2EgressCost),

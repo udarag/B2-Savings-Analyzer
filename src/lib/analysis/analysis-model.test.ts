@@ -55,6 +55,7 @@ function modelConfig(overrides: Partial<ModelConfig> = {}): ModelConfig {
     tierSelectionVersion: TIER_SELECTION_VERSION,
     egressConfig: { ...DEFAULT_EGRESS_CONFIG, dataGrowthMode: 'percent', dataGrowthRatePercent: 20 },
     b2PricePerTb: 6,
+    b2ServiceTier: 'committed',
     projectionTermMonths: 36,
     pricingDiscountConfirmed: false,
     ...overrides,
@@ -65,7 +66,7 @@ function modelConfig(overrides: Partial<ModelConfig> = {}): ModelConfig {
 function legacyView(parsed: ParsedBill, cfg: ModelConfig) {
   const tiers = applyTierSelectionConfig(buildTierInventory(parsed.lineItems, cfg.b2PricePerTb), cfg);
   const egressConfig = normalizeEgressConfig(cfg.egressConfig);
-  const costModel = computeCostModel(parsed.lineItems, tiers, egressConfig, cfg.b2PricePerTb);
+  const costModel = computeCostModel(parsed.lineItems, tiers, egressConfig, cfg.b2PricePerTb, cfg.b2ServiceTier);
   const baseStorageGb = tiers.filter((t) => t.migrateToB2).reduce((s, t) => s + t.gbStored, 0);
   const projections = computeProjections({
     currentMonthlyCost: getStorageScopeCurrentMonthly(costModel),
@@ -128,6 +129,14 @@ describe('computeAnalysisView matches the legacy dashboard/report chain', () => 
         }),
       }),
     },
+    {
+      name: 'overdrive tier (unlimited egress)',
+      cfg: modelConfig({
+        b2ServiceTier: 'overdrive',
+        b2PricePerTb: 15,
+        egressConfig: normalizeEgressConfig({ ...DEFAULT_EGRESS_CONFIG, gbPerMonthServedToUsers: 200000 }),
+      }),
+    },
   ];
 
   for (const { name, cfg } of scenarios) {
@@ -140,6 +149,7 @@ describe('computeAnalysisView matches the legacy dashboard/report chain', () => 
         tiers: legacy.tiers,
         egressConfig: normalizeEgressConfig(cfg.egressConfig),
         b2PricePerTb: cfg.b2PricePerTb,
+        b2ServiceTier: cfg.b2ServiceTier,
         termMonths: cfg.projectionTermMonths,
       });
       expect(view.costModel).toEqual(legacy.costModel);
@@ -160,6 +170,7 @@ describe('buildAnalysisSnapshot stays consistent with the shared computeAnalysis
       tiers,
       egressConfig: norm.egressConfig,
       b2PricePerTb: norm.b2PricePerTb,
+      b2ServiceTier: norm.b2ServiceTier,
       termMonths: norm.projectionTermMonths,
     });
 

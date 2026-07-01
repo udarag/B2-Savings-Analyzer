@@ -94,6 +94,7 @@ export function buildAnalysisSnapshot({
       growthRatePercent: modelRun.modelConfig.egressConfig.dataGrowthRatePercent,
       growthFixedTbPerMonth: modelRun.modelConfig.egressConfig.dataGrowthFixedTbPerMonth,
       udmEnabled: modelRun.modelConfig.egressConfig.udmEnabled,
+      b2ServiceTier: modelRun.modelConfig.b2ServiceTier,
     },
   };
 }
@@ -222,6 +223,7 @@ function buildAnalysisModel(parsed: ParsedBill, storedModelConfig?: ModelConfig 
     tiers,
     egressConfig: modelConfig.egressConfig,
     b2PricePerTb: modelConfig.b2PricePerTb,
+    b2ServiceTier: modelConfig.b2ServiceTier,
     termMonths: modelConfig.projectionTermMonths,
   });
 
@@ -234,6 +236,7 @@ function hasModelConfigChanged(previous: ModelConfig, next: ModelConfig): boolea
   return (
     previous.tierSelectionVersion !== next.tierSelectionVersion ||
     previous.b2PricePerTb !== next.b2PricePerTb ||
+    previous.b2ServiceTier !== next.b2ServiceTier ||
     previous.projectionTermMonths !== next.projectionTermMonths ||
     Boolean(previous.pricingDiscountConfirmed) !== Boolean(next.pricingDiscountConfirmed) ||
     JSON.stringify(previous.egressConfig) !== JSON.stringify(next.egressConfig) ||

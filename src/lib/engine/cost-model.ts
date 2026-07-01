@@ -1,6 +1,7 @@
-import type { ParsedLineItem, TierInventoryRow, EgressConfig } from '@/types/analysis';
+import type { ParsedLineItem, TierInventoryRow, EgressConfig, B2ServiceTier } from '@/types/analysis';
 import type { CostModelResult, EliminatedFee, B2CostBreakdown, CostBreakdown } from '@/types/model';
 import { computeEgressModel } from './egress-model';
+import { hasUnlimitedEgress } from '../pricing/service-levels';
 import b2Pricing from '../pricing/b2.json';
 
 // Core economics: turn the parsed bill plus the AE's tier selection into the current-vs-B2
@@ -16,6 +17,8 @@ export function computeCostModel(
   tiers: TierInventoryRow[],
   egressConfig: EgressConfig,
   b2PricePerTb: number,
+  /** Defaults to 'committed' — today's implicit baseline — so existing callers see no behavior change. */
+  b2ServiceTier: B2ServiceTier = 'committed',
 ): CostModelResult {
   const migratedTiers = tiers.filter((t) => t.migrateToB2);
   const totalStorageGb = migratedTiers.reduce((s, t) => s + t.gbStored, 0);
@@ -53,7 +56,7 @@ export function computeCostModel(
     currentMonthly.operations + currentMonthly.retrieval + currentMonthly.otherFees;
 
   // Egress model
-  const egress = computeEgressModel(lineItems, tiers, egressConfig);
+  const egress = computeEgressModel(lineItems, tiers, egressConfig, hasUnlimitedEgress(b2ServiceTier));
 
   // B2 costs for migrated tiers
   const b2StorageCost = migratedTiers.reduce(
@@ -193,6 +196,7 @@ export function computeCostModel(
     migrationCost,
     udmEnabled,
     udmCostToBackblaze,
+    b2ServiceTier,
     monthlySavings: round2(monthlySavings),
     annualSavings: round2(monthlySavings * 12),
     savingsPercent: round2(savingsPercent),

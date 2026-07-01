@@ -50,9 +50,44 @@
     "costPerGb": 0.03,
     "note": "Universal Data Migration — Backblaze covers migration egress at negotiated hyperscaler rate"
   },
-  "overdrive": {
-    "startsAtPerTbMonth": 15,
-    "note": "Multi-petabyte commitment, unlimited free egress"
+  "serviceLevels": {
+    "uncommitted": {
+      "label": "Uncommitted",
+      "customerLabel": "Pay-as-you-go",
+      "throughputGbitPut": 4,
+      "throughputGbitGet": 4,
+      "rpsPut": 500,
+      "rpsGet": 500,
+      "unlimitedEgress": false,
+      "zeroTransactionFees": false,
+      "note": "Default for any ad-hoc account with no signed contract."
+    },
+    "committed": {
+      "label": "Committed",
+      "customerLabel": "Committed",
+      "throughputGbitPut": 50,
+      "throughputGbitGet": 50,
+      "rpsPut": 3000,
+      "rpsGet": 3000,
+      "unlimitedEgress": false,
+      "zeroTransactionFees": false,
+      "note": "For customers who have signed a contract. Same $/TB storage price as Uncommitted — throughput/RPS ceiling is the only difference."
+    },
+    "overdrive": {
+      "label": "Overdrive",
+      "customerLabel": "Overdrive",
+      "throughputGbitPut": 100,
+      "throughputGbitGet": 100,
+      "throughputGbitMax": 1000,
+      "rpsPut": null,
+      "rpsGet": null,
+      "rpsScalesWith": "throughput",
+      "unlimitedEgress": true,
+      "zeroTransactionFees": true,
+      "startingPerTbMonth": 15,
+      "minimumCommitmentNote": "Multi-petabyte commitment, typically 1PB+",
+      "note": "Premium high-throughput tier for AI/ML training and HPC. Starts at 100 Gbit/s, scales to 1 Tbps (configurable). RPS scales with throughput. Unlimited free egress, zero API transaction fees. Custom pricing for the most part; startingPerTbMonth is a suggestion, not a floor."
+    }
   },
   "minimumStorageDuration": null,
   "retrievalFees": null,

@@ -120,6 +120,33 @@ describe('GCP geo-redundancy second-region copy', () => {
   });
 });
 
+describe('B2 service tier', () => {
+  it('defaults to committed when b2ServiceTier is omitted (backward compat)', () => {
+    const withDefault = computeCostModel([storageLine()], [storageTier()], DEFAULT_EGRESS_CONFIG, 6);
+    const explicit = computeCostModel([storageLine()], [storageTier()], DEFAULT_EGRESS_CONFIG, 6, 'committed');
+    expect(withDefault).toEqual(explicit);
+  });
+
+  it('echoes the passed b2ServiceTier on the result', () => {
+    const result = computeCostModel([storageLine()], [storageTier()], DEFAULT_EGRESS_CONFIG, 6, 'overdrive');
+    expect(result.b2ServiceTier).toBe('overdrive');
+  });
+
+  it('overdrive tier zeroes b2Monthly.egress regardless of usage', () => {
+    const heavyEgressConfig = { ...DEFAULT_EGRESS_CONFIG, gbPerMonthServedToUsers: 100_000 }; // far over the 3x allowance
+    const result = computeCostModel([storageLine()], [storageTier()], heavyEgressConfig, 6, 'overdrive');
+    expect(result.b2Monthly.egress).toBe(0);
+  });
+
+  it('uncommitted/committed tiers still meter egress over the free allowance', () => {
+    const heavyEgressConfig = { ...DEFAULT_EGRESS_CONFIG, gbPerMonthServedToUsers: 100_000 };
+    const committed = computeCostModel([storageLine()], [storageTier()], heavyEgressConfig, 6, 'committed');
+    const uncommitted = computeCostModel([storageLine()], [storageTier()], heavyEgressConfig, 6, 'uncommitted');
+    expect(committed.b2Monthly.egress).toBeGreaterThan(0);
+    expect(uncommitted.b2Monthly.egress).toBeGreaterThan(0);
+  });
+});
+
 describe('storage-scope helpers', () => {
   const result = computeCostModel([storageLine()], [storageTier()], DEFAULT_EGRESS_CONFIG, 6);
 

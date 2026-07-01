@@ -1,4 +1,5 @@
 import type {
+  B2ServiceTier,
   EgressConfig,
   ModelConfig,
   NamedDiscount,
@@ -42,6 +43,7 @@ export interface AnalysisViewInput {
   /** Expected already-normalized (callers hold a normalized EgressConfig). */
   egressConfig: EgressConfig;
   b2PricePerTb: number;
+  b2ServiceTier: B2ServiceTier;
   termMonths: number;
 }
 
@@ -62,6 +64,7 @@ export function normalizeModelConfig(modelConfig?: ModelConfig | null): ModelCon
     tierToggles: modelConfig?.tierToggles ?? {},
     egressConfig: normalizeEgressConfig(modelConfig?.egressConfig),
     b2PricePerTb: readPositiveNumber(modelConfig?.b2PricePerTb, DEFAULT_MODEL_CONFIG.b2PricePerTb),
+    b2ServiceTier: readServiceTier(modelConfig?.b2ServiceTier, DEFAULT_MODEL_CONFIG.b2ServiceTier),
     projectionTermMonths: readPositiveNumber(
       modelConfig?.projectionTermMonths,
       DEFAULT_MODEL_CONFIG.projectionTermMonths,
@@ -102,9 +105,10 @@ export function computeAnalysisView({
   tiers,
   egressConfig,
   b2PricePerTb,
+  b2ServiceTier,
   termMonths,
 }: AnalysisViewInput): AnalysisView {
-  const costModel = computeCostModel(lineItems, tiers, egressConfig, b2PricePerTb);
+  const costModel = computeCostModel(lineItems, tiers, egressConfig, b2PricePerTb, b2ServiceTier);
   const migratedTiers = tiers.filter((tier) => tier.migrateToB2);
   const migratedStorageGb = migratedTiers.reduce((sum, tier) => sum + tier.gbStored, 0);
   const projections = computeProjections({
@@ -126,4 +130,15 @@ export function computeAnalysisView({
 function readPositiveNumber(value: unknown, fallback: number): number {
   const numeric = Number(value);
   return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback;
+}
+
+const VALID_SERVICE_TIERS: readonly B2ServiceTier[] = ['uncommitted', 'committed', 'overdrive'];
+
+// Coerce a stored value to a valid B2ServiceTier, falling back when it's missing or not one of the
+// three known tiers — guards against legacy configs (no tier key at all) or a value this build
+// doesn't recognize.
+function readServiceTier(value: unknown, fallback: B2ServiceTier): B2ServiceTier {
+  return typeof value === 'string' && (VALID_SERVICE_TIERS as readonly string[]).includes(value)
+    ? (value as B2ServiceTier)
+    : fallback;
 }

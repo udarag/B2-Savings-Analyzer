@@ -1,3 +1,5 @@
+import type { B2ServiceTier } from './analysis';
+
 /** Current monthly storage-scope cost split by category (USD). Excludes out-of-scope/compute spend. */
 export interface CostBreakdown {
   storage: number;
@@ -49,6 +51,8 @@ export interface CostModelResult {
   udmEnabled: boolean;
   /** Migration egress Backblaze absorbs under UDM; a cost to Backblaze, not the customer (see EgressConfig.udmEnabled). */
   udmCostToBackblaze: number;
+  /** B2 service tier this run modeled — echoed from ModelConfig.b2ServiceTier for consumers that only hold a CostModelResult. */
+  b2ServiceTier: B2ServiceTier;
   monthlySavings: number;
   annualSavings: number;
   savingsPercent: number;
@@ -104,4 +108,5 @@ export interface ReportSnapshot {
   growthRatePercent: number;
   growthFixedTbPerMonth: number;
   udmEnabled: boolean;
+  b2ServiceTier: B2ServiceTier;
 }

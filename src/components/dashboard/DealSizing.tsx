@@ -3,8 +3,16 @@
 import { useRef, useState } from 'react';
 import { formatCurrency } from '../shared/FormatCurrency';
 import b2Pricing from '@/lib/pricing/b2.json';
-import type { EgressConfig } from '@/types/analysis';
+import type { EgressConfig, B2ServiceTier } from '@/types/analysis';
 import { formatGrowthAssumption, projectStorageGbForMonth } from '@/lib/engine/projections';
+import { getServiceTierSpec } from '@/lib/pricing/service-levels';
+
+const SERVICE_TIERS: readonly B2ServiceTier[] = ['uncommitted', 'committed', 'overdrive'];
+const SERVICE_TIER_LABELS: Record<B2ServiceTier, string> = {
+  uncommitted: 'Uncommitted',
+  committed: 'Committed',
+  overdrive: 'Overdrive',
+};
 
 const B2_LIST_PRICE_PER_TB = b2Pricing.storage.perTbMonth;
 // Tolerance for matching the live price back to a preset. Preset prices are rounded to cents, so an
@@ -23,6 +31,9 @@ interface DealSizingProps {
   /** Negotiated B2 storage rate in $/TB-month the AE is modeling (list, a discount preset, or a custom value). */
   b2PricePerTb: number;
   onB2PriceChange: (price: number) => void;
+  /** B2 service tier the AE is modeling; drives the throughput/RPS reference card and the Overdrive price suggestion. */
+  b2ServiceTier: B2ServiceTier;
+  onServiceTierChange: (tier: B2ServiceTier) => void;
   /** Total modeled monthly B2 spend (storage plus any non-storage B2 revenue); drives ARR/TCV and UDM break-even. */
   monthlyB2Revenue: number;
   termMonths: number;
@@ -47,6 +58,8 @@ interface DealSizingProps {
 export function DealSizing({
   b2PricePerTb,
   onB2PriceChange,
+  b2ServiceTier,
+  onServiceTierChange,
   monthlyB2Revenue,
   termMonths,
   onTermChange,
@@ -132,6 +145,20 @@ export function DealSizing({
 
     setPriceInputDraft(formatPriceNumber(nextPrice));
     onB2PriceChange(nextPrice);
+  };
+
+  const handleServiceTierClick = (tier: B2ServiceTier) => {
+    const wasOverdrive = b2ServiceTier === 'overdrive';
+    onServiceTierChange(tier);
+    // One-time suggestion, exactly like clicking a discount preset: sets the price but leaves it
+    // fully editable afterward. Only fires switching INTO Overdrive from a different tier, so it
+    // doesn't re-suggest $15 on every re-render while already on Overdrive.
+    if (tier === 'overdrive' && !wasOverdrive) {
+      const suggestedPrice = b2Pricing.serviceLevels.overdrive.startingPerTbMonth;
+      setCustomMode(true);
+      setPriceInputDraft(formatPriceNumber(suggestedPrice));
+      onB2PriceChange(suggestedPrice);
+    }
   };
 
   const handlePriceInputChange = (value: string) => {
@@ -266,6 +293,30 @@ export function DealSizing({
               onClick={() => handlePresetClick('custom')}
             />
           </div>
+        </div>
+
+        {/* B2 Service Tier: 3-way segmented toggle, same active-fill pattern as the %/Fixed growth toggle below. */}
+        <div className="border-t border-c-border pt-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <label className="text-xs font-medium text-c-muted">B2 Service Tier</label>
+          </div>
+          <div className="grid grid-cols-3 gap-1 rounded-lg bg-c-surface2 p-1">
+            {SERVICE_TIERS.map((tier) => (
+              <button
+                key={tier}
+                type="button"
+                onClick={() => handleServiceTierClick(tier)}
+                className={`rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
+                  b2ServiceTier === tier
+                    ? 'bg-[#e20626] hover:bg-[#b40a23] text-white'
+                    : 'text-c-muted hover:text-c-text'
+                }`}
+              >
+                {SERVICE_TIER_LABELS[tier]}
+              </button>
+            ))}
+          </div>
+          <ServiceTierSpecCard tier={b2ServiceTier} />
         </div>
 
         <div className="border-t border-c-border pt-3">
@@ -608,6 +659,36 @@ function getProjectedRevenueProfile({
     modeledStorageTbMonths,
     endingStorageGb,
   };
+}
+
+/** Read-only reference card showing the selected tier's throughput/RPS ceiling, sourced from
+ *  b2.json — not computed from bill data, since nothing in a parsed bill implies required
+ *  throughput. Purely contextual for the AE, mirroring the UDM detail panel's visual treatment. */
+function ServiceTierSpecCard({ tier }: { tier: B2ServiceTier }) {
+  const spec = getServiceTierSpec(tier);
+  return (
+    <div className="mt-2 bg-c-red-soft rounded-xl p-2.5 space-y-2">
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-c-red-dark font-medium">{spec.label} throughput</span>
+        <span className="font-semibold text-c-text">
+          {spec.throughputGbitPut} Gbit/s PUT / {spec.throughputGbitGet} Gbit/s GET
+        </span>
+      </div>
+      <div className="flex items-center justify-between text-xs border-t border-[#e20626]/20 pt-2">
+        <span className="text-c-red-dark font-medium">RPS ceiling</span>
+        <span className="font-semibold text-c-text">
+          {spec.rpsPut === null
+            ? 'Scales with throughput'
+            : `${spec.rpsPut.toLocaleString()} PUT / ${spec.rpsGet!.toLocaleString()} GET`}
+        </span>
+      </div>
+      {tier === 'overdrive' && (
+        <p className="text-xs text-c-subtle">
+          Unlimited free egress, zero API transaction fees. {spec.minimumCommitmentNote}. Pricing is usually custom-negotiated — the suggested ${spec.startingPerTbMonth}/TB above is a starting point only.
+        </p>
+      )}
+    </div>
+  );
 }
 
 function PresetButton({

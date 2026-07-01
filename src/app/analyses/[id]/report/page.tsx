@@ -7,7 +7,7 @@ import { Suspense, useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
-import type { Analysis, ParsedBill, ModelConfig, TierInventoryRow } from '@/types/analysis';
+import type { Analysis, ParsedBill, ModelConfig, TierInventoryRow, B2ServiceTier } from '@/types/analysis';
 import { normalizeEgressConfig } from '@/types/analysis';
 import type { CostModelResult, ProjectionPoint } from '@/types/model';
 import {
@@ -20,6 +20,12 @@ import {
   formatCapacityMultiplier,
   type BusinessPotential,
 } from '@/lib/analysis/business-potential';
+import {
+  getServiceTierComparison,
+  getServiceTierSpec,
+  hasUnlimitedEgress,
+  type ServiceTierSpec,
+} from '@/lib/analysis/service-tier-comparison';
 import {
   getOperationActionCostSummary,
   type ActionCostDetail,
@@ -189,6 +195,9 @@ function ReportPageContent() {
       tiers,
       egressConfig,
       b2PricePerTb: modelConfig.b2PricePerTb,
+      // Legacy stored configs predate this field; default to Committed (today's implicit baseline)
+      // rather than trusting the ModelConfig type's required-field guarantee against raw storage.
+      b2ServiceTier: modelConfig.b2ServiceTier ?? 'committed',
       termMonths: modelConfig.projectionTermMonths,
     });
   }, [parsed, modelConfig, egressConfig, tiers]);
@@ -261,6 +270,10 @@ function ReportPageContent() {
   const providerLabel = formatProviderName(meta.provider);
   const reportCompanyName = meta.companyName || meta.prospectName;
   const b2StorageRateLabel = `${formatCurrency(modelConfig.b2PricePerTb)}/TB/month`;
+  // Read off costModel rather than raw modelConfig — the engine's default parameter already
+  // resolves a missing/legacy tier to 'committed', so this is guaranteed valid.
+  const b2ServiceTier = costModel.b2ServiceTier;
+  const serviceTierComparison = getServiceTierComparison(b2ServiceTier);
   // Per-operation fees on the source bill (PUT/GET request charges, cold-tier access/restore) that
   // B2 removes — standard B2 transactions are free and B2 has no retrieval/restore fees. These are
   // surfaced as a separate savings narrative on top of the raw storage-rate delta.
@@ -523,6 +536,8 @@ function ReportPageContent() {
             </div>
           </div>
 
+          <ServiceTierComparisonCard tiers={serviceTierComparison} companyName={reportCompanyName} />
+
           <div className="mb-6 rounded-lg border border-gray-200 overflow-hidden print:break-inside-avoid">
             <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
               <h2 className="text-base font-semibold text-gray-900">Decision Summary</h2>
@@ -538,7 +553,8 @@ function ReportPageContent() {
               <DecisionMetric label="Migration Cost to You" value={formatCurrency(customerMigrationCost)} emphasis={customerMigrationCost <= 0 ? 'green' : undefined} />
               <DecisionMetric label={savingsTimingSummaryLabel} value={savingsTimingValue} emphasis={!hasCustomerMigrationPayback ? 'green' : undefined} />
               <DecisionMetric label="Projection Assumption" value={`${formatTermLabel(modelConfig.projectionTermMonths)} with ${growthLabel}`} />
-              <DecisionMetric label="B2 Included Egress" value="3x stored data free" />
+              <DecisionMetric label="B2 Service Level" value={serviceTierComparison[0].customerLabel} />
+              <DecisionMetric label="B2 Included Egress" value={hasUnlimitedEgress(b2ServiceTier) ? 'Unlimited, free' : '3x stored data free'} />
             </div>
           </div>
 
@@ -553,6 +569,11 @@ function ReportPageContent() {
               {costModel.udmEnabled
                 ? ` Backblaze covers the estimated ${formatCurrency(migrationCostCovered)} migration cost through the Universal Data Migration program, so your modeled migration cost is $0.`
                 : costModel.breakEvenMonth ? ` Your modeled migration cost of ${formatCurrency(customerMigrationCost)} is recovered within ${costModel.breakEvenMonth} month${costModel.breakEvenMonth !== 1 ? 's' : ''}.` : ''}
+              {b2ServiceTier === 'overdrive'
+                ? ` This model uses the Overdrive service tier, which includes unlimited free egress and zero API transaction fees — costs that would otherwise scale with usage on the Uncommitted or Committed tiers.`
+                : b2ServiceTier === 'uncommitted'
+                  ? ` ${reportCompanyName} is currently modeled on the Uncommitted (pay-as-you-go) tier; signing a contract unlocks the Committed tier's higher throughput and RPS ceiling at the same storage price.`
+                  : ''}
             </p>
             {actionCostSummary.distinctCurrentCost > 0 && (
               <p className="mt-3 text-sm text-gray-700 leading-relaxed">
@@ -830,6 +851,7 @@ function ReportPageContent() {
           migratedTierCount={migratedTiers.length}
           customerMigrationCost={customerMigrationCost}
           udmEnabled={costModel.udmEnabled}
+          b2ServiceTier={b2ServiceTier}
         />
         <table className="w-full text-sm">
           <tbody className="divide-y">
@@ -840,6 +862,12 @@ function ReportPageContent() {
             <tr>
               <td className="py-2 font-medium text-gray-600">Your B2 Storage Price</td>
               <td className="py-2">{b2StorageRateLabel} (List: {formatCurrency(b2Pricing.storage.perTbMonth)}/TB/month)</td>
+            </tr>
+            <tr>
+              <td className="py-2 font-medium text-gray-600">B2 Service Level</td>
+              <td className="py-2">
+                {serviceTierComparison[0].customerLabel} — {serviceTierComparison[0].throughputGbitPut} Gbit/s PUT / {serviceTierComparison[0].throughputGbitGet} Gbit/s GET
+              </td>
             </tr>
             <tr>
               <td className="py-2 font-medium text-gray-600">B2 Transactions</td>
@@ -869,7 +897,9 @@ function ReportPageContent() {
             )}
             <tr>
               <td className="py-2 font-medium text-gray-600">B2 Egress</td>
-              <td className="py-2">3x stored data free, $0.01/GB overage</td>
+              <td className="py-2">
+                {hasUnlimitedEgress(b2ServiceTier) ? 'Unlimited, free (Overdrive tier)' : '3x stored data free, $0.01/GB overage'}
+              </td>
             </tr>
             <tr>
               <td className="py-2 font-medium text-gray-600">Growth Model</td>
@@ -1539,6 +1569,7 @@ function AssumptionSnapshot({
   migratedTierCount,
   customerMigrationCost,
   udmEnabled,
+  b2ServiceTier,
 }: {
   providerLabel: string;
   meta: Analysis;
@@ -1549,6 +1580,7 @@ function AssumptionSnapshot({
   migratedTierCount: number;
   customerMigrationCost: number;
   udmEnabled: boolean;
+  b2ServiceTier: B2ServiceTier;
 }) {
   return (
     <div className="mb-5 grid grid-cols-2 gap-3 text-xs keep-together">
@@ -1556,7 +1588,8 @@ function AssumptionSnapshot({
       <AssumptionItem label="Modeled Scope" value={`${formatReportStorage(migratedStorageGb)} across ${migratedTierCount} tier${migratedTierCount === 1 ? '' : 's'}`} />
       <AssumptionItem label="Projection" value={`${formatTermLabel(modelConfig.projectionTermMonths)} with ${growthLabel}`} />
       <AssumptionItem label="Your B2 Storage Price" value={b2StorageRateLabel} />
-      <AssumptionItem label="B2 Egress" value="3x stored data free, then $0.01/GB" />
+      <AssumptionItem label="B2 Service Level" value={getServiceTierSpec(b2ServiceTier).customerLabel} />
+      <AssumptionItem label="B2 Egress" value={hasUnlimitedEgress(b2ServiceTier) ? 'Unlimited, free' : '3x stored data free, then $0.01/GB'} />
       <AssumptionItem
         label="Migration Cost to You"
         value={udmEnabled ? '$0 through Universal Data Migration' : formatCurrency(customerMigrationCost)}
@@ -1594,6 +1627,62 @@ function DecisionMetric({
     <div className="bg-white p-4">
       <p className="text-xs font-medium text-gray-500">{label}</p>
       <p className={`mt-1 font-display text-base font-bold ${valueColor}`}>{value}</p>
+    </div>
+  );
+}
+
+/** Service-level comparison: the modeled tier, and the one tier up when there is one. */
+function ServiceTierComparisonCard({
+  tiers,
+  companyName,
+}: {
+  tiers: ServiceTierSpec[];
+  companyName: string;
+}) {
+  const isTopTier = tiers.length === 1;
+
+  return (
+    <div className="mb-6 rounded-lg border border-gray-200 overflow-hidden print:break-inside-avoid keep-together">
+      <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h2 className="text-base font-semibold text-gray-900">B2 Service Level</h2>
+        <p className="text-xs text-gray-500 mt-0.5">
+          {isTopTier
+            ? `This estimate models the ${tiers[0].customerLabel} tier for ${companyName}, Backblaze's top service level.`
+            : `This estimate models the ${tiers[0].customerLabel} tier for ${companyName}. Shown alongside ${tiers[1].customerLabel} for comparison.`}
+        </p>
+      </div>
+      <div className={`grid gap-px bg-gray-200 text-sm ${isTopTier ? 'grid-cols-1' : 'grid-cols-2'}`}>
+        {tiers.map((tier, i) => (
+          <ServiceTierColumn key={tier.tier} spec={tier} isSelected={i === 0} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ServiceTierColumn({ spec, isSelected }: { spec: ServiceTierSpec; isSelected: boolean }) {
+  return (
+    <div className={`p-4 ${isSelected ? 'bg-bb-red-light' : 'bg-white'}`}>
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <p className={`text-sm font-semibold ${isSelected ? 'text-bb-red-dark' : 'text-gray-900'}`}>{spec.customerLabel}</p>
+        {isSelected && <span className="rounded-full bg-bb-red px-2 py-0.5 text-[10px] font-bold uppercase text-white">Modeled</span>}
+      </div>
+      <dl className="space-y-1 text-xs">
+        <div className="flex justify-between">
+          <dt className="text-gray-500">Throughput</dt>
+          <dd className="font-medium text-gray-900">{spec.throughputGbitPut} Gbit/s PUT / {spec.throughputGbitGet} Gbit/s GET</dd>
+        </div>
+        <div className="flex justify-between">
+          <dt className="text-gray-500">RPS</dt>
+          <dd className="font-medium text-gray-900">
+            {spec.rpsPut === null ? 'Scales with throughput' : `${spec.rpsPut.toLocaleString()} PUT / ${spec.rpsGet!.toLocaleString()} GET`}
+          </dd>
+        </div>
+        <div className="flex justify-between">
+          <dt className="text-gray-500">Egress</dt>
+          <dd className="font-medium text-gray-900">{spec.unlimitedEgress ? 'Unlimited, free' : '3x stored data free'}</dd>
+        </div>
+      </dl>
     </div>
   );
 }

@@ -34,6 +34,7 @@ function config(overrides: Partial<ModelConfig> = {}): ModelConfig {
     tierSelectionVersion: TIER_SELECTION_VERSION,
     egressConfig: {} as ModelConfig['egressConfig'],
     b2PricePerTb: 6,
+    b2ServiceTier: 'committed',
     projectionTermMonths: 12,
     ...overrides,
   };

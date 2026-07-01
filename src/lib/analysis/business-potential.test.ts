@@ -36,6 +36,7 @@ function costModel(overrides: Partial<CostModelResult> = {}): CostModelResult {
     migrationCost: { egressCost: 0, restoreCost: 0, total: 0 },
     udmEnabled: false,
     udmCostToBackblaze: 0,
+    b2ServiceTier: 'committed',
     monthlySavings: 0,
     annualSavings: 0,
     savingsPercent: 0,

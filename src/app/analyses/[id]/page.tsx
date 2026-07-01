@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import type { Analysis, ParsedBill, ModelConfig, TierInventoryRow, EgressConfig, Provider } from '@/types/analysis';
+import type { Analysis, ParsedBill, ModelConfig, TierInventoryRow, EgressConfig, Provider, B2ServiceTier } from '@/types/analysis';
 import { TIER_SELECTION_VERSION } from '@/types/analysis';
 import { buildTierState, computeAnalysisView } from '@/lib/analysis/analysis-model';
 import { ParseReview } from '@/components/upload/ParseReview';
@@ -88,6 +88,7 @@ export default function AnalysisDashboard() {
   const [tiers, setTiers] = useState<TierInventoryRow[]>([]);
   const [egressConfig, setEgressConfig] = useState<EgressConfig>(() => normalizeEgressConfig());
   const [b2PricePerTb, setB2PricePerTb] = useState(b2Pricing.storage.perTbMonth);
+  const [b2ServiceTier, setB2ServiceTier] = useState<B2ServiceTier>('committed');
   const [termMonths, setTermMonths] = useState(12);
   const [pricingDiscountConfirmed, setPricingDiscountConfirmed] = useState(false);
   useDocumentTitle(data?.meta.prospectName ? `${data.meta.prospectName} Analysis` : 'Analysis');
@@ -108,6 +109,7 @@ export default function AnalysisDashboard() {
           setTiers(builtTiers);
           setEgressConfig(norm.egressConfig);
           setB2PricePerTb(norm.b2PricePerTb);
+          setB2ServiceTier(norm.b2ServiceTier);
           setTermMonths(norm.projectionTermMonths);
           setPricingDiscountConfirmed(Boolean(norm.pricingDiscountConfirmed));
         }
@@ -130,6 +132,7 @@ export default function AnalysisDashboard() {
             tierSelectionVersion: TIER_SELECTION_VERSION,
             egressConfig,
             b2PricePerTb,
+            b2ServiceTier,
             projectionTermMonths: termMonths,
             pricingDiscountConfirmed,
             ...config,
@@ -141,7 +144,7 @@ export default function AnalysisDashboard() {
     } finally {
       setSaving(false);
     }
-  }, [id, tiers, egressConfig, b2PricePerTb, termMonths, pricingDiscountConfirmed]);
+  }, [id, tiers, egressConfig, b2PricePerTb, b2ServiceTier, termMonths, pricingDiscountConfirmed]);
 
   const handleToggleTier = useCallback((tierId: string, migrateToB2: boolean) => {
     setTiers((prev) => prev.map((t) => t.id === tierId ? { ...t, migrateToB2 } : t));
@@ -178,7 +181,7 @@ export default function AnalysisDashboard() {
     if (!data?.parsed) return;
     const timer = setTimeout(() => saveConfig({}), 1000);
     return () => clearTimeout(timer);
-  }, [tiers, egressConfig, b2PricePerTb, termMonths, pricingDiscountConfirmed, data?.parsed, saveConfig]);
+  }, [tiers, egressConfig, b2PricePerTb, b2ServiceTier, termMonths, pricingDiscountConfirmed, data?.parsed, saveConfig]);
 
   const parsedLineItems = data?.parsed?.lineItems;
   const parsedDiscounts = data?.parsed?.discounts;
@@ -192,9 +195,10 @@ export default function AnalysisDashboard() {
       tiers,
       egressConfig,
       b2PricePerTb,
+      b2ServiceTier,
       termMonths,
     });
-  }, [parsedLineItems, parsedDiscounts, tiers, egressConfig, b2PricePerTb, termMonths]);
+  }, [parsedLineItems, parsedDiscounts, tiers, egressConfig, b2PricePerTb, b2ServiceTier, termMonths]);
 
   const costModel = view?.costModel ?? null;
   const projections = view?.projections ?? [];
@@ -626,6 +630,8 @@ export default function AnalysisDashboard() {
             <DealSizing
               b2PricePerTb={b2PricePerTb}
               onB2PriceChange={setB2PricePerTb}
+              b2ServiceTier={b2ServiceTier}
+              onServiceTierChange={setB2ServiceTier}
               monthlyB2Revenue={costModel.b2Monthly.total}
               termMonths={termMonths}
               onTermChange={setTermMonths}
