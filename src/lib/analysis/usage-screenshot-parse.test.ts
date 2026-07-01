@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { parseRawExtraction, deriveUsageFields } from './usage-screenshot-parse';
+import { parseRawExtraction } from './usage-screenshot-parse';
+import { deriveUsageFields } from './usage-fields';
 
 // Numbers taken from the real B2 usage summary an AE would upload (2026-06-02 → 2026-07-01):
 // latest total stored 1,248,846.32 GB, earliest 1,108,200.04 GB, ~30 daily rows, $8,267.95 total.

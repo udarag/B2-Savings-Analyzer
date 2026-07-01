@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { B2UsageInput, TargetB2ServiceTier } from '@/types/analysis';
-import { B2UsageScreenshotUpload } from './B2UsageScreenshotUpload';
+import { B2UsageExportUpload } from './B2UsageExportUpload';
 
 interface B2UsageFormProps {
   analysisId: string;
@@ -66,6 +66,23 @@ export function B2UsageForm({ analysisId, onSaved, initialValue, submitLabel }: 
 
   return (
     <div className="space-y-4">
+      <B2UsageExportUpload
+        analysisId={analysisId}
+        onParsed={(parsed) => {
+          // Pre-fill from the export; AE reviews/edits before saving. Growth may be omitted.
+          setCurrentStorageTb(String(parsed.currentStorageTb));
+          setCurrentMonthlySpendUsd(String(parsed.currentMonthlySpendUsd));
+          if (parsed.dataGrowthMode) setGrowthMode(parsed.dataGrowthMode);
+          if (parsed.dataGrowthRatePercent != null) setGrowthRatePercent(String(parsed.dataGrowthRatePercent));
+        }}
+      />
+
+      <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-c-subtle">
+        <span className="h-px flex-1 bg-c-border" />
+        or enter manually
+        <span className="h-px flex-1 bg-c-border" />
+      </div>
+
       <div className="grid gap-3.5 sm:grid-cols-2">
         <FieldCard label="Current storage" hint="TB">
           <input
@@ -174,17 +191,6 @@ export function B2UsageForm({ analysisId, onSaved, initialValue, submitLabel }: 
           </div>
         )}
       </FieldCard>
-
-      <B2UsageScreenshotUpload
-        analysisId={analysisId}
-        onParsed={(parsed) => {
-          // Pre-fill from the screenshot; AE reviews/edits before saving. Growth may be omitted.
-          setCurrentStorageTb(String(parsed.currentStorageTb));
-          setCurrentMonthlySpendUsd(String(parsed.currentMonthlySpendUsd));
-          if (parsed.dataGrowthMode) setGrowthMode(parsed.dataGrowthMode);
-          if (parsed.dataGrowthRatePercent != null) setGrowthRatePercent(String(parsed.dataGrowthRatePercent));
-        }}
-      />
 
       {error && <p className="text-sm text-c-red">{error}</p>}
       <div className="flex justify-end">

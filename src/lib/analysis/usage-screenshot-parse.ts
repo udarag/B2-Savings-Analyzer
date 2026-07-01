@@ -1,32 +1,13 @@
-// Server-only. Extracts B2 usage numbers from a screenshot of a customer's B2 usage summary
-// (the daily-rows + summary table AEs receive from the backend) into the fields B2UsageForm
-// pre-fills, using Claude vision. Never import this from client code — it pulls in the Anthropic
-// SDK and reads ANTHROPIC_API_KEY, both of which must stay server-side.
+// Server-only. Extracts B2 usage numbers from a *screenshot* (image) of a customer's usage summary
+// via Claude vision, for AEs who only have an image rather than a printed PDF. The deterministic PDF
+// path (usage-pdf-parse.ts) is preferred and needs no API key; this is the image fallback. Never
+// import this from client code — it pulls in the Anthropic SDK and reads ANTHROPIC_API_KEY.
 import Anthropic from '@anthropic-ai/sdk';
-import type { B2UsageInput } from '@/types/analysis';
-
-/** What the AE-facing form needs pre-filled — a subset of B2UsageInput. `source` is stamped by the caller. */
-export type ParsedUsageFields = Pick<
-  B2UsageInput,
-  'currentStorageTb' | 'currentMonthlySpendUsd' | 'dataGrowthMode' | 'dataGrowthRatePercent' | 'dataGrowthPeriod'
->;
+import { deriveUsageFields, toPositiveNumber, type ParsedUsageFields, type RawExtraction } from './usage-fields';
 
 /** True when a screenshot parse can actually run (an API key is configured). */
 export function isUsageScreenshotParsingEnabled(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY);
-}
-
-// Claude reads only these raw cells off the table — a small, unambiguous extraction task — and we
-// derive the storage/spend/growth fields from them in code, so the model never has to do math.
-export interface RawExtraction {
-  /** Most recent (or estimate) row's "total stored", in GB. */
-  latestTotalStoredGb: number;
-  /** Oldest row's "total stored", in GB — used with latest to derive the growth trend. */
-  earliestTotalStoredGb: number;
-  /** Number of days the table spans (rows in the daily breakdown). */
-  daysInPeriod: number;
-  /** The summary-row grand "total" spend for the whole period, in USD. */
-  monthlyTotalSpendUsd: number;
 }
 
 const EXTRACTION_PROMPT = `You are reading a screenshot of a Backblaze B2 usage summary. It has one row per day plus a summary row at the bottom, with columns including "total stored" (a storage volume, usually in GB) and "total" (a dollar amount).
@@ -42,8 +23,8 @@ Read these four values off the table and return ONLY a JSON object, no prose, no
 If a value genuinely cannot be read, use null for that field. Do not guess or fabricate numbers.`;
 
 /**
- * Extract usage fields from a screenshot. Returns null when parsing is disabled (no API key) or
- * fails — the caller falls back to manual entry, so a failure here is never fatal.
+ * Extract usage fields from a screenshot image. Returns null when parsing is disabled (no API key)
+ * or fails — the caller falls back to manual entry, so a failure here is never fatal.
  */
 export async function parseUsageScreenshot(
   imageBase64: string,
@@ -108,36 +89,4 @@ export function parseRawExtraction(text: string): RawExtraction | null {
     daysInPeriod: toPositiveNumber(obj.daysInPeriod) ?? 30,
     monthlyTotalSpendUsd: spend,
   };
-}
-
-// Turn the raw cell readings into the form's fields. Exported for unit testing.
-export function deriveUsageFields(raw: RawExtraction): ParsedUsageFields {
-  // App basis is decimal TB (1 TB = 1000 GB), matching every other TB figure in the app.
-  const currentStorageTb = round2(raw.latestTotalStoredGb / 1000);
-
-  // Annualize the observed storage trend by compounding the per-day growth over a year. Clamped to a
-  // sane ceiling so a short, noisy window can't seed an absurd default; the AE reviews and edits it.
-  let dataGrowthRatePercent = 10;
-  if (raw.earliestTotalStoredGb > 0 && raw.daysInPeriod > 1 && raw.latestTotalStoredGb > 0) {
-    const dailyRate = Math.pow(raw.latestTotalStoredGb / raw.earliestTotalStoredGb, 1 / raw.daysInPeriod) - 1;
-    const annualPercent = (Math.pow(1 + dailyRate, 365) - 1) * 100;
-    dataGrowthRatePercent = Math.round(Math.min(Math.max(annualPercent, 0), 300));
-  }
-
-  return {
-    currentStorageTb,
-    currentMonthlySpendUsd: round2(raw.monthlyTotalSpendUsd),
-    dataGrowthMode: 'percent',
-    dataGrowthRatePercent,
-    dataGrowthPeriod: 'yearly',
-  };
-}
-
-function toPositiveNumber(value: unknown): number | null {
-  const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
 }
