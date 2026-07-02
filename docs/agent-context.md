@@ -241,6 +241,14 @@ Do not duplicate cost-model assembly in individual routes. Use shared snapshot/r
 - For bulk rerun changes, verify user scoping, skipped/failure aggregation, model config normalization, parsed-bill update behavior, and snapshot creation.
 - For production-impacting changes, confirm the app still builds as a standalone Next.js server and that `.next/static`, `public`, and the Playwright `browsers.json` trace include are present in the standalone runtime artifact.
 
+### Pre-push gate
+
+- A tracked `pre-push` hook in `.githooks/` enforces the gate above before any push. `npm install` runs a `prepare` script that points `core.hooksPath` at `.githooks/`, so the hook activates on a fresh clone with no manual step.
+- The hook runs `git diff --check`, then `npm run preflight` (`lint` → `build` → `test`). Since every push to `origin/main` auto-deploys to prod, this is the real backstop — run it manually any time with `npm run preflight`.
+- `test` includes `src/lib/analysis/bill-flows.golden.test.ts`: an end-to-end regression over the two canonical flows — a new-customer AWS detailed bill (migration) and an existing-customer B2 usage export (commit-upsell). Each bill runs through 4 variants of the options an AE selects (migration: service tier + `$/TB`; commit-upsell: contract discount), and each variant gets three layers: structural invariants, **math reconciliation** (derived figures like `annualSavings = monthlySavings × 12` are recomputed from their inputs and must match within a rounding tolerance — this catches when a value stops *reconciling*, which a wrong golden re-bless would otherwise hide), and cross-variant direction checks (a cheaper `$/TB` must yield more savings; more discount must lower the committed rate). A golden-summary snapshot per flow then locks the exact numbers.
+- Both test bills are real customer data, so they live only in gitignored `bills/` (`April-bill-highlighted.pdf`, `ca004-usage.pdf`) and their golden snapshots in gitignored `bills/golden/`. The suite self-skips when the bills (or `pdftotext`) are absent, so `npm test` stays green on any checkout without them — no customer numbers are ever committed.
+- Re-bless the golden snapshots after an intentional parser/model change with `npm test -- -u`. Bypass the hook in a genuine emergency with `git push --no-verify`.
+
 ## Production Release Flow
 
 1. Make changes on `main`.

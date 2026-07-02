@@ -1,0 +1,26 @@
+#!/usr/bin/env sh
+#
+# Pre-push gate for the B2 Savings Analyzer.
+#
+# Every push to origin/main auto-deploys to the internal prod VM, so this runs the full validation
+# gate from docs/agent-context.md before any push is allowed:
+#
+#   1. git diff --check   — no whitespace errors / conflict markers
+#   2. npm run lint       — eslint
+#   3. npm run build      — the standalone Next.js build the VM actually deploys
+#   4. npm test           — vitest, incl. the two real-bill golden flows (bill-flows.golden.test.ts)
+#
+# The golden bill checks self-skip when gitignored bills/ fixtures are absent, so this stays useful on
+# machines without the customer bills. Bypass in a genuine emergency with `git push --no-verify`.
+
+set -e
+
+echo "▸ pre-push gate — validating before deploy to prod"
+
+echo "  → git diff --check"
+git diff --check
+
+echo "  → npm run preflight (lint · build · test + golden bills)"
+npm run preflight
+
+echo "✓ pre-push gate passed"
