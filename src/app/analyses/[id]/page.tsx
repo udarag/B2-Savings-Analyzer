@@ -390,7 +390,7 @@ export default function AnalysisDashboard() {
             href={`/analyses/${id}/report`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-[10px] bg-[#e20626] px-4 py-2.5 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(226,6,38,0.28)] transition-[background-color,box-shadow] duration-200 hover:bg-[#b40a23] hover:shadow-[0_8px_22px_rgba(226,6,38,0.4)]"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-c-brand px-4 py-2.5 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(226,6,38,0.28)] transition-[background-color,box-shadow] duration-200 hover:bg-c-brand-hover hover:shadow-[0_8px_22px_rgba(226,6,38,0.4)]"
             aria-label="Open customer-facing report"
           >
             <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" aria-hidden="true">
@@ -541,6 +541,18 @@ export default function AnalysisDashboard() {
         </Reveal>
       )}
 
+      {/* Internal-only UDM nudge: when the model still charges the customer a migration cost, remind the
+          AE that Backblaze can cover it via UDM — the strongest version of the report is one click away.
+          Lives on the dashboard only, so it never reaches the customer report/PDF. */}
+      {costModel && hasMigrationPayback && (
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-c-amber/40 bg-c-amber-soft px-4 py-3">
+          <span className="mt-0.5 shrink-0 rounded bg-c-amber px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none text-white">Internal</span>
+          <p className="text-sm text-c-amber">
+            This model shows a <span className="font-semibold">{formatCurrency(costModel.migrationCost.total, 0)}</span> migration cost to the customer. Backblaze can often cover it — turn on <span className="font-semibold">Universal Data Migration</span>{' '}in &ldquo;Size the deal&rdquo; to model it at $0 and start savings on day one.
+          </p>
+        </div>
+      )}
+
       {/* Cost comparison strip */}
       {costModel && (
         <Reveal index={1} className="mb-5">
@@ -575,7 +587,7 @@ export default function AnalysisDashboard() {
                       $B2 / $current ratio would understate it, because savingsPercent also nets out any
                       new hyperscaler-to-B2 transfer cost. The red width animates on change. */}
                   <div
-                    className="flex items-center justify-center bg-[#e20626] text-[11px] font-semibold text-white transition-[width] duration-700 ease-out"
+                    className="flex items-center justify-center bg-c-brand text-[11px] font-semibold text-white transition-[width] duration-700 ease-out"
                     style={{ width: `${Math.max(8, Math.min(92, 100 - costModel.savingsPercent))}%` }}
                   >
                     B2
@@ -696,7 +708,7 @@ function HeroStat({
   return (
     <div className="rounded-[14px] border border-white/12 bg-white/[0.08] px-4 py-[15px]">
       <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/60">{label}</p>
-      <p className="mt-1.5 font-display text-[26px] font-semibold text-[#8fe9be]">
+      <p className="mt-1.5 font-display text-[26px] font-semibold text-c-hero-pos">
         {typeof value === 'number'
           ? <AnimatedMetricValue value={value} formatter={formatter} />
           : value}

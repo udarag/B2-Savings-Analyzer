@@ -142,7 +142,7 @@ function cardAccent(readiness: ReadinessStatus, pipeline: PipelineStatus): strin
   if (pipeline === 'closed-won') return 'var(--c-purple)';
   if (pipeline === 'closed-lost') return 'var(--c-border2)';
   if (readiness === 'reported') return 'var(--c-red)';
-  if (readiness === 'active') return '#f9733a';
+  if (readiness === 'active') return 'var(--c-accent)';
   return 'var(--c-border2)';
 }
 
@@ -408,7 +408,7 @@ export default function HomePage() {
           <p className="mt-2 text-sm text-c-muted">{loadError}</p>
           <button
             onClick={() => loadAnalyses(true)}
-            className="mt-4 rounded-[10px] bg-[#e20626] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#b40a23]"
+            className="mt-4 rounded-[10px] bg-c-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-c-brand-hover"
           >
             Retry
           </button>
@@ -480,7 +480,7 @@ export default function HomePage() {
             value={portfolioStats.modeledStorageGb}
             formatter={formatModeledStorage}
             caption="Report-ready scope"
-            bar="#f9733a"
+            bar="var(--c-accent)"
           />
         </div>
       )}
@@ -497,7 +497,7 @@ export default function HomePage() {
                   onClick={() => setPipelineFilter(filter.id)}
                   className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors sm:flex-none ${
                     selected
-                      ? 'bg-[#e20626] text-white'
+                      ? 'bg-c-brand text-white'
                       : 'text-c-muted hover:bg-c-surface2 hover:text-c-text'
                   }`}
                 >
@@ -543,7 +543,7 @@ export default function HomePage() {
           <p className="mb-6 text-c-muted">Upload a customer cloud bill to get started.</p>
           <Link
             href="/analyses/new"
-            className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#e20626] px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,box-shadow] duration-200 hover:bg-[#b40a23] hover:shadow-[0_8px_22px_rgba(226,6,38,0.4)]"
+            className="inline-flex items-center gap-1.5 rounded-[10px] bg-c-brand px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,box-shadow] duration-200 hover:bg-c-brand-hover hover:shadow-[0_8px_22px_rgba(226,6,38,0.4)]"
           >
             <span className="text-[15px] leading-none">+</span>New opportunity
           </Link>
@@ -593,9 +593,14 @@ export default function HomePage() {
               ) : (
                 <Reveal key={`${row.std.id}:${row.od.id}`} index={i}>
                   <div className="rounded-2xl border border-c-purple/40 bg-c-purple-soft/40 p-2.5">
-                    <div className="flex items-center gap-1.5 px-1.5 pb-2 pt-0.5">
-                      <LinkedPairIcon />
-                      <span className="text-[10.5px] font-bold text-c-purple">Linked pair · shown to the customer side by side</span>
+                    <div className="px-1.5 pb-2 pt-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <LinkedPairIcon />
+                        <span className="text-[10.5px] font-bold text-c-purple">Linked pair · shown to the customer side by side</span>
+                      </div>
+                      {/* The two halves can diverge — Overdrive often saves the customer more (unlimited
+                          egress) while its storage TCV differs from Standard — so name that up front. */}
+                      <p className="mt-0.5 pl-[19px] text-[10px] text-c-subtle">Overdrive can save the customer more while its storage TCV differs — compare both.</p>
                     </div>
                     <div className="flex flex-col gap-2">
                       <OpportunityCard {...cardProps(row.std)} inPair />
@@ -629,7 +634,7 @@ export default function HomePage() {
               <button
                 onClick={() => handleDelete(deleteTarget)}
                 disabled={deleting}
-                className="rounded-[10px] bg-[#e20626] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#b40a23] disabled:opacity-50"
+                className="rounded-[10px] bg-c-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-c-brand-hover disabled:opacity-50"
               >
                 {deleting ? 'Deleting...' : 'Delete'}
               </button>
@@ -668,7 +673,8 @@ function OpportunityCard({
   const hasInput = a.hasBill || a.hasB2Usage;
   const readinessStatus: ReadinessStatus = a.latestSnapshot ? 'reported' : hasInput ? 'active' : 'draft';
   const pipelineStatus = getPipelineStatus(a);
-  const dealTypeLabel = a.opportunityType === 'commit-upsell' ? 'B2 upsell' : `${PROVIDER_LABELS[a.provider] || a.provider} migration`;
+  const isUpsell = a.opportunityType === 'commit-upsell';
+  const dealTypeLabel = isUpsell ? 'B2 upsell' : `${PROVIDER_LABELS[a.provider] || a.provider} migration`;
 
   return (
     <div
@@ -696,7 +702,7 @@ function OpportunityCard({
               )}
               {/* Readiness = one status dot instead of a competing text pill. */}
               <span
-                className={`h-2 w-2 shrink-0 rounded-full ${readinessStatus === 'reported' ? 'bg-c-green' : readinessStatus === 'active' ? 'bg-[#f9733a]' : 'bg-c-border2'}`}
+                className={`h-2 w-2 shrink-0 rounded-full ${readinessStatus === 'reported' ? 'bg-c-green' : readinessStatus === 'active' ? 'bg-c-accent' : 'bg-c-border2'}`}
                 title={readinessStatus === 'reported' ? 'Report ready' : readinessStatus === 'active' ? 'In progress' : 'Draft'}
               />
               {pipelineStatus !== 'open' && (
@@ -719,9 +725,18 @@ function OpportunityCard({
               {formatCurrency(storageTcv)}
               <span className="text-xs font-medium text-c-subtle"> potential TCV</span>
             </p>
-            <p className="mt-0.5 text-[12.5px] font-semibold text-c-green">
-              {formatCurrency(a.latestSnapshot.annualSavings)}/yr saved · {formatGb(a.latestSnapshot.totalStorageGb)}
-            </p>
+            {/* Only show a "/yr saved" line when there's a real dollar delta. A commit-upsell at a flat
+                Committed rate has no savings (the value is throughput), so showing "$0/yr saved" would
+                read as a dead deal — fall back to a neutral storage/tier line instead. */}
+            {a.latestSnapshot.annualSavings > 0 ? (
+              <p className="mt-0.5 text-[12.5px] font-semibold text-c-green">
+                {formatCurrency(a.latestSnapshot.annualSavings)}/yr saved · {formatGb(a.latestSnapshot.totalStorageGb)}
+              </p>
+            ) : (
+              <p className="mt-0.5 text-[12.5px] font-semibold text-c-muted">
+                {formatGb(a.latestSnapshot.totalStorageGb)} {isUpsell ? 'on Committed' : 'modeled'}
+              </p>
+            )}
           </div>
         )}
 
@@ -887,7 +902,7 @@ function OpportunityActionButton({
       className={`group relative inline-flex h-8 w-8 items-center justify-center rounded-lg text-c-subtle transition-colors disabled:cursor-wait disabled:opacity-50 ${toneClass}`}
     >
       {children}
-      <span className="pointer-events-none absolute left-full top-1/2 z-20 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md bg-[#11113a] px-2 py-1 text-[11px] font-semibold text-white opacity-0 shadow-lg transition-all group-hover:opacity-100 group-focus-visible:opacity-100">
+      <span className="pointer-events-none absolute left-full top-1/2 z-20 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md bg-c-tooltip px-2 py-1 text-[11px] font-semibold text-white opacity-0 shadow-lg transition-all group-hover:opacity-100 group-focus-visible:opacity-100">
         {label}
       </span>
     </button>

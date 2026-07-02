@@ -13,6 +13,7 @@ import type { Analysis, B2UsageInput } from '@/types/analysis';
 import { computeCommitUpsellView } from '@/lib/analysis/commit-upsell-model';
 import { resolveCommitUpsellPoints } from '@/lib/analysis/commit-upsell-angles';
 import type { ServiceTierSpec } from '@/lib/pricing/service-levels';
+import { PRICING_AS_OF_LABEL } from '@/lib/pricing/pricing-meta';
 import { formatCurrency } from '@/components/shared/FormatCurrency';
 
 // Local throughput formatter (rolls Gbit/s over to Tbps at ≥1000) so this report stays
@@ -53,12 +54,21 @@ function BackblazeLogo({ compact = false }: { compact?: boolean }) {
   );
 }
 
+// Account-executive attribution for the report footer, passed down from the report page so the
+// commit-upsell deliverable signs off the same way the migration report does.
+interface AEInfo {
+  name: string;
+  email: string;
+  title?: string;
+}
+
 interface CommitUpsellReportProps {
   analysisId: string;
   meta: Analysis;
+  aeInfo?: AEInfo | null;
 }
 
-export function CommitUpsellReport({ analysisId, meta }: CommitUpsellReportProps) {
+export function CommitUpsellReport({ analysisId, meta, aeInfo }: CommitUpsellReportProps) {
   const [usage, setUsage] = useState<B2UsageInput | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
@@ -72,6 +82,19 @@ export function CommitUpsellReport({ analysisId, meta }: CommitUpsellReportProps
   }, [analysisId]);
 
   const view = usage ? computeCommitUpsellView(usage) : null;
+
+  // Persist a point-in-time snapshot the first time a viable view is computed, so the opportunity
+  // shows up in the pipeline rollups (potential TCV, storage, reports-ready) like a migration does.
+  // Keyed on !!view so it fires once when usage finishes loading, not on every recompute.
+  useEffect(() => {
+    if (!view) return;
+    fetch(`/api/analyses/${analysisId}/snapshot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trigger: 'report-view' }),
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!view]);
 
   // The redesigned hero leads with the *multiplier*, not two equal numbers — the size of the jump is
   // the whole commit-upsell pitch, so we compute it here and draw a bar so it's felt, not just read.
@@ -164,7 +187,7 @@ export function CommitUpsellReport({ analysisId, meta }: CommitUpsellReportProps
           <div className="border-t-[6px] border-bb-red bg-white px-8 py-5 flex items-center justify-between gap-5 border-b border-gray-200">
             <BackblazeLogo />
             <div className="min-w-0 flex-1 text-right">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400">Prepared for {reportCompanyName} · June 2026</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400">Prepared for {reportCompanyName} · {PRICING_AS_OF_LABEL}</p>
               <h1 className="mt-1 text-base font-semibold leading-tight text-bb-navy">Your B2 throughput upgrade</h1>
             </div>
           </div>
@@ -256,7 +279,7 @@ export function CommitUpsellReport({ analysisId, meta }: CommitUpsellReportProps
                     { label: 'Bandwidth PUT / GET', a: bandwidthPair(view.currentSpec), b: bandwidthPair(view.targetSpec) },
                     { label: 'Requests/sec PUT / GET', a: rpsPair(view.currentSpec), b: rpsPair(view.targetSpec) },
                     { label: 'Included egress', a: view.currentSpec.unlimitedEgress ? 'Unlimited' : '3× stored', b: view.targetSpec.unlimitedEgress ? 'Unlimited' : '3× stored' },
-                    { label: 'Estimated monthly', a: `${formatCurrency(view.currentMonthlyCostUsd)}/mo`, b: `${formatCurrency(view.projectedTargetMonthlyCostUsd)}/mo` },
+                    { label: 'Estimated monthly', a: `${formatCurrency(view.currentMonthlyCostUsd, 0)}/mo`, b: `${formatCurrency(view.projectedTargetMonthlyCostUsd, 0)}/mo` },
                   ].map((row) => (
                     <div key={row.label} className="contents">
                       <div className="bg-white px-4 py-3 text-[11px] font-medium text-gray-600">{row.label}</div>
@@ -267,16 +290,35 @@ export function CommitUpsellReport({ analysisId, meta }: CommitUpsellReportProps
                 </div>
               </div>
 
+              {/* Growth-tied headroom line — capability framing drawn from the modeled data (no invented
+                  dollars). Shown only when there's growth, since the point is the ceiling staying fixed
+                  as the data climbs. Gives the economic buyer a reason beyond "same price". */}
+              {(usage.dataGrowthRatePercent > 0 || usage.dataGrowthFixedTbPerMonth > 0) && (
+                <p className="mb-4 text-[11px] leading-relaxed text-gray-600 keep-together">
+                  At {view.growthLabel}, {reportCompanyName}&apos;s stored data keeps climbing while today&apos;s{' '}
+                  {formatBandwidth(view.currentSpec.throughputGbitGet)} ceiling stays fixed — the {view.targetSpec.customerLabel}{' '}
+                  tier lifts it to {formatBandwidth(view.targetSpec.throughputGbitGet)}, so growth doesn&apos;t run into a wall.
+                </p>
+              )}
+
               {/* Assumptions condensed to one honest caption line (no separate spec-repeating block). */}
               <p className="text-[10.5px] leading-snug text-gray-400 keep-together">
-                Based on {usage.currentStorageTb.toLocaleString()} TB at {formatCurrency(view.currentRatePerTb)}/TB, June 2026 published rates, {view.growthLabel}
-                {usage.source === 'manual' ? ', entered by your account team' : ', from a usage export'}. Prepared by your Backblaze account team.
+                Based on {usage.currentStorageTb.toLocaleString()} TB at {formatCurrency(view.currentRatePerTb)}/TB, {PRICING_AS_OF_LABEL} published rates, {view.growthLabel}
+                {usage.source === 'manual' ? ', entered by your account team' : ', from a usage export'}.
               </p>
             </div>
           )}
 
           <div className="border-t-2 border-bb-red px-8 py-4 flex items-center justify-between gap-4 text-sm text-gray-400">
             <BackblazeLogo compact />
+            <p className="min-w-0 flex-1 text-right leading-snug">
+              <span className="block">
+                Prepared by {aeInfo
+                  ? `${aeInfo.name}${aeInfo.title ? `, ${aeInfo.title}` : ''} (${aeInfo.email})`
+                  : 'Backblaze'}
+              </span>
+              <span className="block">Backblaze | {new Date().toLocaleDateString()}</span>
+            </p>
           </div>
         </div>
       </div>

@@ -226,7 +226,7 @@ export function CommitUpsellDashboard({ analysisId, meta: initialMeta }: CommitU
             <div className="flex justify-end gap-2.5">
               <Link
                 href={`/analyses/${analysisId}/report`}
-                className="inline-flex items-center gap-2 rounded-[10px] bg-[#e20626] px-5 py-2.5 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(226,6,38,0.28)] transition-colors hover:bg-[#b40a23]"
+                className="inline-flex items-center gap-2 rounded-[10px] bg-c-brand px-5 py-2.5 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(226,6,38,0.28)] transition-colors hover:bg-c-brand-hover"
               >
                 Customer report
               </Link>
@@ -350,7 +350,7 @@ function MessagingAnglePicker({
               type="button"
               onClick={() => onChange(angle.id)}
               aria-pressed={isActive}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${isActive ? 'bg-[#e20626] text-white' : 'bg-c-surface2 text-c-muted hover:text-c-text'}`}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${isActive ? 'bg-c-brand text-white' : 'bg-c-surface2 text-c-muted hover:text-c-text'}`}
             >
               {angle.label}
             </button>
@@ -423,7 +423,7 @@ function Segmented({ options, value, onChange, className = '', tone = 'red' }: {
   className?: string;
   tone?: 'red' | 'amber';
 }) {
-  const activeCls = tone === 'amber' ? 'bg-c-amber text-white' : 'bg-[#e20626] text-white hover:bg-[#b40a23]';
+  const activeCls = tone === 'amber' ? 'bg-c-amber text-white' : 'bg-c-brand text-white hover:bg-c-brand-hover';
   const inactiveCls = tone === 'amber' ? 'text-c-amber hover:text-c-text' : 'text-c-muted hover:text-c-text';
   return (
     <div className={`grid gap-1 rounded-lg p-1 ${tone === 'amber' ? 'bg-c-amber-soft' : 'bg-c-surface2'} ${className}`} style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0,1fr))` }}>
@@ -452,7 +452,7 @@ function NumberField({ value, onChange, suffix, prefix, step = 1, max, tone = 'r
 }) {
   const chrome = tone === 'amber'
     ? 'border-c-amber/50 focus-within:border-c-amber focus-within:ring-c-amber-soft'
-    : 'border-c-border2 focus-within:border-[#e20626] focus-within:ring-c-red-soft';
+    : 'border-c-border2 focus-within:border-c-brand focus-within:ring-c-red-soft';
   return (
     <div className={`flex items-center rounded-lg border bg-c-surface focus-within:ring-2 ${chrome}`}>
       {prefix && <span className="pl-3 text-sm font-semibold text-c-subtle">{prefix}</span>}

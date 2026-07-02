@@ -116,7 +116,7 @@ export function B2UsageForm({ analysisId, onSaved, initialValue, submitLabel }: 
         <button
           onClick={handleSubmit}
           disabled={saving}
-          className="inline-flex items-center gap-2 rounded-[10px] bg-[#e20626] px-5 py-2.5 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(226,6,38,0.28)] transition-colors hover:bg-[#b40a23] disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-[10px] bg-c-brand px-5 py-2.5 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(226,6,38,0.28)] transition-colors hover:bg-c-brand-hover disabled:opacity-50"
         >
           {saving ? 'Saving…' : submitLabel ?? 'Continue to deal sizing →'}
         </button>

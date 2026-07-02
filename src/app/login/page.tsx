@@ -84,7 +84,7 @@ function LoginForm() {
         {status === 'sent' ? (
           <div className="rounded-[18px] border border-white/[0.14] bg-white/[0.06] p-6 text-center backdrop-blur-[12px]">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#1f8a5b]/25">
-              <svg className="h-6 w-6 text-[#8fe9be]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <svg className="h-6 w-6 text-c-hero-pos" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
               </svg>
             </div>
@@ -146,7 +146,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={status === 'sending'}
-              className="w-full rounded-[11px] bg-[#e20626] py-3.5 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(226,6,38,0.4)] transition-colors hover:bg-[#b40a23] disabled:opacity-50"
+              className="w-full rounded-[11px] bg-c-brand py-3.5 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(226,6,38,0.4)] transition-colors hover:bg-c-brand-hover disabled:opacity-50"
             >
               {status === 'sending' ? 'Sending...' : 'Send sign-in link'}
             </button>

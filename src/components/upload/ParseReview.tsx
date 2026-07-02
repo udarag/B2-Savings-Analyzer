@@ -444,7 +444,7 @@ function ReadinessCheckRow({
               type="checkbox"
               checked={actionChecked}
               onChange={(event) => onActionChange(event.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-[#e20626] rounded"
+              className="mt-0.5 h-4 w-4 shrink-0 accent-c-brand rounded"
             />
             <span>{actionLabel}</span>
           </label>

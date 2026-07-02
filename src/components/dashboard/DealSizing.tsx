@@ -307,7 +307,7 @@ export function DealSizing({
                 onClick={() => handleServiceTierClick(tier)}
                 className={`rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
                   b2ServiceTier === tier
-                    ? 'bg-[#e20626] hover:bg-[#b40a23] text-white'
+                    ? 'bg-c-brand hover:bg-c-brand-hover text-white'
                     : 'text-c-muted hover:text-c-text'
                 }`}
               >
@@ -323,7 +323,7 @@ export function DealSizing({
           {/* Rate input on the recessed surface2 fill. Editable with a red focus ring on the
               negotiable tiers; read-only (locked to list) on the fixed-price Uncommitted tier. */}
           <div className="mb-3 rounded-xl border border-c-border2 bg-c-surface2 p-3">
-            <div className={`flex items-center rounded-lg border border-c-border2 bg-c-surface ${isFixedListPrice ? '' : 'focus-within:border-[#e20626] focus-within:ring-2 focus-within:ring-c-red-soft'}`}>
+            <div className={`flex items-center rounded-lg border border-c-border2 bg-c-surface ${isFixedListPrice ? '' : 'focus-within:border-c-brand focus-within:ring-2 focus-within:ring-c-red-soft'}`}>
               <span className="pl-3 text-sm font-semibold text-c-subtle">$</span>
               <input
                 ref={priceInputRef}
@@ -430,7 +430,7 @@ export function DealSizing({
             step={1}
             value={termIndex}
             onChange={(e) => onTermChange(TERM_OPTIONS[Number(e.target.value)].months)}
-            className="w-full accent-[#e20626]"
+            className="w-full accent-c-brand"
           />
           <div className="relative mt-1 h-5 text-[10px] font-medium text-c-subtle">
             {TERM_OPTIONS.map((option, index) => (
@@ -460,7 +460,7 @@ export function DealSizing({
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-c-subtle">
               {growthMode === 'percent' ? 'Annual Growth' : 'Added Storage per Month'}
             </label>
-            <div className="flex items-center rounded-lg border border-c-border2 bg-c-surface focus-within:border-[#e20626] focus-within:ring-2 focus-within:ring-c-red-soft">
+            <div className="flex items-center rounded-lg border border-c-border2 bg-c-surface focus-within:border-c-brand focus-within:ring-2 focus-within:ring-c-red-soft">
               <input
                 type="number"
                 min={0}
@@ -494,7 +494,7 @@ export function DealSizing({
               onClick={() => onGrowthChange({ dataGrowthMode: 'percent' })}
               className={`rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
                 growthMode === 'percent'
-                  ? 'bg-[#e20626] hover:bg-[#b40a23] text-white'
+                  ? 'bg-c-brand hover:bg-c-brand-hover text-white'
                   : 'text-c-muted hover:text-c-text'
               }`}
             >
@@ -505,7 +505,7 @@ export function DealSizing({
               onClick={() => onGrowthChange({ dataGrowthMode: 'fixed-tb' })}
               className={`rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
                 growthMode === 'fixed-tb'
-                  ? 'bg-[#e20626] hover:bg-[#b40a23] text-white'
+                  ? 'bg-c-brand hover:bg-c-brand-hover text-white'
                   : 'text-c-muted hover:text-c-text'
               }`}
             >
@@ -525,7 +525,7 @@ export function DealSizing({
             <button
               onClick={() => onUdmChange(!udmEnabled)}
               className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                udmEnabled ? 'bg-[#e20626]' : 'bg-c-border2'
+                udmEnabled ? 'bg-c-brand' : 'bg-c-border2'
               }`}
             >
               <span
@@ -551,7 +551,7 @@ export function DealSizing({
                 <p className="text-xs text-c-subtle">
                   {(totalStorageGb / 1000).toFixed(1)} TB × ${b2Pricing.udm.costPerGb}/GB — One-Time Cost to Backblaze
                 </p>
-                <div className="flex justify-between text-xs border-t border-[#e20626]/20 pt-2">
+                <div className="flex justify-between text-xs border-t border-c-brand/20 pt-2">
                   <span className="text-c-red-dark">B2 UDM Break-even</span>
                   <span className="font-semibold text-c-text">
                     {b2BreakEven !== null
@@ -592,7 +592,7 @@ export function DealSizing({
         <div className="border-t border-c-amber/25 pt-3">
           <button
             onClick={copyDealSummary}
-            className="w-full rounded-lg bg-[#e20626] hover:bg-[#b40a23] px-3 py-2.5 text-xs font-semibold text-white transition-colors"
+            className="w-full rounded-lg bg-c-brand hover:bg-c-brand-hover px-3 py-2.5 text-xs font-semibold text-white transition-colors"
           >
             {copyStatus === 'copied' ? 'Copied!' : copyStatus === 'error' ? 'Copy Failed' : 'Copy Deal Summary'}
           </button>
@@ -777,7 +777,7 @@ function ServiceTierSpecCard({ tier }: { tier: B2ServiceTier }) {
       </div>
 
       {/* RPS */}
-      <div className="border-t border-[#e20626]/20 pt-2.5">
+      <div className="border-t border-c-brand/20 pt-2.5">
         <p className="text-[10px] font-bold uppercase tracking-wide text-c-red-dark">RPS</p>
         {scalesWithThroughput ? (
           <p className="mt-1.5 text-xs font-semibold text-c-text">Scales with throughput</p>
@@ -790,7 +790,7 @@ function ServiceTierSpecCard({ tier }: { tier: B2ServiceTier }) {
       </div>
 
       {/* Egress */}
-      <div className="flex items-center justify-between border-t border-[#e20626]/20 pt-2.5 text-xs">
+      <div className="flex items-center justify-between border-t border-c-brand/20 pt-2.5 text-xs">
         <span className="font-semibold uppercase tracking-wide text-c-red-dark text-[10px]">Egress</span>
         <span className="font-semibold text-c-text">
           {spec.unlimitedEgress ? 'Unlimited, free' : '3× stored data free'}
@@ -798,7 +798,7 @@ function ServiceTierSpecCard({ tier }: { tier: B2ServiceTier }) {
       </div>
 
       {tier === 'overdrive' && (
-        <p className="border-t border-[#e20626]/20 pt-2.5 text-xs text-c-subtle">
+        <p className="border-t border-c-brand/20 pt-2.5 text-xs text-c-subtle">
           Zero API transaction fees. {spec.minimumCommitmentNote}. Pricing is usually custom-negotiated — the suggested ${spec.startingPerTbMonth}/TB above is a starting point only.
         </p>
       )}
@@ -835,7 +835,7 @@ function PresetButton({
       onClick={onClick}
       className={`rounded-lg border px-2 py-1.5 text-left transition-colors ${
         active
-          ? 'border-[#e20626] bg-c-red-soft text-c-red'
+          ? 'border-c-brand bg-c-red-soft text-c-red'
           : 'border-c-border2 bg-c-surface text-c-muted hover:border-c-border hover:bg-c-surface2'
       }`}
     >

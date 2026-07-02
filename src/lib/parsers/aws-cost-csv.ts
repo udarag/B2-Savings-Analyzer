@@ -179,7 +179,9 @@ export function parseAwsCostCsv(text: string): ParseResult {
   if (monthRows.length > 0) {
     const first = usageLabel(monthRows[0]);
     const last = usageLabel(monthRows[monthRows.length - 1]);
-    billingPeriod = `${first} to ${last}`;
+    // A single-month export has one row, so first === last — render just the one label rather than an
+    // identical-endpoint range like "2026-04-01 to 2026-04-01", which reads as a bug to the customer.
+    billingPeriod = first === last ? first : `${first} to ${last}`;
   }
 
   const lineItems: ParsedLineItem[] = [];

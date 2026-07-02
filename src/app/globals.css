@@ -38,6 +38,9 @@
   --c-amber: #b45309;
   --c-amber-soft: #fbf1df;
   --c-nav: #000033;
+  /* Orange "in-progress / active" accent (card bar, readiness dot, portfolio bar). Its own semantic
+     slot rather than a magic hex repeated across files. Same value in both themes for now. */
+  --c-accent: #f9733a;
 
   /* Back-compat aliases consumed by html/body and a few base rules. */
   --background: var(--c-bg);
@@ -72,6 +75,8 @@
   --c-amber: #fbbf24;
   --c-amber-soft: rgba(180, 83, 9, 0.22);
   --c-nav: #04041a;
+  /* Orange accent reads well on dark navy as-is; keep the same hue so "in progress" is one color. */
+  --c-accent: #f9733a;
 
   --background: var(--c-bg);
   --foreground: var(--c-text);
@@ -115,6 +120,18 @@
   --color-c-amber: var(--c-amber);
   --color-c-amber-soft: var(--c-amber-soft);
   --color-c-nav: var(--c-nav);
+  --color-c-accent: var(--c-accent);
+
+  /* Solid brand fill for buttons/CTAs and active controls. Intentionally STATIC (same #e20626 in both
+     themes) — unlike --c-red, which lightens to a legible pink in dark mode and would make a filled
+     button look wrong. Use bg-c-brand / hover:bg-c-brand-hover instead of inline #e20626 so the brand
+     color lives in one place. */
+  --color-c-brand: #e20626;
+  --color-c-brand-hover: #b40a23;
+  /* Positive figure inside the always-dark navy hero band (fixed dark surface, so a static mint). */
+  --color-c-hero-pos: #8fe9be;
+  /* Dark surface for hover tooltips and the egress flow's hyperscaler node (always dark chrome). */
+  --color-c-tooltip: #11113a;
 
   /* Legacy brand aliases (bb-*) re-pointed to the new palette so screens that
      haven't been migrated to the --c-* tokens yet still pick up the new brand. */

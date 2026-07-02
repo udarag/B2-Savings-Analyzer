@@ -84,7 +84,7 @@ export function EgressQuestionnaire({
           <div className="space-y-2">
             {/* Selected radio card: red border + red-soft fill with a filled red accent dot. Unselected: neutral surface. */}
             <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${
-              !config.hasHyperscalerCompute ? 'border-[#e20626] bg-c-red-soft' : 'border-c-border2 bg-c-surface hover:bg-c-surface2'
+              !config.hasHyperscalerCompute ? 'border-c-brand bg-c-red-soft' : 'border-c-border2 bg-c-surface hover:bg-c-surface2'
             }`}>
               <input
                 type="radio"
@@ -98,7 +98,7 @@ export function EgressQuestionnaire({
                   computeMovingToPartner: false,
                   gbPerMonthHyperscalerToB2: 0,
                 })}
-                className="h-4 w-4 accent-[#e20626]"
+                className="h-4 w-4 accent-c-brand"
               />
               <div>
                 <p className="text-sm font-medium text-c-text">No hyperscaler compute in the storage path</p>
@@ -106,7 +106,7 @@ export function EgressQuestionnaire({
               </div>
             </label>
             <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${
-              config.hasHyperscalerCompute ? 'border-[#e20626] bg-c-red-soft' : 'border-c-border2 bg-c-surface hover:bg-c-surface2'
+              config.hasHyperscalerCompute ? 'border-c-brand bg-c-red-soft' : 'border-c-border2 bg-c-surface hover:bg-c-surface2'
             }`}>
               <input
                 type="radio"
@@ -118,7 +118,7 @@ export function EgressQuestionnaire({
                   hyperscalerComputeFeedsStorage: true,
                   computeStaysInHyperscaler: true,
                 })}
-                className="h-4 w-4 accent-[#e20626]"
+                className="h-4 w-4 accent-c-brand"
               />
               <div>
                 <p className="text-sm font-medium text-c-text">Yes, compute is part of the stack</p>
@@ -136,7 +136,7 @@ export function EgressQuestionnaire({
             <div className="space-y-2">
               {/* Selected radio card: red border + red-soft fill with a filled red accent dot. Unselected: neutral surface. */}
               <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${
-                config.hyperscalerComputeFeedsStorage ? 'border-[#e20626] bg-c-red-soft' : 'border-c-border2 bg-c-surface hover:bg-c-surface2'
+                config.hyperscalerComputeFeedsStorage ? 'border-c-brand bg-c-red-soft' : 'border-c-border2 bg-c-surface hover:bg-c-surface2'
               }`}>
                 <input
                   type="radio"
@@ -147,7 +147,7 @@ export function EgressQuestionnaire({
                     hyperscalerComputeFeedsStorage: true,
                     computeStaysInHyperscaler: true,
                   })}
-                  className="h-4 w-4 accent-[#e20626]"
+                  className="h-4 w-4 accent-c-brand"
                 />
                 <div>
                   <p className="text-sm font-medium text-c-text">Yes, processed data lands in storage</p>
@@ -155,7 +155,7 @@ export function EgressQuestionnaire({
                 </div>
               </label>
               <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${
-                !config.hyperscalerComputeFeedsStorage ? 'border-[#e20626] bg-c-red-soft' : 'border-c-border2 bg-c-surface hover:bg-c-surface2'
+                !config.hyperscalerComputeFeedsStorage ? 'border-c-brand bg-c-red-soft' : 'border-c-border2 bg-c-surface hover:bg-c-surface2'
               }`}>
                 <input
                   type="radio"
@@ -173,7 +173,7 @@ export function EgressQuestionnaire({
                     gbPerMonthServedToUsers: getTrainingEgressGb(config.trainingRunsPerMonth, config.trainingDataTbPerRun),
                     usesPartnerCdn: false,
                   })}
-                  className="h-4 w-4 accent-[#e20626]"
+                  className="h-4 w-4 accent-c-brand"
                 />
                 <div>
                   <p className="text-sm font-medium text-c-text">No, compute does not write back to storage</p>
@@ -572,8 +572,8 @@ function DataFlowPreview({
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2.5">
         <p className="text-[11px] font-bold uppercase tracking-wider text-c-subtle">Modeled data flow</p>
         <div className="flex flex-wrap items-center gap-3">
-          <FlowLegendItem swatchClass="bg-[#e20626]" label="Backblaze B2" />
-          <FlowLegendItem swatchClass="border border-c-border2 bg-[#11113a]" label="Hyperscaler" />
+          <FlowLegendItem swatchClass="bg-c-brand" label="Backblaze B2" />
+          <FlowLegendItem swatchClass="border border-c-border2 bg-c-tooltip" label="Hyperscaler" />
           <FlowLegendItem swatchClass="border border-c-border2 bg-c-surface" label="Customer" />
         </div>
       </div>
@@ -789,14 +789,14 @@ function flowNodeClasses(kind: FlowNodeKind): { box: string; title: string; sub:
     case 'b2':
       // Backblaze B2 = brand-red node with a soft red glow, white text.
       return {
-        box: 'border border-[#e20626] bg-[#e20626] shadow-[0_4px_14px_rgba(226,6,38,0.30)]',
+        box: 'border border-c-brand bg-c-brand shadow-[0_4px_14px_rgba(226,6,38,0.30)]',
         title: 'text-white',
         sub: 'text-white/80',
       };
     case 'cloud':
       // Hyperscaler compute = navy node, white text.
       return {
-        box: 'border border-white/15 bg-[#11113a]',
+        box: 'border border-white/15 bg-c-tooltip',
         title: 'text-white',
         sub: 'text-white/60',
       };
@@ -1023,7 +1023,7 @@ function VolumeInput({
       <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-c-subtle">
         {label}
       </label>
-      <div className="flex items-center rounded-md border border-c-border2 bg-c-bg shadow-sm focus-within:border-[#e20626] focus-within:ring-2 focus-within:ring-[#e20626]/20">
+      <div className="flex items-center rounded-md border border-c-border2 bg-c-bg shadow-sm focus-within:border-c-brand focus-within:ring-2 focus-within:ring-c-brand/20">
         <input
           type="text"
           inputMode="decimal"

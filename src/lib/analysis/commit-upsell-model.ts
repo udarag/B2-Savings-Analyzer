@@ -1,5 +1,5 @@
 import type { B2UsageInput } from '@/types/analysis';
-import type { ProjectionPoint } from '@/types/model';
+import type { ProjectionPoint, ReportSnapshot } from '@/types/model';
 import { computeProjections, formatGrowthAssumption } from '@/lib/engine/projections';
 import { getServiceTierSpec, type ServiceTierSpec } from '@/lib/pricing/service-levels';
 
@@ -76,4 +76,52 @@ export function computeCommitUpsellView(usage: B2UsageInput): CommitUpsellView {
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+/**
+ * Build a durable report snapshot for a commit-upsell opportunity from its B2 usage input, so the
+ * deal shows up in the pipeline rollups (potential TCV, storage modeled, reports-ready) the same way a
+ * migration snapshot does — before this, commit-upsell opportunities never snapshotted and read as
+ * "$0 potential / no report" forever. Pure: the caller supplies id + createdAt so this stays
+ * side-effect-free (mirrors buildAnalysisSnapshot's injected `now`).
+ *
+ * There's no dollar-savings hero here (Committed is typically flat $/TB), so monthly/annual savings
+ * reflect only a genuinely-negotiated contract discount (0 at a flat rate) and are never fabricated.
+ * "TCV" is the committed storage value: the committed $/TB across the projection term with growth,
+ * which the list's estimateStorageTcv derives from b2PricePerTb + totalStorageGb + term + growth.
+ */
+export function buildCommitUpsellSnapshot({
+  analysisId,
+  usage,
+  trigger,
+  snapshotId,
+  createdAt,
+}: {
+  analysisId: string;
+  usage: B2UsageInput;
+  trigger: ReportSnapshot['trigger'];
+  snapshotId: string;
+  createdAt: string;
+}): ReportSnapshot {
+  const view = computeCommitUpsellView(usage);
+  return {
+    id: snapshotId,
+    analysisId,
+    createdAt,
+    trigger,
+    monthlySavings: view.monthlyDeltaUsd,
+    annualSavings: round2(view.monthlyDeltaUsd * 12),
+    savingsPercent: view.discountPercent,
+    totalStorageGb: usage.currentStorageTb * 1000,
+    // Not a tiered migration; there's a single storage pool, so record 1 rather than 0 tiers.
+    migratedTierCount: 1,
+    b2PricePerTb: view.targetRatePerTb,
+    // The model's projection term today; there's no term selector on the commit-upsell flow yet.
+    termMonths: PROJECTION_TERM_MONTHS,
+    growthMode: usage.dataGrowthMode,
+    growthRatePercent: usage.dataGrowthRatePercent,
+    growthFixedTbPerMonth: usage.dataGrowthFixedTbPerMonth,
+    udmEnabled: false,
+    b2ServiceTier: usage.targetTier,
+  };
 }

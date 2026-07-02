@@ -163,7 +163,7 @@ function GroupCheckbox({
       }}
       onChange={(e) => onChange(e.target.checked)}
       aria-label={ariaLabel}
-      className="h-4 w-4 accent-[#e20626] rounded"
+      className="h-4 w-4 accent-c-brand rounded"
     />
   );
 }
@@ -384,7 +384,7 @@ export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInvent
                                     checked={tier.migrateToB2}
                                     onChange={(e) => onToggle(tier.id, e.target.checked)}
                                     aria-label={`Migrate ${tier.storageClass} in ${tier.region}`}
-                                    className="h-4 w-4 accent-[#e20626] rounded"
+                                    className="h-4 w-4 accent-c-brand rounded"
                                   />
                                 </span>
                                 <span className="font-medium text-c-text">{tier.region}</span>

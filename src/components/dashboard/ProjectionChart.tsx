@@ -53,7 +53,7 @@ export function ProjectionChart({
   const xAxisTicks = getXAxisTicks(termMonths);
   const savingsTrend =
     endingMonthlySavings > 0
-      ? `The gap between ${providerLabel} and Backblaze B2 widens with storage growth, reaching ${formatCurrency(endingMonthlySavings)}/month across ${formatStorage(endingStorageGb)}.`
+      ? `The gap between ${providerLabel} and Backblaze B2 widens with storage growth, reaching ${formatCurrency(endingMonthlySavings, 0)}/month across ${formatStorage(endingStorageGb)}.`
       : `The projection does not show monthly savings by the final month across ${formatStorage(endingStorageGb)}.`;
 
   return (
@@ -74,7 +74,7 @@ export function ProjectionChart({
               // Active term = solid brand red; inactive = muted text on hover surface.
               className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
                 termMonths === m
-                  ? 'bg-[#e20626] text-white shadow-sm hover:bg-[#b40a23]'
+                  ? 'bg-c-brand text-white shadow-sm hover:bg-c-brand-hover'
                   : 'text-c-muted hover:bg-c-surface2'
               }`}
             >
@@ -85,8 +85,8 @@ export function ProjectionChart({
       </div>
       <div className="p-6">
         <div className="mb-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
-          <ChartMetric label="Total savings" value={totalSavings} formatter={formatCurrency} tone="savings" />
-          <ChartMetric label="Final monthly savings" value={endingMonthlySavings} formatter={formatCurrency} tone="savings" />
+          <ChartMetric label="Total savings" value={totalSavings} formatter={(v) => formatCurrency(v, 0)} tone="savings" />
+          <ChartMetric label="Final monthly savings" value={endingMonthlySavings} formatter={(v) => formatCurrency(v, 0)} tone="savings" />
           <ChartMetric label="Break-even" value={breakEven ? `Month ${breakEven.month}` : 'Not in term'} />
           <ChartMetric label="Ending storage" value={endingStorageGb} formatter={formatStorage} />
         </div>
@@ -308,10 +308,10 @@ function ProjectionTooltip({
       <div className="space-y-1.5">
         {/* Row dots mirror the chart series colors: navy current cost, brand-red B2, green savings. */}
         <TooltipRow label="Data Stored" value={formatStorage(point.storageGb)} />
-        <TooltipRow label={providerLabel} value={formatCurrency(point.currentCost)} colorClass="bg-[#000033]" />
-        <TooltipRow label="Backblaze B2" value={formatCurrency(point.b2Cost)} colorClass="bg-[#e20626]" />
-        <TooltipRow label="Monthly Savings" value={formatCurrency(point.monthlySavings)} colorClass="bg-[#1f8a5b]" />
-        <TooltipRow label="Cumulative Savings" value={formatCurrency(point.cumulativeSavings)} colorClass="bg-[#1f8a5b]" />
+        <TooltipRow label={providerLabel} value={formatCurrency(point.currentCost, 0)} colorClass="bg-[#000033]" />
+        <TooltipRow label="Backblaze B2" value={formatCurrency(point.b2Cost, 0)} colorClass="bg-[#e20626]" />
+        <TooltipRow label="Monthly Savings" value={formatCurrency(point.monthlySavings, 0)} colorClass="bg-[#1f8a5b]" />
+        <TooltipRow label="Cumulative Savings" value={formatCurrency(point.cumulativeSavings, 0)} colorClass="bg-[#1f8a5b]" />
       </div>
     </div>
   );

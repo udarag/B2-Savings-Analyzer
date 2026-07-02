@@ -39,6 +39,7 @@ import { buildReportFilename, getFilenameFromContentDisposition } from '@/lib/re
 import { formatCurrency, formatNumber, formatPercent } from '@/components/shared/FormatCurrency';
 import { useDocumentTitle } from '@/components/shared/useDocumentTitle';
 import b2Pricing from '@/lib/pricing/b2.json';
+import { PRICING_AS_OF_LABEL } from '@/lib/pricing/pricing-meta';
 import { CommitUpsellReport } from '@/components/report/CommitUpsellReport';
 
 // Account-executive attribution shown in the report footer ("Prepared by ...").
@@ -67,6 +68,20 @@ function formatReportStorage(gb: number): string {
 
 function formatEffectiveRate(perTb: number): string {
   return `${formatCurrency(perTb)}/TB`;
+}
+
+// Whole-dollar currency for report headlines and aggregate figures. Cents on five- and six-figure
+// numbers read as false precision to a customer, so summary/total/monthly dollar figures round to the
+// dollar. Per-unit rates ($/TB, $/GB) keep their cents via plain formatCurrency — they need the
+// precision and are small enough that cents read as correct, not fussy.
+function formatUsd0(value: number): string {
+  return formatCurrency(value, 0);
+}
+
+// Whole-TB storage for headline figures (e.g. free egress "887 TB/mo") so a customer-facing number
+// never shows hundredths of a terabyte. The detailed tables keep formatReportStorage's finer precision.
+function formatStorageTbWhole(gb: number): string {
+  return `${Math.round(gb / 1000).toLocaleString()} TB`;
 }
 
 // Join non-null phrases into a grammatical, Oxford-comma list for inline prose. Nulls are dropped
@@ -222,7 +237,7 @@ function ReportPageContent() {
   }, [!!costModel]);
 
   if (!loading && meta?.opportunityType === 'commit-upsell') {
-    return <CommitUpsellReport analysisId={id} meta={meta} />;
+    return <CommitUpsellReport analysisId={id} meta={meta} aeInfo={aeInfo} />;
   }
 
   if (loading || !meta || !parsed || !costModel || !modelConfig || !egressConfig) {
@@ -287,13 +302,13 @@ function ReportPageContent() {
   const coldTierAccess = actionCostSummary.coldTierAccess;
   const actionFeePhrases = formatPhraseList([
     actionCostSummary.putRelated.currentCost > 0
-      ? `${formatCurrency(actionCostSummary.putRelated.currentCost)}/month in PUT/write-class request charges`
+      ? `${formatUsd0(actionCostSummary.putRelated.currentCost)}/month in PUT/write-class request charges`
       : null,
     actionCostSummary.getRelated.currentCost > 0
-      ? `${formatCurrency(actionCostSummary.getRelated.currentCost)}/month in GET/read-class request charges`
+      ? `${formatUsd0(actionCostSummary.getRelated.currentCost)}/month in GET/read-class request charges`
       : null,
     coldTierAccess.totalCost > 0
-      ? `${formatCurrency(coldTierAccess.totalCost)}/month in cold-tier access, restore, tiering, or early-deletion charges`
+      ? `${formatUsd0(coldTierAccess.totalCost)}/month in cold-tier access, restore, tiering, or early-deletion charges`
       : null,
   ]);
 
@@ -495,16 +510,16 @@ function ReportPageContent() {
           <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-[1.25fr_1fr]">
             <div className="relative overflow-hidden rounded-lg bg-bb-navy bg-cover bg-center p-6 text-white" style={{ backgroundImage: "url('/gradient-dark.png')" }}>
               <p className="text-sm text-gray-300">Projected Savings Over {termYears} Year{termYears === 1 ? '' : 's'}</p>
-              <p className="mt-1 font-display text-4xl font-bold leading-tight">{formatCurrency(totalSavings)}</p>
+              <p className="mt-1 font-display text-4xl font-bold leading-tight">{formatUsd0(totalSavings)}</p>
               <p className="mt-2 text-xs text-gray-400">Includes {growthLabel} and the modeled migration economics below.</p>
               <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <p className="text-gray-400">Monthly Savings</p>
-                  <p className="mt-0.5 font-display text-lg font-semibold text-green-200">{formatCurrency(costModel.monthlySavings)}</p>
+                  <p className="mt-0.5 font-display text-lg font-semibold text-green-200">{formatUsd0(costModel.monthlySavings)}</p>
                 </div>
                 <div>
                   <p className="text-gray-400">Annual Savings</p>
-                  <p className="mt-0.5 font-display text-lg font-semibold text-green-200">{formatCurrency(costModel.annualSavings)}</p>
+                  <p className="mt-0.5 font-display text-lg font-semibold text-green-200">{formatUsd0(costModel.annualSavings)}</p>
                 </div>
               </div>
             </div>
@@ -514,7 +529,7 @@ function ReportPageContent() {
               <OutcomeMetric label="Modeled Storage" value={formatReportStorage(migratedStorageGb)} />
               <OutcomeMetric
                 label={costModel.udmEnabled ? 'Migration Covered' : 'Migration Cost'}
-                value={costModel.udmEnabled ? formatCurrency(migrationCostCovered) : formatCurrency(customerMigrationCost)}
+                value={costModel.udmEnabled ? formatUsd0(migrationCostCovered) : formatUsd0(customerMigrationCost)}
                 tone={costModel.udmEnabled || customerMigrationCost <= 0 ? 'green' : undefined}
               />
             </div>
@@ -552,11 +567,11 @@ function ReportPageContent() {
               </p>
             </div>
             <div className="grid grid-cols-2 gap-px bg-gray-200 text-sm">
-              <DecisionMetric label="Your Current Modeled Cost" value={`${formatCurrency(modeledCurrentMonthly)}/mo`} />
-              <DecisionMetric label="Estimated B2 Cost" value={`${formatCurrency(modeledB2Monthly)}/mo`} emphasis="red" />
+              <DecisionMetric label="Your Current Modeled Cost" value={`${formatUsd0(modeledCurrentMonthly)}/mo`} />
+              <DecisionMetric label="Estimated B2 Cost" value={`${formatUsd0(modeledB2Monthly)}/mo`} emphasis="red" />
               <DecisionMetric label="Your B2 Storage Price" value={b2StorageRateLabel} emphasis="red" />
               <DecisionMetric label="Modeled Storage Scope" value={`${formatReportStorage(migratedStorageGb)} across ${migratedTiers.length} tier${migratedTiers.length === 1 ? '' : 's'}`} />
-              <DecisionMetric label="Migration Cost to You" value={formatCurrency(customerMigrationCost)} emphasis={customerMigrationCost <= 0 ? 'green' : undefined} />
+              <DecisionMetric label="Migration Cost to You" value={formatUsd0(customerMigrationCost)} emphasis={customerMigrationCost <= 0 ? 'green' : undefined} />
               <DecisionMetric label={savingsTimingSummaryLabel} value={savingsTimingValue} emphasis={!hasCustomerMigrationPayback ? 'green' : undefined} />
               <DecisionMetric label="Projection Assumption" value={`${formatTermLabel(modelConfig.projectionTermMonths)} with ${growthLabel}`} />
               <DecisionMetric label="B2 Service Level" value={serviceTierComparison[0].customerLabel} />
@@ -567,14 +582,14 @@ function ReportPageContent() {
           <div className="mb-6 report-narrative-section">
             <h2 className="text-lg font-semibold mb-3 border-l-4 border-bb-red pl-3">What Does This Mean for {reportCompanyName}?</h2>
             <p className="text-sm text-gray-700 leading-relaxed">
-              Based on the billing data provided, {reportCompanyName} can reduce modeled storage and data-access costs from {formatCurrency(modeledCurrentMonthly)}/month
-              to {formatCurrency(modeledB2Monthly)}/month by moving {formatReportStorage(migratedStorageGb)} to Backblaze B2 Cloud Storage.
+              Based on the billing data provided, {reportCompanyName} can reduce modeled storage and data-access costs from {formatUsd0(modeledCurrentMonthly)}/month
+              to {formatUsd0(modeledB2Monthly)}/month by moving {formatReportStorage(migratedStorageGb)} to Backblaze B2 Cloud Storage.
               This model uses your Backblaze B2 storage price of {b2StorageRateLabel}.
-              That is an estimated savings of {formatCurrency(costModel.monthlySavings)}/month, {formatCurrency(costModel.annualSavings)}/year,
-              and {formatCurrency(totalSavings)} over {formatTermLabel(modelConfig.projectionTermMonths)}.
+              That is an estimated savings of {formatUsd0(costModel.monthlySavings)}/month, {formatUsd0(costModel.annualSavings)}/year,
+              and {formatUsd0(totalSavings)} over {formatTermLabel(modelConfig.projectionTermMonths)}.
               {costModel.udmEnabled
-                ? ` Backblaze covers the estimated ${formatCurrency(migrationCostCovered)} migration cost through the Universal Data Migration program, so your modeled migration cost is $0.`
-                : costModel.breakEvenMonth ? ` Your modeled migration cost of ${formatCurrency(customerMigrationCost)} is recovered within ${costModel.breakEvenMonth} month${costModel.breakEvenMonth !== 1 ? 's' : ''}.` : ''}
+                ? ` Backblaze covers the estimated ${formatUsd0(migrationCostCovered)} migration cost through the Universal Data Migration program, so your modeled migration cost is $0.`
+                : costModel.breakEvenMonth ? ` Your modeled migration cost of ${formatUsd0(customerMigrationCost)} is recovered within ${costModel.breakEvenMonth} month${costModel.breakEvenMonth !== 1 ? 's' : ''}.` : ''}
               {b2ServiceTier === 'overdrive'
                 ? ` This model uses the Overdrive service tier, which includes unlimited free egress and zero API transaction fees — costs that would otherwise scale with usage on the Uncommitted or Committed tiers.`
                 : b2ServiceTier === 'uncommitted'
@@ -583,13 +598,13 @@ function ReportPageContent() {
             </p>
             {actionCostSummary.distinctCurrentCost > 0 && (
               <p className="mt-3 text-sm text-gray-700 leading-relaxed">
-                The source bill also shows {formatCurrency(actionCostSummary.distinctCurrentCost)}/month in action-based fees tied to using the data, including {actionFeePhrases}.
+                The source bill also shows {formatUsd0(actionCostSummary.distinctCurrentCost)}/month in action-based fees tied to using the data, including {actionFeePhrases}.
                 Because B2 standard transactions are free and B2 has no retrieval or restore fees, moving this data to B2 helps remove a cost center around actively using the data, not just storing it.
               </p>
             )}
             {costModel.partnerComputeScenario && (
               <p className="mt-3 text-sm text-gray-700 leading-relaxed">
-                If the processed-data write path later moves to a B2 bandwidth alliance compute partner, this model avoids another {formatCurrency(costModel.partnerComputeScenario.monthlyEgressAvoided)}/month in hyperscaler egress and increases savings to {formatCurrency(costModel.partnerComputeScenario.monthlySavings)}/month.
+                If the processed-data write path later moves to a B2 bandwidth alliance compute partner, this model avoids another {formatUsd0(costModel.partnerComputeScenario.monthlyEgressAvoided)}/month in hyperscaler egress and increases savings to {formatUsd0(costModel.partnerComputeScenario.monthlySavings)}/month.
               </p>
             )}
             <div className="mt-4 grid grid-cols-3 gap-3 text-xs">
@@ -646,7 +661,7 @@ function ReportPageContent() {
                             <span className="text-amber-600 ml-1">(~{formatPercent(pctOff)} Off List)</span>
                           )}
                         </span>
-                        <span className="font-medium text-amber-900">-{formatCurrency(p.totalAmountUsd || 0)}</span>
+                        <span className="font-medium text-amber-900">-{formatUsd0(p.totalAmountUsd || 0)}</span>
                       </div>
                     );
                   })}
@@ -694,14 +709,14 @@ function ReportPageContent() {
                   <td className="px-2 py-2 text-gray-700">{tier.region}</td>
                   <td className="px-2 py-2 text-gray-600">{location || '—'}</td>
                   <td className="px-2 py-2 text-right">{formatReportStorage(tier.gbStored)}</td>
-                  <td className="px-2 py-2 text-right">{formatCurrency(tier.totalTrueCost)}</td>
+                  <td className="px-2 py-2 text-right">{formatUsd0(tier.totalTrueCost)}</td>
                   <td className="px-2 py-2 text-right text-gray-600">{formatEffectiveRate(tier.effectivePerTb)}</td>
                   <td className="px-2 py-2 text-right bg-bb-red-light">
                     <span className="inline-flex rounded-md bg-white px-2 py-0.5 font-semibold text-bb-red-dark ring-1 ring-red-100">
-                      {formatCurrency(tier.modeledB2Cost)}
+                      {formatUsd0(tier.modeledB2Cost)}
                     </span>
                   </td>
-                  <td className="px-2 py-2 text-right text-green-700 font-medium">{formatCurrency(tier.delta)}</td>
+                  <td className="px-2 py-2 text-right text-green-700 font-medium">{formatUsd0(tier.delta)}</td>
                 </tr>
               );
             })}
@@ -710,14 +725,14 @@ function ReportPageContent() {
             <tr>
               <td className="px-2 py-2" colSpan={3}>Total</td>
               <td className="px-2 py-2 text-right">{formatReportStorage(migratedTiers.reduce((s, t) => s + t.gbStored, 0))}</td>
-              <td className="px-2 py-2 text-right">{formatCurrency(migratedTiers.reduce((s, t) => s + t.totalTrueCost, 0))}</td>
+              <td className="px-2 py-2 text-right">{formatUsd0(migratedTiers.reduce((s, t) => s + t.totalTrueCost, 0))}</td>
               <td className="px-2 py-2" />
               <td className="px-2 py-2 text-right bg-bb-red-light">
                 <span className="inline-flex rounded-md bg-white px-2 py-0.5 font-semibold text-bb-red-dark ring-1 ring-red-100">
-                  {formatCurrency(migratedTiers.reduce((s, t) => s + t.modeledB2Cost, 0))}
+                  {formatUsd0(migratedTiers.reduce((s, t) => s + t.modeledB2Cost, 0))}
                 </span>
               </td>
-              <td className="px-2 py-2 text-right text-green-700">{formatCurrency(migratedTiers.reduce((s, t) => s + t.delta, 0))}</td>
+              <td className="px-2 py-2 text-right text-green-700">{formatUsd0(migratedTiers.reduce((s, t) => s + t.delta, 0))}</td>
             </tr>
           </tfoot>
         </table>
@@ -736,18 +751,18 @@ function ReportPageContent() {
                     <span className="text-gray-600">
                       Data egress at {meta.provider.toUpperCase()} list rate ({formatNumber(migratedTiers.reduce((s, t) => s + t.gbStored, 0))} GB)
                     </span>
-                    <span>{formatCurrency(costModel.migrationCost.egressCost)}</span>
+                    <span>{formatUsd0(costModel.migrationCost.egressCost)}</span>
                   </div>
                 )}
                 {costModel.migrationCost.restoreCost > 0 && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Cold-Tier Restore Fees</span>
-                    <span>{formatCurrency(costModel.migrationCost.restoreCost)}</span>
+                    <span>{formatUsd0(costModel.migrationCost.restoreCost)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-semibold border-t border-gray-200 pt-1">
                   <span>Total Egress Cost</span>
-                  <span>{formatCurrency(migrationCostCovered)}</span>
+                  <span>{formatUsd0(migrationCostCovered)}</span>
                 </div>
               </div>
             </div>
@@ -762,7 +777,7 @@ function ReportPageContent() {
                 </div>
                 <div className="shrink-0 rounded-lg bg-white px-4 py-3 text-right ring-1 ring-green-200">
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-green-700">Covered Amount</p>
-                  <p className="text-2xl font-bold leading-tight text-green-800">{formatCurrency(migrationCostCovered)}</p>
+                  <p className="text-2xl font-bold leading-tight text-green-800">{formatUsd0(migrationCostCovered)}</p>
                 </div>
               </div>
             </div>
@@ -774,18 +789,18 @@ function ReportPageContent() {
               {costModel.migrationCost.egressCost > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Data Egress from Hyperscaler</span>
-                  <span>{formatCurrency(costModel.migrationCost.egressCost)}</span>
+                  <span>{formatUsd0(costModel.migrationCost.egressCost)}</span>
                 </div>
               )}
               {costModel.migrationCost.restoreCost > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Cold-Tier Restore Fees</span>
-                  <span>{formatCurrency(costModel.migrationCost.restoreCost)}</span>
+                  <span>{formatUsd0(costModel.migrationCost.restoreCost)}</span>
                 </div>
               )}
               <div className="flex justify-between font-semibold border-t pt-1">
                   <span>Total Migration Cost</span>
-                <span>{formatCurrency(costModel.migrationCost.egressCost + costModel.migrationCost.restoreCost)}</span>
+                <span>{formatUsd0(costModel.migrationCost.egressCost + costModel.migrationCost.restoreCost)}</span>
               </div>
             </div>
           </div>
@@ -830,14 +845,14 @@ function ReportPageContent() {
                 <tr key={p.month} className={p.cumulativeSavings >= 0 ? '' : 'text-gray-400'}>
                   <td className="px-3 py-2">{p.month}</td>
                   <td className="px-3 py-2 text-right">{formatReportStorage(p.storageGb)}</td>
-                  <td className="px-3 py-2 text-right">{formatCurrency(p.currentCost)}</td>
+                  <td className="px-3 py-2 text-right">{formatUsd0(p.currentCost)}</td>
                   <td className="px-3 py-2 text-right bg-bb-red-light">
                     <span className="inline-flex rounded-md bg-white px-2 py-0.5 font-semibold text-bb-red-dark ring-1 ring-red-100">
-                      {formatCurrency(p.b2Cost)}
+                      {formatUsd0(p.b2Cost)}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-right text-green-700">{formatCurrency(p.monthlySavings)}</td>
-                  <td className="px-3 py-2 text-right font-medium">{formatCurrency(p.cumulativeSavings)}</td>
+                  <td className="px-3 py-2 text-right text-green-700">{formatUsd0(p.monthlySavings)}</td>
+                  <td className="px-3 py-2 text-right font-medium">{formatUsd0(p.cumulativeSavings)}</td>
                 </tr>
               ))}
           </tbody>
@@ -883,7 +898,7 @@ function ReportPageContent() {
               <tr>
                 <td className="py-2 font-medium text-gray-600">PUT / Write-Class Charges</td>
                 <td className="py-2">
-                  {formatCurrency(actionCostSummary.putRelated.currentCost)}/mo identified across {formatActionSignal(actionCostSummary.putRelated)}; modeled B2 standard transaction cost is $0.00
+                  {formatUsd0(actionCostSummary.putRelated.currentCost)}/mo identified across {formatActionSignal(actionCostSummary.putRelated)}; modeled B2 standard transaction cost is $0.00
                 </td>
               </tr>
             )}
@@ -891,14 +906,14 @@ function ReportPageContent() {
               <tr>
                 <td className="py-2 font-medium text-gray-600">GET / Read-Class Charges</td>
                 <td className="py-2">
-                  {formatCurrency(actionCostSummary.getRelated.currentCost)}/mo identified across {formatActionSignal(actionCostSummary.getRelated)}; modeled B2 standard transaction cost is $0.00
+                  {formatUsd0(actionCostSummary.getRelated.currentCost)}/mo identified across {formatActionSignal(actionCostSummary.getRelated)}; modeled B2 standard transaction cost is $0.00
                 </td>
               </tr>
             )}
             {coldTierAccess.totalCost > 0 && (
               <tr>
                 <td className="py-2 font-medium text-gray-600">Cold-Tier Access Charges</td>
-                <td className="py-2">{formatCurrency(coldTierAccess.totalCost)}/mo identified in AWS S3 or GCS retrieval, restore, tiering, early deletion, or cold-tier operation rows; B2 has no retrieval or restore fees</td>
+                <td className="py-2">{formatUsd0(coldTierAccess.totalCost)}/mo identified in AWS S3 or GCS retrieval, restore, tiering, early deletion, or cold-tier operation rows; B2 has no retrieval or restore fees</td>
               </tr>
             )}
             <tr>
@@ -921,11 +936,11 @@ function ReportPageContent() {
             </tr>
             <tr>
               <td className="py-2 font-medium text-gray-600">Migration Cost to You</td>
-              <td className="py-2">{formatCurrency(customerMigrationCost)}{costModel.udmEnabled ? ' through Backblaze Universal Data Migration' : ''}</td>
+              <td className="py-2">{formatUsd0(customerMigrationCost)}{costModel.udmEnabled ? ' through Backblaze Universal Data Migration' : ''}</td>
             </tr>
             <tr>
               <td className="py-2 font-medium text-gray-600">Pricing Date</td>
-              <td className="py-2">June 2026 (verified against published rates)</td>
+              <td className="py-2">{PRICING_AS_OF_LABEL} (verified against published rates)</td>
             </tr>
           </tbody>
         </table>
@@ -1017,10 +1032,10 @@ function BusinessPotentialStrip({
   if (potential.freeEgressGbPerMonth > 0) {
     tiles.push({
       key: 'egress',
-      value: `${formatReportStorage(potential.freeEgressGbPerMonth)}/mo`,
+      value: `${formatStorageTbWhole(potential.freeEgressGbPerMonth)}/mo`,
       label: 'Egress included free every month',
       support: potential.eliminatedEgressMonthly > 0
-        ? `${providerLabel} bills you to move your own data — about ${formatCurrency(potential.eliminatedEgressMonthly)}/month on this scope today. B2 includes 3x your stored data, so you can use and share it without the per-GB egress toll.`
+        ? `${providerLabel} bills you to move your own data — about ${formatUsd0(potential.eliminatedEgressMonthly)}/month on this scope today. B2 includes 3x your stored data, so you can use and share it without the per-GB egress toll.`
         : `B2 includes 3x your stored data in free egress, so reading, serving, and sharing it stops being a metered cost the way it is on ${providerLabel}.`,
       tone: 'green',
     });
@@ -1031,9 +1046,9 @@ function BusinessPotentialStrip({
   if (tiles.length < 2 && potential.hasReclaimableCapital) {
     tiles.push({
       key: 'capital',
-      value: `${formatCurrency(potential.annualSavings)}/yr`,
+      value: `${formatUsd0(potential.annualSavings)}/yr`,
       label: 'Freed up to reinvest in the business',
-      support: `About ${formatPercent(potential.reclaimedPercent)} of your storage spend comes back as budget — ${formatCurrency(potential.cumulativeSavings)} over ${termYears} year${termYears === 1 ? '' : 's'} — to redirect toward growth.`,
+      support: `About ${formatPercent(potential.reclaimedPercent)} of your storage spend comes back as budget — ${formatUsd0(potential.cumulativeSavings)} over ${termYears} year${termYears === 1 ? '' : 's'} — to redirect toward growth.`,
       tone: 'green',
     });
   }
@@ -1158,7 +1173,7 @@ function ActionCostSignalSection({
         </div>
         <div className="shrink-0 rounded-lg bg-white px-4 py-3 text-right ring-1 ring-green-200">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-green-700">Identified Today</p>
-          <p className="text-xl font-bold leading-tight text-green-900">{formatCurrency(actionCostSummary.distinctCurrentCost)}/mo</p>
+          <p className="text-xl font-bold leading-tight text-green-900">{formatUsd0(actionCostSummary.distinctCurrentCost)}/mo</p>
           <p className="mt-0.5 text-[10px] text-green-700">{actionCostSummary.distinctLineCount} bill line{actionCostSummary.distinctLineCount === 1 ? '' : 's'}</p>
         </div>
       </div>
@@ -1183,7 +1198,7 @@ function ActionCostSignalSection({
                       {actionCostSummary.coldTierAccess.groups.slice(0, 4).map((group) => (
                         <div key={group.id} className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 ring-1 ${toneClasses.detail}`}>
                           <span className="min-w-0 truncate text-[10px] font-medium">{group.label}</span>
-                          <span className="shrink-0 text-[10px] font-semibold">{formatCurrency(group.cost)}</span>
+                          <span className="shrink-0 text-[10px] font-semibold">{formatUsd0(group.cost)}</span>
                         </div>
                       ))}
                     </div>
@@ -1191,7 +1206,7 @@ function ActionCostSignalSection({
                 </div>
                 <div className="report-action-fees-right min-w-0 md:text-right">
                   <p className="report-action-fees-mobile-label text-[10px] font-semibold uppercase tracking-wide text-gray-500 md:hidden">Current Cost</p>
-                  <p className={`font-bold ${toneClasses.title}`}>{formatCurrency(row.currentCost)}/mo</p>
+                  <p className={`font-bold ${toneClasses.title}`}>{formatUsd0(row.currentCost)}/mo</p>
                 </div>
                 <div className="report-action-fees-right min-w-0 md:text-right">
                   <p className="report-action-fees-mobile-label text-[10px] font-semibold uppercase tracking-wide text-gray-500 md:hidden">B2 Cost</p>
@@ -1282,7 +1297,7 @@ function SavingsDrivers({
         </div>
         <div className="shrink-0 border-l border-gray-200 pl-4 text-right">
           <p className="text-xs text-gray-600">Net Monthly Savings</p>
-          <p className="text-xl font-bold text-green-700">{formatCurrency(costModel.monthlySavings)}</p>
+          <p className="text-xl font-bold text-green-700">{formatUsd0(costModel.monthlySavings)}</p>
         </div>
       </div>
 
@@ -1290,7 +1305,7 @@ function SavingsDrivers({
         <div>
           <div className="mb-2 flex justify-between text-xs font-semibold text-gray-600">
             <span>Current fees removed</span>
-            <span>{formatCurrency(modeledCurrentMonthly)}</span>
+            <span>{formatUsd0(modeledCurrentMonthly)}</span>
           </div>
           <div className="space-y-2">
             {costModel.eliminatedFees.map((fee) => (
@@ -1310,7 +1325,7 @@ function SavingsDrivers({
         <div>
           <div className="mb-2 flex justify-between text-xs font-semibold text-gray-600">
             <span>B2 replacement costs</span>
-            <span>{formatCurrency(modeledB2Monthly)}</span>
+            <span>{formatUsd0(modeledB2Monthly)}</span>
           </div>
           <div className="space-y-2">
             {replacementCosts.map((cost) => (
@@ -1349,7 +1364,7 @@ function SavingsDriverRow({
     <div>
       <div className="mb-1 flex items-baseline justify-between gap-3 text-xs">
         <span className="text-gray-600">{label}</span>
-        <span className={`font-semibold ${amountColor}`}>{formatCurrency(amount)}</span>
+        <span className={`font-semibold ${amountColor}`}>{formatUsd0(amount)}</span>
       </div>
       <div className="h-2 rounded-full bg-gray-100">
         <div className={`h-2 rounded-full ${barColor}`} style={{ width }} />
@@ -1376,9 +1391,9 @@ function PartnerScenarioComparison({ costModel }: { costModel: CostModelResult }
         If the processed-data write path moves to a B2 bandwidth alliance compute partner, this model avoids additional hyperscaler egress.
       </p>
       <div className="mt-4 grid grid-cols-3 gap-3">
-        <ScenarioMetric label="Primary Monthly Savings" value={formatCurrency(costModel.monthlySavings)} />
-        <ScenarioMetric label="Partner Compute Savings" value={formatCurrency(scenario.monthlySavings)} tone="green" />
-        <ScenarioMetric label="Added Monthly Value" value={formatCurrency(addedMonthlyValue)} tone="green" />
+        <ScenarioMetric label="Primary Monthly Savings" value={formatUsd0(costModel.monthlySavings)} />
+        <ScenarioMetric label="Partner Compute Savings" value={formatUsd0(scenario.monthlySavings)} tone="green" />
+        <ScenarioMetric label="Added Monthly Value" value={formatUsd0(addedMonthlyValue)} tone="green" />
       </div>
     </div>
   );
@@ -1598,7 +1613,7 @@ function AssumptionSnapshot({
       <AssumptionItem label="B2 Egress" value={hasUnlimitedEgress(b2ServiceTier) ? 'Unlimited, free' : '3x stored data free, then $0.01/GB'} />
       <AssumptionItem
         label="Migration Cost to You"
-        value={udmEnabled ? '$0 through Universal Data Migration' : formatCurrency(customerMigrationCost)}
+        value={udmEnabled ? '$0 through Universal Data Migration' : formatUsd0(customerMigrationCost)}
       />
     </div>
   );

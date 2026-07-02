@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
+import { v4 as uuid } from 'uuid';
 import {
+  getAnalysisMeta,
+  getB2UsageInput,
   getModelConfig,
   getParsedBill,
   saveReportSnapshot,
@@ -9,6 +12,7 @@ import { getSessionUser } from '@/lib/auth/session';
 import { storageErrorResponse } from '@/lib/api/route-helpers';
 import type { ReportSnapshot } from '@/types/model';
 import { buildAnalysisSnapshot } from '@/lib/analysis/rerun';
+import { buildCommitUpsellSnapshot } from '@/lib/analysis/commit-upsell-model';
 
 /**
  * Compute and persist a point-in-time snapshot of the analysis's economics. Snapshots are the
@@ -40,6 +44,25 @@ export async function POST(
     : 'report-view';
 
   try {
+    // Commit-upsell opportunities have no parsed bill — snapshot from the saved B2 usage instead, so
+    // they still land in the pipeline rollups (potential TCV, storage, reports-ready).
+    const meta = await getAnalysisMeta(userEmail, id);
+    if (meta?.opportunityType === 'commit-upsell') {
+      const usage = await getB2UsageInput(userEmail, id);
+      if (!usage) {
+        return NextResponse.json({ error: 'B2 usage not found' }, { status: 404 });
+      }
+      const snapshot = buildCommitUpsellSnapshot({
+        analysisId: id,
+        usage,
+        trigger,
+        snapshotId: uuid(),
+        createdAt: new Date().toISOString(),
+      });
+      await saveReportSnapshot(userEmail, id, snapshot);
+      return NextResponse.json(snapshot, { status: 201 });
+    }
+
     const [parsed, modelConfig] = await Promise.all([
       getParsedBill(userEmail, id),
       getModelConfig(userEmail, id),

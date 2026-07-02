@@ -218,7 +218,7 @@ export default function NewAnalysisPage() {
             <button
               onClick={handleCreate}
               disabled={creating}
-              className="inline-flex items-center gap-2 rounded-[10px] bg-[#e20626] px-5 py-2.5 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(226,6,38,0.28)] transition-colors hover:bg-[#b40a23] disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-[10px] bg-c-brand px-5 py-2.5 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(226,6,38,0.28)] transition-colors hover:bg-c-brand-hover disabled:opacity-50"
             >
               {creating ? 'Creating…' : opportunityType === 'commit-upsell' ? 'Continue →' : 'Continue to upload →'}
             </button>
@@ -322,7 +322,7 @@ export default function NewAnalysisPage() {
                     <button
                       type="button"
                       onClick={() => router.push(`/analyses/${analysisId}`)}
-                      className="inline-flex items-center gap-2 rounded-[10px] bg-[#e20626] px-5 py-2.5 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(226,6,38,0.28)] transition-colors hover:bg-[#b40a23]"
+                      className="inline-flex items-center gap-2 rounded-[10px] bg-c-brand px-5 py-2.5 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(226,6,38,0.28)] transition-colors hover:bg-c-brand-hover"
                     >
                       Build the model →
                     </button>
@@ -424,7 +424,7 @@ function Stepper({ current, usageStep, className = '' }: { current: number; usag
                   done
                     ? 'bg-c-green text-white'
                     : active
-                      ? 'bg-[#e20626] text-white'
+                      ? 'bg-c-brand text-white'
                       : 'bg-c-surface2 text-c-subtle'
                 }`}
               >
