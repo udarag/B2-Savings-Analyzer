@@ -152,7 +152,6 @@ function cardAccent(readiness: ReadinessStatus, pipeline: PipelineStatus): strin
  */
 export default function HomePage() {
   useDocumentTitle('Opportunities');
-  const router = useRouter();
 
   const [analyses, setAnalyses] = useState<AnalysisSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -556,164 +555,57 @@ export default function HomePage() {
               {getFilterEmptyMessage(pipelineFilter, searchQuery)}
             </div>
           )}
-          {filteredAnalyses.map((a, i) => {
-            // Readiness is independent of pipeline status: a deal progresses draft (no bill/usage) →
-            // active (bill uploaded or usage entered, not yet modeled) → reported (has a saved snapshot).
-            // commit-upsell analyses have no bill at all, so hasB2Usage is their equivalent signal.
-            const hasInput = a.hasBill || a.hasB2Usage;
-            const readinessStatus: ReadinessStatus = a.latestSnapshot ? 'reported' : hasInput ? 'active' : 'draft';
-            const pipelineStatus = getPipelineStatus(a);
-            const storageTcv = analysisTcvById.get(a.id) ?? 0;
-            return (
-              <Reveal key={a.id} index={i}>
-                <div
-                  data-analysis-id={a.id}
-                  className="flex items-stretch overflow-hidden rounded-2xl border border-c-border bg-c-surface shadow-sm transition-all hover:-translate-y-px hover:shadow-md"
-                >
-                {/* Status accent bar */}
-                <div className="w-1 shrink-0" style={{ background: cardAccent(readinessStatus, pipelineStatus) }} />
-
-                {/* Main clickable area — Next Link so navigation is client-side (keeps the layout/header
-                    mounted, which lets the header margins animate to the dashboard width). */}
-                <Link href={`/analyses/${a.id}`} className="flex min-w-0 flex-1 flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      <h3 className="truncate text-[18px] font-semibold text-c-text">{a.prospectName}</h3>
-                      {readinessStatus === 'draft' && (
-                        <StatusPill className="bg-c-surface2 text-c-subtle">Draft</StatusPill>
-                      )}
-                      {readinessStatus === 'active' && (
-                        <StatusPill className="bg-c-amber-soft text-c-amber">In progress</StatusPill>
-                      )}
-                      {readinessStatus === 'reported' && (
-                        <StatusPill className="bg-c-green-soft text-c-green">Report ready</StatusPill>
-                      )}
-                      {pipelineStatus !== 'open' && (
-                        <StatusPill className={pipelineStatus === 'closed-won' ? 'bg-c-purple-soft text-c-purple' : 'bg-c-surface2 text-c-subtle'}>
-                          {getPipelineStatusLabel(pipelineStatus)}
-                        </StatusPill>
-                      )}
-                      {a.serviceTierVariant && (
-                        <StatusPill className="bg-c-surface2 text-c-muted">
-                          {a.serviceTierVariant === 'overdrive' ? 'Overdrive variant' : 'Standard'}
-                        </StatusPill>
-                      )}
+          {(() => {
+            // Group linked Standard/Overdrive twins into one bracketed block so the pair reads as a
+            // set. Pairing only fires when both halves survive the current filter/search, so a
+            // filtered-out twin gracefully degrades to a normal single card.
+            const consumed = new Set<string>();
+            type Row = { kind: 'single'; a: AnalysisSummary } | { kind: 'pair'; std: AnalysisSummary; od: AnalysisSummary };
+            const rows: Row[] = [];
+            for (const a of filteredAnalyses) {
+              if (consumed.has(a.id)) continue;
+              const twin = a.linkedAnalysisId
+                ? filteredAnalyses.find((x) => x.id === a.linkedAnalysisId && !consumed.has(x.id))
+                : undefined;
+              if (twin) {
+                consumed.add(a.id);
+                consumed.add(twin.id);
+                const od = a.serviceTierVariant === 'overdrive' ? a : twin;
+                const std = a.serviceTierVariant === 'overdrive' ? twin : a;
+                rows.push({ kind: 'pair', std, od });
+              } else {
+                consumed.add(a.id);
+                rows.push({ kind: 'single', a });
+              }
+            }
+            const cardProps = (a: AnalysisSummary) => ({
+              a,
+              storageTcv: analysisTcvById.get(a.id) ?? 0,
+              updatingPipelineStatus,
+              onPipelineStatusChange: (id: string, status: PipelineStatus) => { void handlePipelineStatusChange(id, status); },
+              onDelete: setDeleteTarget,
+            });
+            return rows.map((row, i) =>
+              row.kind === 'single' ? (
+                <Reveal key={row.a.id} index={i}>
+                  <OpportunityCard {...cardProps(row.a)} />
+                </Reveal>
+              ) : (
+                <Reveal key={`${row.std.id}:${row.od.id}`} index={i}>
+                  <div className="rounded-2xl border border-c-purple/40 bg-c-purple-soft/40 p-2.5">
+                    <div className="flex items-center gap-1.5 px-1.5 pb-2 pt-0.5">
+                      <LinkedPairIcon />
+                      <span className="text-[10.5px] font-bold text-c-purple">Linked pair · shown to the customer side by side</span>
                     </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-3 text-[12.5px] text-c-muted">
-                      <span className="rounded-md bg-c-surface2 px-2 py-[3px] text-[11px] font-bold tracking-[0.04em] text-c-muted">
-                        {a.opportunityType === 'commit-upsell' ? 'B2 Upsell' : PROVIDER_LABELS[a.provider] || a.provider}
-                      </span>
-                      {a.billingPeriod && <span>{a.billingPeriod}</span>}
-                      <span className="text-c-subtle">Updated {timeAgo(a.updatedAt)}</span>
+                    <div className="flex flex-col gap-2">
+                      <OpportunityCard {...cardProps(row.std)} inPair />
+                      <OpportunityCard {...cardProps(row.od)} inPair />
                     </div>
                   </div>
-
-                  {/* Savings preview from latest snapshot */}
-                  {a.latestSnapshot && (
-                    <div className="min-w-0 sm:min-w-[180px] sm:text-right">
-                      <p className="font-display text-[24px] font-semibold text-c-text">
-                        {formatCurrency(storageTcv)}
-                        <span className="text-xs font-medium text-c-subtle"> potential TCV</span>
-                      </p>
-                      <p className="mt-0.5 text-[12.5px] font-semibold text-c-green">
-                        {formatCurrency(a.latestSnapshot.annualSavings)}/yr saved · {formatGb(a.latestSnapshot.totalStorageGb)}
-                      </p>
-                    </div>
-                  )}
-
-                  {!a.latestSnapshot && hasInput && (
-                    <div className="min-w-0 sm:min-w-[180px] sm:text-right">
-                      <p className="text-sm italic text-c-subtle">{a.hasB2Usage && !a.hasBill ? 'Usage entered' : 'Bill uploaded'}</p>
-                      <p className="text-xs text-c-subtle">No report yet</p>
-                    </div>
-                  )}
-
-                  {!hasInput && (
-                    <div className="min-w-0 sm:min-w-[180px] sm:text-right">
-                      <p className="text-sm italic text-c-subtle">
-                        {a.opportunityType === 'commit-upsell' ? 'Awaiting usage details' : 'Awaiting bill'}
-                      </p>
-                    </div>
-                  )}
-                </Link>
-
-                {/* Row actions */}
-                <div className="flex flex-col items-center justify-center gap-1.5 border-l border-c-border px-3">
-                  {a.linkedAnalysisId && (
-                    <OpportunityActionButton
-                      label={`View ${a.serviceTierVariant === 'overdrive' ? 'Standard' : 'Overdrive'} variant`}
-                      toneClass="hover:bg-c-red-soft hover:text-c-red focus-visible:bg-c-red-soft focus-visible:text-c-red"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        router.push(`/analyses/${a.linkedAnalysisId}`);
-                      }}
-                    >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.6} stroke="currentColor" aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.65 0a2.25 2.25 0 0 1 1.586 2.152v1.276M12 21.75a9.75 9.75 0 1 0 0-19.5" />
-                      </svg>
-                    </OpportunityActionButton>
-                  )}
-                  {pipelineStatus === 'open' ? (
-                    <>
-                      <OpportunityActionButton
-                        label="Mark closed won"
-                        toneClass="hover:bg-c-green-soft hover:text-c-green focus-visible:bg-c-green-soft focus-visible:text-c-green"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          void handlePipelineStatusChange(a.id, 'closed-won');
-                        }}
-                        disabled={updatingPipelineStatus === a.id}
-                      >
-                        <svg className="h-[17px] w-[17px]" fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" aria-hidden="true">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                        </svg>
-                      </OpportunityActionButton>
-                      <OpportunityActionButton
-                        label="Mark closed lost"
-                        toneClass="hover:bg-c-red-soft hover:text-c-red focus-visible:bg-c-red-soft focus-visible:text-c-red"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          void handlePipelineStatusChange(a.id, 'closed-lost');
-                        }}
-                        disabled={updatingPipelineStatus === a.id}
-                      >
-                        <svg className="h-[17px] w-[17px]" fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" aria-hidden="true">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                        </svg>
-                      </OpportunityActionButton>
-                    </>
-                  ) : (
-                    <OpportunityActionButton
-                      label="Reopen"
-                      toneClass="hover:bg-c-green-soft hover:text-c-green focus-visible:bg-c-green-soft focus-visible:text-c-green"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        void handlePipelineStatusChange(a.id, 'open');
-                      }}
-                      disabled={updatingPipelineStatus === a.id}
-                    >
-                      <svg className="h-[17px] w-[17px]" fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992m0 0V4.356m0 4.992-3.181-3.183a8.25 8.25 0 1 0 2.188 7.912" />
-                      </svg>
-                    </OpportunityActionButton>
-                  )}
-                  <OpportunityActionButton
-                    label="Delete"
-                    toneClass="hover:bg-c-red-soft hover:text-c-red focus-visible:bg-c-red-soft focus-visible:text-c-red"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setDeleteTarget(a.id);
-                    }}
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.6} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                    </svg>
-                  </OpportunityActionButton>
-                </div>
-                </div>
-              </Reveal>
+                </Reveal>
+              ),
             );
-          })}
+          })()}
         </div>
       )}
 
@@ -746,6 +638,192 @@ export default function HomePage() {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * One opportunity row. Chip hierarchy is deliberately flattened per the design review: deal type is a
+ * leading left label, readiness is a single status dot, the Standard/Overdrive variant is a small tag
+ * on the name, and the pipeline pill shows only when the deal is closed. `inPair` hides the cross-link
+ * action inside a bracketed linked pair, where the twin is already shown right alongside.
+ */
+function OpportunityCard({
+  a,
+  storageTcv,
+  updatingPipelineStatus,
+  onPipelineStatusChange,
+  onDelete,
+  inPair = false,
+}: {
+  a: AnalysisSummary;
+  storageTcv: number;
+  updatingPipelineStatus: string | null;
+  onPipelineStatusChange: (id: string, status: PipelineStatus) => void;
+  onDelete: (id: string) => void;
+  inPair?: boolean;
+}) {
+  const router = useRouter();
+  // Readiness is independent of pipeline status: draft (no bill/usage) → active (input, not modeled) →
+  // reported (has a saved snapshot). commit-upsell analyses have no bill, so hasB2Usage is their signal.
+  const hasInput = a.hasBill || a.hasB2Usage;
+  const readinessStatus: ReadinessStatus = a.latestSnapshot ? 'reported' : hasInput ? 'active' : 'draft';
+  const pipelineStatus = getPipelineStatus(a);
+  const dealTypeLabel = a.opportunityType === 'commit-upsell' ? 'B2 upsell' : `${PROVIDER_LABELS[a.provider] || a.provider} migration`;
+
+  return (
+    <div
+      data-analysis-id={a.id}
+      className="flex items-stretch overflow-hidden rounded-2xl border border-c-border bg-c-surface shadow-sm transition-all hover:-translate-y-px hover:shadow-md"
+    >
+      {/* Status accent bar (readiness-toned). */}
+      <div className="w-1 shrink-0" style={{ background: cardAccent(readinessStatus, pipelineStatus) }} />
+
+      {/* Main clickable area — Next Link so navigation is client-side (keeps the layout/header
+          mounted, which lets the header margins animate to the dashboard width). */}
+      <Link href={`/analyses/${a.id}`} className="flex min-w-0 flex-1 flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          {/* Deal type — the leading left label answers "what kind of deal is this?" at a glance. */}
+          <span className={`shrink-0 whitespace-nowrap rounded-md border px-2 py-1 text-[10px] font-bold uppercase tracking-[0.03em] ${a.opportunityType === 'commit-upsell' ? 'border-c-amber/40 bg-c-amber-soft text-c-amber' : 'border-c-border2 bg-c-surface2 text-c-muted'}`}>
+            {dealTypeLabel}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="truncate text-[18px] font-semibold text-c-text">{a.prospectName}</h3>
+              {a.serviceTierVariant && (
+                <span className={`rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.03em] ${a.serviceTierVariant === 'overdrive' ? 'bg-c-purple text-white' : 'bg-c-purple-soft text-c-purple'}`}>
+                  {a.serviceTierVariant === 'overdrive' ? 'Overdrive' : 'Standard'}
+                </span>
+              )}
+              {/* Readiness = one status dot instead of a competing text pill. */}
+              <span
+                className={`h-2 w-2 shrink-0 rounded-full ${readinessStatus === 'reported' ? 'bg-c-green' : readinessStatus === 'active' ? 'bg-[#f9733a]' : 'bg-c-border2'}`}
+                title={readinessStatus === 'reported' ? 'Report ready' : readinessStatus === 'active' ? 'In progress' : 'Draft'}
+              />
+              {pipelineStatus !== 'open' && (
+                <StatusPill className={pipelineStatus === 'closed-won' ? 'bg-c-purple-soft text-c-purple' : 'bg-c-surface2 text-c-subtle'}>
+                  {getPipelineStatusLabel(pipelineStatus)}
+                </StatusPill>
+              )}
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[12.5px] text-c-muted">
+              {a.billingPeriod && <span>{a.billingPeriod}</span>}
+              <span className="text-c-subtle">Updated {timeAgo(a.updatedAt)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Savings preview from latest snapshot */}
+        {a.latestSnapshot && (
+          <div className="min-w-0 sm:min-w-[180px] sm:text-right">
+            <p className="font-display text-[24px] font-semibold text-c-text">
+              {formatCurrency(storageTcv)}
+              <span className="text-xs font-medium text-c-subtle"> potential TCV</span>
+            </p>
+            <p className="mt-0.5 text-[12.5px] font-semibold text-c-green">
+              {formatCurrency(a.latestSnapshot.annualSavings)}/yr saved · {formatGb(a.latestSnapshot.totalStorageGb)}
+            </p>
+          </div>
+        )}
+
+        {!a.latestSnapshot && hasInput && (
+          <div className="min-w-0 sm:min-w-[180px] sm:text-right">
+            <p className="text-sm italic text-c-subtle">{a.hasB2Usage && !a.hasBill ? 'Usage entered' : 'Bill uploaded'}</p>
+            <p className="text-xs text-c-subtle">No report yet</p>
+          </div>
+        )}
+
+        {!hasInput && (
+          <div className="min-w-0 sm:min-w-[180px] sm:text-right">
+            <p className="text-sm italic text-c-subtle">
+              {a.opportunityType === 'commit-upsell' ? 'Awaiting usage details' : 'Awaiting bill'}
+            </p>
+          </div>
+        )}
+      </Link>
+
+      {/* Row actions */}
+      <div className="flex flex-col items-center justify-center gap-1.5 border-l border-c-border px-3">
+        {a.linkedAnalysisId && !inPair && (
+          <OpportunityActionButton
+            label={`View ${a.serviceTierVariant === 'overdrive' ? 'Standard' : 'Overdrive'} variant`}
+            toneClass="hover:bg-c-red-soft hover:text-c-red focus-visible:bg-c-red-soft focus-visible:text-c-red"
+            onClick={(e) => {
+              e.preventDefault();
+              router.push(`/analyses/${a.linkedAnalysisId}`);
+            }}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.6} stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.65 0a2.25 2.25 0 0 1 1.586 2.152v1.276M12 21.75a9.75 9.75 0 1 0 0-19.5" />
+            </svg>
+          </OpportunityActionButton>
+        )}
+        {pipelineStatus === 'open' ? (
+          <>
+            <OpportunityActionButton
+              label="Mark closed won"
+              toneClass="hover:bg-c-green-soft hover:text-c-green focus-visible:bg-c-green-soft focus-visible:text-c-green"
+              onClick={(e) => {
+                e.preventDefault();
+                onPipelineStatusChange(a.id, 'closed-won');
+              }}
+              disabled={updatingPipelineStatus === a.id}
+            >
+              <svg className="h-[17px] w-[17px]" fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+            </OpportunityActionButton>
+            <OpportunityActionButton
+              label="Mark closed lost"
+              toneClass="hover:bg-c-red-soft hover:text-c-red focus-visible:bg-c-red-soft focus-visible:text-c-red"
+              onClick={(e) => {
+                e.preventDefault();
+                onPipelineStatusChange(a.id, 'closed-lost');
+              }}
+              disabled={updatingPipelineStatus === a.id}
+            >
+              <svg className="h-[17px] w-[17px]" fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+            </OpportunityActionButton>
+          </>
+        ) : (
+          <OpportunityActionButton
+            label="Reopen"
+            toneClass="hover:bg-c-green-soft hover:text-c-green focus-visible:bg-c-green-soft focus-visible:text-c-green"
+            onClick={(e) => {
+              e.preventDefault();
+              onPipelineStatusChange(a.id, 'open');
+            }}
+            disabled={updatingPipelineStatus === a.id}
+          >
+            <svg className="h-[17px] w-[17px]" fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992m0 0V4.356m0 4.992-3.181-3.183a8.25 8.25 0 1 0 2.188 7.912" />
+            </svg>
+          </OpportunityActionButton>
+        )}
+        <OpportunityActionButton
+          label="Delete"
+          toneClass="hover:bg-c-red-soft hover:text-c-red focus-visible:bg-c-red-soft focus-visible:text-c-red"
+          onClick={(e) => {
+            e.preventDefault();
+            onDelete(a.id);
+          }}
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.6} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+          </svg>
+        </OpportunityActionButton>
+      </div>
+    </div>
+  );
+}
+
+/** Chain-link glyph for the linked-pair bracket header. */
+function LinkedPairIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="shrink-0 text-c-purple" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 17H7A5 5 0 0 1 7 7h2m6 0h2a5 5 0 0 1 0 10h-2m-7-5h8" />
+    </svg>
   );
 }
 

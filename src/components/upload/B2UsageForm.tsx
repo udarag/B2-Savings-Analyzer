@@ -81,7 +81,7 @@ export function B2UsageForm({ analysisId, onSaved, initialValue, submitLabel }: 
 
       <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-c-subtle">
         <span className="h-px flex-1 bg-c-border" />
-        or enter manually
+        always works — enter manually
         <span className="h-px flex-1 bg-c-border" />
       </div>
 

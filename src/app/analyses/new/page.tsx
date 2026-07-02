@@ -132,16 +132,21 @@ export default function NewAnalysisPage() {
 
       {!analysisId ? (
         <div className="space-y-4">
+          <p className="text-[13px] font-semibold text-c-muted">Pick the motion — two different journeys</p>
           <div className="grid gap-3.5 sm:grid-cols-2">
             <OpportunityTypeCard
               label="Migrating from another cloud"
-              description="Upload an AWS, GCP, or Azure bill and model the move to B2."
+              description="Parse an AWS / GCP / Azure bill → model the move to B2."
+              nextLabel="upload a bill"
+              icon={<MigrationIcon />}
               active={opportunityType === 'migration'}
               onClick={() => setOpportunityType('migration')}
             />
             <OpportunityTypeCard
-              label="Existing B2 customer — pitch a contract"
-              description="Move an Uncommitted customer to Committed or Overdrive for higher throughput."
+              label="Existing B2 customer"
+              description="Enter current usage → pitch a contract for higher throughput."
+              nextLabel="enter usage"
+              icon={<UpsellIcon />}
               active={opportunityType === 'commit-upsell'}
               onClick={() => setOpportunityType('commit-upsell')}
             />
@@ -179,20 +184,34 @@ export default function NewAnalysisPage() {
             />
           </FieldCard>
           {opportunityType === 'migration' && (
-            <label className="flex items-center gap-2.5 rounded-xl border border-c-border bg-c-surface px-4 py-3 text-sm">
-              <input
-                type="checkbox"
-                checked={createOverdriveVariant}
-                onChange={(e) => setCreateOverdriveVariant(e.target.checked)}
-                className="h-4 w-4 accent-[#e20626]"
-              />
-              <span>
-                <span className="font-medium text-c-text">Also create a linked Overdrive variant</span>
-                <span className="block text-xs text-c-muted">
-                  After the bill is uploaded, we&apos;ll spin up a second, linked opportunity modeled at B2 Overdrive pricing so you can show the customer both side by side.
+            /* Promoted add-on: the consequence (a second, linked opportunity) is easy to miss, so we
+               show a live preview of the two linked opportunities ticking this will create. */
+            <div className="rounded-xl border border-c-purple/30 bg-c-purple-soft/40 p-3.5">
+              <label className="flex items-start gap-2.5 text-sm">
+                <input
+                  type="checkbox"
+                  checked={createOverdriveVariant}
+                  onChange={(e) => setCreateOverdriveVariant(e.target.checked)}
+                  className="mt-0.5 h-[18px] w-[18px] shrink-0 accent-[#3430ff]"
+                />
+                <span>
+                  <span className="font-bold text-c-text">Also build an Overdrive variant</span>
+                  <span className="mt-0.5 block text-xs text-c-muted">
+                    Walk in with a Standard <em>and</em> an Overdrive report, side by side.
+                  </span>
                 </span>
-              </span>
-            </label>
+              </label>
+              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-dashed border-c-purple/30 pt-3">
+                <span className="text-[10.5px] font-semibold text-c-purple">This creates</span>
+                <span className="max-w-full truncate rounded-md border border-c-border bg-c-surface px-2 py-1 text-[10.5px] font-semibold text-c-text">
+                  {(prospectName.trim() || 'This opportunity')} — Standard
+                </span>
+                <span className="text-c-subtle">+</span>
+                <span className="max-w-full truncate rounded-md border border-c-purple/40 bg-c-surface px-2 py-1 text-[10.5px] font-semibold text-c-purple">
+                  {(prospectName.trim() || 'This opportunity')} — Overdrive
+                </span>
+              </div>
+            </div>
           )}
           {error && <p className="text-sm text-c-red">{error}</p>}
           <div className="flex justify-end">
@@ -318,15 +337,23 @@ export default function NewAnalysisPage() {
   );
 }
 
-/** Selectable card for the opportunity-type choice (migration vs. commit-upsell). */
+/**
+ * Selectable card for the opportunity-type choice (migration vs. commit-upsell). This is the first
+ * fork in the whole tool, so each card carries an icon and a "Next: …" line to make the two divergent
+ * journeys (a bill upload vs. usage entry) legible before the AE commits.
+ */
 function OpportunityTypeCard({
   label,
   description,
+  nextLabel,
+  icon,
   active,
   onClick,
 }: {
   label: string;
   description: string;
+  nextLabel: string;
+  icon: React.ReactNode;
   active: boolean;
   onClick: () => void;
 }) {
@@ -334,13 +361,36 @@ function OpportunityTypeCard({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-2xl border p-4 text-left shadow-sm transition-colors ${
-        active ? 'border-c-red bg-c-red-soft' : 'border-c-border bg-c-surface hover:border-c-border2'
+      className={`relative rounded-2xl border bg-c-surface p-4 text-left shadow-sm transition-colors ${
+        active ? 'border-2 border-c-red' : 'border border-c-border hover:border-c-border2'
       }`}
     >
-      <p className={`text-sm font-semibold ${active ? 'text-c-red-dark' : 'text-c-text'}`}>{label}</p>
+      {active && <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-c-red" />}
+      <span className={active ? 'text-c-red' : 'text-c-subtle'}>{icon}</span>
+      <p className="mt-2.5 text-sm font-bold text-c-text">{label}</p>
       <p className="mt-1 text-xs text-c-muted">{description}</p>
+      <p className={`mt-2 text-[10.5px] font-semibold ${active ? 'text-c-red' : 'text-c-subtle'}`}>Next: {nextLabel}</p>
     </button>
+  );
+}
+
+/** Cloud-with-up-arrow: the migration motion (parse a bill from another cloud). */
+function MigrationIcon() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <path d="M3 15a4 4 0 0 0 4 4h9a5 5 0 0 0 1-9.9A6 6 0 0 0 5.2 9.5" />
+      <path d="M12 18v-6" />
+      <path d="m9.5 14.5 2.5-2.5 2.5 2.5" />
+    </svg>
+  );
+}
+
+/** Lightning bolt: the commit-upsell motion (unlock throughput headroom on B2). */
+function UpsellIcon() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" />
+    </svg>
   );
 }
 

@@ -206,6 +206,18 @@ export default function AnalysisDashboard() {
   const pricingDetection = view?.pricingDetection ?? [];
   const migratedStorageGb = view?.migratedStorageGb ?? 0;
 
+  // Savings-timing story for the hero, mirroring the customer report (report/page.tsx): with an
+  // unrecovered migration cost it's "break-even at month N"; otherwise savings begin day one.
+  // `migrationCost.total` is already $0 under UDM (see cost-model.ts), so no separate UDM check is
+  // needed here — this is exactly the condition the report uses, keeping the two surfaces in agreement.
+  const hasMigrationPayback = (costModel?.migrationCost.total ?? 0) > 0;
+  const savingsTimingLabel = hasMigrationPayback ? 'Break-even' : 'Savings start';
+  const savingsTimingValue = !costModel || costModel.monthlySavings <= 0
+    ? '—'
+    : hasMigrationPayback
+      ? costModel.breakEvenMonth ? `Month ${costModel.breakEvenMonth}` : 'Review required'
+      : 'Day 1';
+
   const growthLabel = formatGrowthAssumption({
     growthMode: egressConfig.dataGrowthMode,
     annualGrowthPercent: egressConfig.dataGrowthRatePercent,
@@ -522,7 +534,7 @@ export default function AnalysisDashboard() {
                   value={costModel.udmEnabled ? '$0' : formatCurrency(costModel.migrationCost.total, 0)}
                   caption={costModel.udmEnabled ? 'Covered by UDM' : undefined}
                 />
-                <HeroStat label="Savings start" value={costModel.monthlySavings > 0 ? 'Day 1' : '—'} />
+                <HeroStat label={savingsTimingLabel} value={savingsTimingValue} />
               </div>
             </div>
           </div>

@@ -123,6 +123,11 @@
   --color-bb-red-light: #fceaec;
   --color-bb-navy: #000033;
   --color-bb-navy-light: #171740;
+  /* Purple brand aliases for the light-only customer reports (F, E). Hardcoded hexes,
+     so they never flip in dark mode the way the theme-aware --c-purple* tokens do. */
+  --color-bb-purple: #3430ff;
+  --color-bb-purple-soft: #f4f3ff;
+  --color-bb-purple-pale: #e6e3ff;
 }
 
 html {

@@ -249,19 +249,19 @@ export function DealSizing({
   };
 
   return (
-    // Sidebar "Build the deal" card: surface panel with a left red accent on the header and an
-    // amber "Internal" pill marking this as a non-customer-facing revenue tool.
-    <div className="rounded-2xl border border-c-border bg-c-surface shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-c-border border-l-[3px] border-l-[#e20626]">
-        <div className="flex items-center gap-2">
-          <h4 className="text-sm font-semibold text-c-text">Build the deal</h4>
-          <span className="rounded-full bg-c-amber-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-c-amber">
-            Internal
-          </span>
-        </div>
-        <p className="mt-1 text-xs text-c-subtle">Internal Only — B2 Revenue Estimate</p>
+    // "Size the deal" panel: the whole builder is internal (a B2 revenue estimate), so it's fenced
+    // behind the same unmistakable treatment as the commit-upsell deal-sizing card — a dashed amber
+    // "two-toned" border and a hatched "not shown to the customer" banner with a lock.
+    <div className="overflow-hidden rounded-2xl border-2 border-dashed border-c-amber/60 bg-c-amber-soft/40">
+      <div
+        className="flex items-center gap-2 px-4 py-2.5"
+        style={{ backgroundImage: 'repeating-linear-gradient(-45deg, rgba(180,83,9,0.16), rgba(180,83,9,0.16) 9px, transparent 9px, transparent 18px)' }}
+      >
+        <LockIcon />
+        <span className="text-[10.5px] font-extrabold uppercase tracking-wide text-c-amber">Internal only — not shown to the customer</span>
       </div>
-      <div className="p-5 space-y-4">
+      <div className="space-y-4 p-5">
+        <h4 className="text-sm font-bold text-c-text">Size the deal</h4>
         {/* ARR / TCV summary sits first: the AE should see revenue-to-Backblaze — and how discounting
             moves it — before touching the price levers below, since it drives the eventual commission. */}
         <div>
@@ -292,11 +292,34 @@ export function DealSizing({
           </div>
         </div>
 
-        {/* B2 price control */}
-        <div className="border-t border-c-border pt-3">
-          <label className="block text-xs font-medium text-c-muted mb-1.5">
-            B2 Price per TB/month
-          </label>
+        {/* The deal reads as a causal chain: 1 pick the tier → 2 what it costs → 3 what it unlocks.
+            The tier drives the price presets and the spec card, so it now leads instead of sitting
+            below the price it determines. */}
+
+        {/* Step 1 — pick the tier. */}
+        <div className="border-t border-c-amber/25 pt-3">
+          <StepLabel n={1}>Pick the tier</StepLabel>
+          <div className="grid grid-cols-3 gap-1 rounded-lg bg-c-surface2 p-1">
+            {SERVICE_TIERS.map((tier) => (
+              <button
+                key={tier}
+                type="button"
+                onClick={() => handleServiceTierClick(tier)}
+                className={`rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
+                  b2ServiceTier === tier
+                    ? 'bg-[#e20626] hover:bg-[#b40a23] text-white'
+                    : 'text-c-muted hover:text-c-text'
+                }`}
+              >
+                {getServiceTierSpec(tier).label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Step 2 — what it costs. Price + presets, with first-class empty/custom framing per tier. */}
+        <div className="border-t border-c-amber/25 pt-3">
+          <StepLabel n={2}>What it costs</StepLabel>
           {/* Rate input on the recessed surface2 fill. Editable with a red focus ring on the
               negotiable tiers; read-only (locked to list) on the fixed-price Uncommitted tier. */}
           <div className="mb-3 rounded-xl border border-c-border2 bg-c-surface2 p-3">
@@ -341,67 +364,59 @@ export function DealSizing({
             </div>
           </div>
           {isFixedListPrice ? (
-            // Uncommitted has no negotiated pricing, so there are no presets to offer — explain why
-            // and point to the tier that unlocks discounts.
-            <div className="mb-3 rounded-lg border border-c-border2 bg-c-surface2 px-3 py-2.5 text-[11.5px] leading-snug text-c-subtle">
-              Pay-as-you-go is billed at the published list price — no negotiated discount. Switch to{' '}
-              <span className="font-semibold text-c-muted">Committed</span> to model discount pricing.
+            // Uncommitted has no negotiated pricing — give the empty state first-class framing rather
+            // than a buried footnote, and point to the tier that unlocks discounts.
+            <div className="rounded-lg border border-c-border2 bg-c-surface2 px-3 py-2.5 text-[11.5px] leading-snug text-c-subtle">
+              <span className="font-semibold text-c-muted">List only — no discount.</span> Pay-as-you-go is billed at the published list price. Switch to{' '}
+              <span className="font-semibold text-c-muted">Committed</span> for the same rate with discount pricing on the table.
             </div>
           ) : (
-            <div className="mb-3 grid grid-cols-2 gap-1.5">
-              <PresetButton
-                label="List"
-                detail={formatRate(listPrice)}
-                active={activePreset === 'list'}
-                onClick={() => handlePresetClick('list')}
-              />
-              <PresetButton
-                label="5% Discount"
-                detail={formatRate(discount5Price)}
-                active={activePreset === 'discount5'}
-                onClick={() => handlePresetClick('discount5')}
-              />
-              <PresetButton
-                label="10% Discount"
-                detail={formatRate(discount10Price)}
-                active={activePreset === 'discount10'}
-                onClick={() => handlePresetClick('discount10')}
-              />
-              <PresetButton
-                label="Custom"
-                detail={isCustom ? formatRate(b2PricePerTb) : 'Manual'}
-                active={isCustom}
-                onClick={() => handlePresetClick('custom')}
-              />
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-1.5">
+                <PresetButton
+                  label="List"
+                  detail={formatRate(listPrice)}
+                  active={activePreset === 'list'}
+                  onClick={() => handlePresetClick('list')}
+                />
+                <PresetButton
+                  label="5% Discount"
+                  detail={formatRate(discount5Price)}
+                  active={activePreset === 'discount5'}
+                  onClick={() => handlePresetClick('discount5')}
+                />
+                <PresetButton
+                  label="10% Discount"
+                  detail={formatRate(discount10Price)}
+                  active={activePreset === 'discount10'}
+                  onClick={() => handlePresetClick('discount10')}
+                />
+                <PresetButton
+                  label="Custom"
+                  detail={isCustom ? formatRate(b2PricePerTb) : 'Manual'}
+                  active={isCustom}
+                  onClick={() => handlePresetClick('custom')}
+                />
+              </div>
+              {b2ServiceTier === 'overdrive' && (
+                // Overdrive is custom-priced; surface "negotiate down from the starting rate" here
+                // instead of burying it in the spec card below.
+                <p className="mt-2 rounded-lg border border-c-border2 bg-c-surface2 px-3 py-2 text-[11.5px] leading-snug text-c-subtle">
+                  <span className="font-semibold text-c-muted">Starting point, negotiate down.</span> Overdrive is custom-priced — the{' '}
+                  {formatRate(getServiceTierSpec('overdrive').startingPerTbMonth ?? b2PricePerTb)} shown is a reference to negotiate down from, not a floor.
+                </p>
+              )}
+            </>
           )}
         </div>
 
-        {/* B2 Service Tier: 3-way segmented toggle, same active-fill pattern as the %/Fixed growth toggle below. */}
-        <div className="border-t border-c-border pt-3">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <label className="text-xs font-medium text-c-muted">B2 Service Tier</label>
-          </div>
-          <div className="grid grid-cols-3 gap-1 rounded-lg bg-c-surface2 p-1">
-            {SERVICE_TIERS.map((tier) => (
-              <button
-                key={tier}
-                type="button"
-                onClick={() => handleServiceTierClick(tier)}
-                className={`rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
-                  b2ServiceTier === tier
-                    ? 'bg-[#e20626] hover:bg-[#b40a23] text-white'
-                    : 'text-c-muted hover:text-c-text'
-                }`}
-              >
-                {getServiceTierSpec(tier).label}
-              </button>
-            ))}
-          </div>
+        {/* Step 3 — what it unlocks: the throughput / RPS ceiling the chosen tier buys. */}
+        <div className="border-t border-c-amber/25 pt-3">
+          <StepLabel n={3}>What it unlocks</StepLabel>
           <ServiceTierSpecCard tier={b2ServiceTier} />
         </div>
 
-        <div className="border-t border-c-border pt-3">
+        <div className="border-t border-c-amber/25 pt-3">
           <div className="mb-2 flex items-center justify-between gap-2">
             <label htmlFor="deal-term-slider" className="text-xs font-medium text-c-muted">Contract Term</label>
             <span className="text-xs font-semibold text-c-text">{formatTermLabel(termMonths)}</span>
@@ -436,7 +451,7 @@ export function DealSizing({
           </div>
         </div>
 
-        <div className="border-t border-c-border pt-3">
+        <div className="border-t border-c-amber/25 pt-3">
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className="text-xs font-medium text-c-muted">Data Growth</p>
             <span className="text-xs font-semibold text-c-text">{growthLabel}</span>
@@ -500,7 +515,7 @@ export function DealSizing({
         </div>
 
         {/* UDM Toggle */}
-        <div className="border-t border-c-border pt-3">
+        <div className="border-t border-c-amber/25 pt-3">
           <div className="flex items-center justify-between">
             <div>
               <label className="text-xs font-medium text-c-text">Universal Data Migration</label>
@@ -556,7 +571,7 @@ export function DealSizing({
 
         {/* Revenue impact vs list — green when the deal lifts revenue, red when it cuts it. */}
         {isCustom && (
-          <div className={`border-t border-c-border pt-3 ${revenueDelta < 0 ? 'text-c-red' : 'text-c-green'}`}>
+          <div className={`border-t border-c-amber/25 pt-3 ${revenueDelta < 0 ? 'text-c-red' : 'text-c-green'}`}>
             <p className="text-xs font-medium text-c-muted mb-1">Revenue vs. List Price</p>
             <div className="flex justify-between text-sm">
               <span className="text-c-muted">{formatTermLabel(termMonths)} at List ({formatRate(listPrice)})</span>
@@ -574,7 +589,7 @@ export function DealSizing({
         )}
 
         {/* Primary action: solid brand-red button. */}
-        <div className="border-t border-c-border pt-3">
+        <div className="border-t border-c-amber/25 pt-3">
           <button
             onClick={copyDealSummary}
             className="w-full rounded-lg bg-[#e20626] hover:bg-[#b40a23] px-3 py-2.5 text-xs font-semibold text-white transition-colors"
@@ -715,6 +730,28 @@ function getProjectedRevenueProfile({
     modeledStorageTbMonths,
     endingStorageGb,
   };
+}
+
+/** Padlock glyph for the "Internal only — not shown to the customer" banner, matching the
+ *  commit-upsell deal-sizing card so the two internal panels share one visual language. */
+function LockIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="shrink-0 text-c-amber" aria-hidden="true">
+      <rect x="4" y="10" width="16" height="10" rx="2" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}
+
+/** A small numbered step marker for the deal builder's "pick tier → cost → unlocks" chain, so the
+ *  causal order of the levers reads at a glance. Purple to match the design review's step badges. */
+function StepLabel({ n, children }: { n: number; children: React.ReactNode }) {
+  return (
+    <div className="mb-2 flex items-center gap-1.5">
+      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-c-purple text-[9px] font-bold text-white">{n}</span>
+      <label className="text-xs font-semibold text-c-text">{children}</label>
+    </div>
+  );
 }
 
 /** Read-only reference card showing the selected tier's bandwidth/RPS ceiling, sourced from

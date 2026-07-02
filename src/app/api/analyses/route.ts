@@ -103,7 +103,13 @@ export async function POST(req: Request) {
   const meta: Analysis = {
     id,
     prospectName: body.prospectName || 'Untitled',
-    companyName: body.companyName || body.prospectName || 'Untitled',
+    // Leave companyName unset when the AE didn't enter one, rather than stamping it with the internal
+    // opportunity name. Customer-facing surfaces all fall back to `companyName || prospectName`, so
+    // display is unchanged — but a genuinely-unset company now reads as blank (prompting the AE to add
+    // a clean customer name) instead of silently leaking internal shorthand onto the report/PDF.
+    companyName: typeof body.companyName === 'string' && body.companyName.trim()
+      ? body.companyName.trim()
+      : undefined,
     notes: body.notes,
     provider: body.provider || 'aws',
     billType: body.billType || 'detailed-statement',

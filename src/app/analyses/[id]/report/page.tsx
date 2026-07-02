@@ -1645,78 +1645,80 @@ function ServiceTierComparisonCard({
   tiers: ServiceTierSpec[];
   companyName: string;
 }) {
-  const isTopTier = tiers.length === 1;
+  const modeled = tiers[0];
+  const upgrade = tiers[1] ?? null;
 
   return (
     <div className="mb-6 rounded-lg border border-gray-200 overflow-hidden print:break-inside-avoid keep-together">
-      <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h2 className="text-base font-semibold text-gray-900">B2 Service Level</h2>
+      <div className="px-4 py-3 border-b border-gray-200">
+        <h2 className="text-base font-semibold text-gray-900">
+          {upgrade ? 'Your tier — and the ceiling above it' : 'Your B2 service level'}
+        </h2>
         <p className="text-xs text-gray-500 mt-0.5">
-          {isTopTier
-            ? `This estimate models the ${tiers[0].customerLabel} tier for ${companyName}, Backblaze's top service level.`
-            : `This estimate models the ${tiers[0].customerLabel} tier for ${companyName}. Shown alongside ${tiers[1].customerLabel} for comparison.`}
+          {upgrade
+            ? `${companyName} is modeled on ${modeled.customerLabel}. ${upgrade.customerLabel} is there when throughput demands it.`
+            : `${companyName} is modeled on ${modeled.customerLabel} — Backblaze's top service level.`}
         </p>
       </div>
-      <div className={`grid gap-px bg-gray-200 text-sm ${isTopTier ? 'grid-cols-1' : 'grid-cols-2'}`}>
-        {tiers.map((tier, i) => (
-          <ServiceTierColumn key={tier.tier} spec={tier} isSelected={i === 0} />
-        ))}
+      <div className={`grid ${upgrade ? 'grid-cols-[1fr_1fr]' : 'grid-cols-[1fr]'}`}>
+        <ServiceTierPanel spec={modeled} role="modeled" />
+        {upgrade && <ServiceTierPanel spec={upgrade} role="upgrade" />}
       </div>
     </div>
   );
 }
 
-function ServiceTierColumn({ spec, isSelected }: { spec: ServiceTierSpec; isSelected: boolean }) {
+/**
+ * One tier panel, framed as an upgrade path rather than a comparison of equals: the modeled tier is
+ * "Your plan"; the tier above is a purple-tinted "Upgrade path" so it reads as optional headroom, not
+ * what the customer bought. GET/PUT collapse to one paired line so each figure survives print.
+ */
+function ServiceTierPanel({ spec, role }: { spec: ServiceTierSpec; role: 'modeled' | 'upgrade' }) {
+  const isUpgrade = role === 'upgrade';
+  const valueClass = isUpgrade ? 'text-bb-purple' : 'text-gray-900';
   return (
-    <div className={`p-4 ${isSelected ? 'bg-bb-red-light' : 'bg-white'}`}>
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <p className={`text-sm font-semibold ${isSelected ? 'text-bb-red-dark' : 'text-gray-900'}`}>{spec.customerLabel}</p>
-        {isSelected && <span className="rounded-full bg-bb-red px-2 py-0.5 text-[10px] font-bold uppercase text-white">Modeled</span>}
+    <div className={`p-4 ${isUpgrade ? 'border-l border-gray-200 bg-bb-purple-soft' : 'bg-white'}`}>
+      <div className="mb-3 flex items-center gap-2">
+        <p className={`font-display text-[15px] font-bold ${isUpgrade ? 'text-bb-purple' : 'text-gray-900'}`}>{spec.customerLabel}</p>
+        {isUpgrade ? (
+          <span className="rounded bg-bb-purple-pale px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-bb-purple">Upgrade path</span>
+        ) : (
+          <span className="rounded bg-bb-navy px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">Your plan</span>
+        )}
       </div>
-      <dl className="space-y-2.5 text-xs">
-        {/* Bandwidth and RPS are split into GET/PUT rows so each figure is easy to scan instead of
-            being crammed onto one "X PUT / Y GET" line. */}
-        <div>
-          <dt className="mb-1 font-semibold uppercase tracking-wide text-gray-500 text-[10px]">Bandwidth</dt>
-          <dd className="space-y-0.5 font-medium text-gray-900">
-            <ReportSpecRow label="GET" value={formatThroughput(spec.throughputGbitGet)} />
-            <ReportSpecRow label="PUT" value={formatThroughput(spec.throughputGbitPut)} />
-            {spec.throughputGbitMax != null && (
-              <p className="text-[11px] font-normal text-gray-400">Scales up to {formatThroughput(spec.throughputGbitMax)}</p>
-            )}
-          </dd>
-        </div>
-        <div>
-          <dt className="mb-1 font-semibold uppercase tracking-wide text-gray-500 text-[10px]">RPS</dt>
-          <dd className="space-y-0.5 font-medium text-gray-900">
-            {spec.rpsGet === null ? (
-              <p>Scales with throughput</p>
-            ) : (
-              <>
-                <ReportSpecRow label="GET" value={spec.rpsGet.toLocaleString()} />
-                <ReportSpecRow label="PUT" value={spec.rpsPut!.toLocaleString()} />
-              </>
-            )}
-          </dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="font-semibold uppercase tracking-wide text-gray-500 text-[10px]">Egress</dt>
-          <dd className="font-medium text-gray-900">{spec.unlimitedEgress ? 'Unlimited, free' : '3× stored data free'}</dd>
-        </div>
-      </dl>
+      <div className="text-xs">
+        <PanelSpec label="Bandwidth GET / PUT" valueClass={valueClass}>
+          {pairedThroughput(spec)}
+          {spec.throughputGbitMax != null && (
+            <span className="ml-1 text-[10px] font-normal text-gray-400">→ {formatThroughput(spec.throughputGbitMax)}</span>
+          )}
+        </PanelSpec>
+        <PanelSpec label="Requests / sec" valueClass={valueClass}>
+          {spec.rpsGet === null ? 'Scales w/ throughput' : spec.rpsGet.toLocaleString()}
+        </PanelSpec>
+        <PanelSpec label="Included egress" valueClass={valueClass} last>
+          {spec.unlimitedEgress ? 'Unlimited' : '3× stored'}
+        </PanelSpec>
+      </div>
     </div>
   );
 }
 
-/** One GET/PUT figure row inside a service-tier column (e.g. "GET … 100 Gbit/s"). Right-aligned,
- *  tabular figures so the two rows line up cleanly under their Bandwidth/RPS heading. */
-function ReportSpecRow({ label, value }: { label: string; value: string }) {
+/** One labeled figure inside a tier panel: a small caption above a display-weight value. */
+function PanelSpec({ label, valueClass, last, children }: { label: string; valueClass: string; last?: boolean; children: React.ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-2">
-      <span className="text-gray-400">{label}</span>
-      <span className="tabular-nums">{value}</span>
+    <div className={`py-1.5 ${last ? '' : 'border-b border-gray-100'}`}>
+      <span className="block text-[10px] text-gray-400">{label}</span>
+      <span className={`font-display text-[13px] font-semibold ${valueClass}`}>{children}</span>
     </div>
   );
+}
+
+/** Paired GET / PUT throughput for a tier panel, e.g. "50 / 50 Gbit/s" (rolls to Tbps at ≥1000). */
+function pairedThroughput(spec: ServiceTierSpec): string {
+  const rollsToTbps = spec.throughputGbitGet >= 1000 || spec.throughputGbitPut >= 1000;
+  const fmt = (n: number) => (rollsToTbps ? (n / 1000).toLocaleString() : n.toLocaleString());
+  return `${fmt(spec.throughputGbitGet)} / ${fmt(spec.throughputGbitPut)} ${rollsToTbps ? 'Tbps' : 'Gbit/s'}`;
 }
 
 // Pick a readable set of x-axis month ticks scaled to the term length (denser for short terms,

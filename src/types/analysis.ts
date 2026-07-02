@@ -272,6 +272,12 @@ export interface B2UsageInput {
   committedDiscountPercent: number;
   /** How this record was populated; surfaces on the dashboard as a provenance note. */
   source: 'manual' | 'screenshot-stub';
+  /** Which "why it matters" framing the customer report leads with (see commit-upsell-angles.ts).
+   *  AE-chosen on the deal-sizing dashboard; absent means the default 'throughput' angle. Affects only
+   *  the report's qualitative capability copy, never the modeled numbers. */
+  messagingAngle?: string;
+  /** The AE's own three capability points, used only when messagingAngle is 'custom'. */
+  customAnglePoints?: { title: string; body: string }[];
   createdAt: string;
   updatedAt: string;
 }
