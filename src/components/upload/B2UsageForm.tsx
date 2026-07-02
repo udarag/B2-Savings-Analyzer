@@ -52,9 +52,11 @@ export function B2UsageForm({ analysisId, onSaved, initialValue, submitLabel }: 
           dataGrowthMode: growthMode,
           dataGrowthRatePercent: growthRatePercent,
           dataGrowthFixedTbPerMonth: growthFixedTbPerMonth,
-          // Deal levers keep their prior/default values; tuned on the deal-sizing dashboard.
+          // Deal levers keep their prior/default values; tuned on the deal-sizing dashboard. Carried
+          // through so re-saving via "Edit usage" doesn't reset a term/discount already set there.
           targetTier: 'committed', // commit-upsell always targets Committed
           committedDiscountPercent: initialValue?.committedDiscountPercent ?? 0,
+          contractTermMonths: initialValue?.contractTermMonths ?? 12,
         }),
       });
       if (!res.ok) throw new Error('Failed to save usage');

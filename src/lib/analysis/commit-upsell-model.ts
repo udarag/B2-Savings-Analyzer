@@ -24,6 +24,9 @@ export interface CommitUpsellView {
   monthlyDeltaUsd: number;
   projections: ProjectionPoint[];
   growthLabel: string;
+  /** Contract length in months the deal is sized for (AE-set; defaults to 12). Drives the projection
+   *  term and the TCV, and is stated on the customer report so the commitment is named. */
+  termMonths: number;
 }
 
 const PROJECTION_TERM_MONTHS = 12;
@@ -43,6 +46,11 @@ export function computeCommitUpsellView(usage: B2UsageInput): CommitUpsellView {
   const projectedTargetMonthlyCostUsd = round2(targetRatePerTb * usage.currentStorageTb);
   const monthlyDeltaUsd = round2(currentMonthlyCostUsd - projectedTargetMonthlyCostUsd);
 
+  // Contract length the AE sized the deal for; defaults to 12mo on legacy records without the field.
+  const termMonths = usage.contractTermMonths && usage.contractTermMonths > 0
+    ? Math.round(usage.contractTermMonths)
+    : PROJECTION_TERM_MONTHS;
+
   const projections = computeProjections({
     currentMonthlyCost: currentMonthlyCostUsd,
     b2MonthlyCost: projectedTargetMonthlyCostUsd,
@@ -51,7 +59,7 @@ export function computeCommitUpsellView(usage: B2UsageInput): CommitUpsellView {
     growthMode: usage.dataGrowthMode,
     annualGrowthPercent: usage.dataGrowthRatePercent,
     fixedGrowthTbPerMonth: usage.dataGrowthFixedTbPerMonth,
-    termMonths: PROJECTION_TERM_MONTHS,
+    termMonths,
   });
 
   const growthLabel = formatGrowthAssumption({
@@ -71,6 +79,7 @@ export function computeCommitUpsellView(usage: B2UsageInput): CommitUpsellView {
     monthlyDeltaUsd,
     projections,
     growthLabel,
+    termMonths,
   };
 }
 
@@ -116,8 +125,8 @@ export function buildCommitUpsellSnapshot({
     // Not a tiered migration; there's a single storage pool, so record 1 rather than 0 tiers.
     migratedTierCount: 1,
     b2PricePerTb: view.targetRatePerTb,
-    // The model's projection term today; there's no term selector on the commit-upsell flow yet.
-    termMonths: PROJECTION_TERM_MONTHS,
+    // The contract length the AE sized the deal for, so pipeline TCV reflects the real term.
+    termMonths: view.termMonths,
     growthMode: usage.dataGrowthMode,
     growthRatePercent: usage.dataGrowthRatePercent,
     growthFixedTbPerMonth: usage.dataGrowthFixedTbPerMonth,

@@ -167,6 +167,23 @@ export function CommitUpsellDashboard({ analysisId, meta: initialMeta }: CommitU
                   )}
                 </div>
 
+                {/* Contract term — the length the deal is sized for. Drives the projection/TCV and is
+                    named on the customer report so "signing a contract" states what they commit to. */}
+                <div className="border-t border-dashed border-c-amber/50 pt-4">
+                  <label className="mb-2 block text-xs font-medium text-c-muted">Contract term</label>
+                  <Segmented
+                    tone="amber"
+                    options={[
+                      { value: '12', label: '1 yr' },
+                      { value: '24', label: '2 yr' },
+                      { value: '36', label: '3 yr' },
+                      { value: '60', label: '5 yr' },
+                    ]}
+                    value={String(usage.contractTermMonths ?? 12)}
+                    onChange={(v) => updateUsage({ contractTermMonths: Number(v) })}
+                  />
+                </div>
+
                 {/* Committed rate — the one lever the customer must never see. Flips between a discount
                     % off today's rate and a directly-typed custom $/TB (matching the migration
                     builder's Custom preset); both resolve to the same stored discount. */}

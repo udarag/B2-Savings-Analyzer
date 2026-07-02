@@ -270,6 +270,10 @@ export interface B2UsageInput {
   /** AE-entered committed-tier discount off the customer's current implied $/TB, if one has been
    *  negotiated (0 if not — Committed is typically flat $/TB vs Uncommitted). Percent, e.g. 5 = 5% off. */
   committedDiscountPercent: number;
+  /** Contract length the AE is proposing, in months (12/24/36/60). Drives the projection/TCV term and
+   *  is stated on the customer report so "signing a contract" names what the customer commits to.
+   *  Absent on legacy records; callers default to 12. */
+  contractTermMonths?: number;
   /** How this record was populated; surfaces on the dashboard as a provenance note. */
   source: 'manual' | 'screenshot-stub';
   /** Which "why it matters" framing the customer report leads with (see commit-upsell-angles.ts).

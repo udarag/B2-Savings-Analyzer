@@ -39,7 +39,7 @@ import { buildReportFilename, getFilenameFromContentDisposition } from '@/lib/re
 import { formatCurrency, formatNumber, formatPercent } from '@/components/shared/FormatCurrency';
 import { useDocumentTitle } from '@/components/shared/useDocumentTitle';
 import b2Pricing from '@/lib/pricing/b2.json';
-import { PRICING_AS_OF_LABEL } from '@/lib/pricing/pricing-meta';
+import { pricingAsOfLabel } from '@/lib/pricing/pricing-meta';
 import { CommitUpsellReport } from '@/components/report/CommitUpsellReport';
 
 // Account-executive attribution shown in the report footer ("Prepared by ...").
@@ -940,7 +940,7 @@ function ReportPageContent() {
             </tr>
             <tr>
               <td className="py-2 font-medium text-gray-600">Pricing Date</td>
-              <td className="py-2">{PRICING_AS_OF_LABEL} (verified against published rates)</td>
+              <td className="py-2">{pricingAsOfLabel()} (verified against published rates)</td>
             </tr>
           </tbody>
         </table>

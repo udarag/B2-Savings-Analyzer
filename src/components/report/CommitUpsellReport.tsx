@@ -13,7 +13,7 @@ import type { Analysis, B2UsageInput } from '@/types/analysis';
 import { computeCommitUpsellView } from '@/lib/analysis/commit-upsell-model';
 import { resolveCommitUpsellPoints } from '@/lib/analysis/commit-upsell-angles';
 import type { ServiceTierSpec } from '@/lib/pricing/service-levels';
-import { PRICING_AS_OF_LABEL } from '@/lib/pricing/pricing-meta';
+import { pricingAsOfLabel } from '@/lib/pricing/pricing-meta';
 import { formatCurrency } from '@/components/shared/FormatCurrency';
 
 // Local throughput formatter (rolls Gbit/s over to Tbps at ≥1000) so this report stays
@@ -25,6 +25,13 @@ function formatBandwidth(gbit: number): string {
 // Fold a ratio into a clean "×" multiplier for the hero: 12.5 → "12.5×", 6 → "6×".
 function formatMultiplier(ratio: number): string {
   return Number.isInteger(ratio) ? `${ratio}×` : `${ratio.toFixed(1)}×`;
+}
+
+// Contract length as a natural label ("1-year", "3-year"; falls back to months for odd terms). Lets the
+// hero name what "signing a contract" commits the customer to, using the term the AE sized the deal for.
+function formatContractTerm(months: number): string {
+  const years = months / 12;
+  return Number.isInteger(years) ? `${years}-year` : `${months}-month`;
 }
 
 // Paired PUT / GET throughput for the spec table, e.g. "50 / 50 Gbit/s" (rolls to Tbps at ≥1000).
@@ -187,7 +194,7 @@ export function CommitUpsellReport({ analysisId, meta, aeInfo }: CommitUpsellRep
           <div className="border-t-[6px] border-bb-red bg-white px-8 py-5 flex items-center justify-between gap-5 border-b border-gray-200">
             <BackblazeLogo />
             <div className="min-w-0 flex-1 text-right">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400">Prepared for {reportCompanyName} · {PRICING_AS_OF_LABEL}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400">Prepared for {reportCompanyName} · {pricingAsOfLabel()}</p>
               <h1 className="mt-1 text-base font-semibold leading-tight text-bb-navy">Your B2 throughput upgrade</h1>
             </div>
           </div>
@@ -201,7 +208,7 @@ export function CommitUpsellReport({ analysisId, meta, aeInfo }: CommitUpsellRep
                   a plain fact ("the same $X/TB"); the honesty is the pitch. */}
               <div className="mb-4 rounded-xl bg-bb-navy bg-cover bg-center p-6 text-white keep-together" style={{ backgroundImage: "url('/gradient-dark.png')" }}>
                 <p className="mb-4 max-w-[46ch] text-sm text-bb-purple-pale">
-                  Signing a contract moves {reportCompanyName} to the{' '}
+                  Signing a {formatContractTerm(view.termMonths)} contract moves {reportCompanyName} to the{' '}
                   <strong className="text-white">{view.targetSpec.customerLabel}</strong> tier —{' '}
                   {view.discountPercent > 0 ? (
                     <>storage drops to <strong className="text-white">{formatCurrency(view.targetRatePerTb)}/TB</strong>, with the throughput ceiling lifted.</>
@@ -303,7 +310,7 @@ export function CommitUpsellReport({ analysisId, meta, aeInfo }: CommitUpsellRep
 
               {/* Assumptions condensed to one honest caption line (no separate spec-repeating block). */}
               <p className="text-[10.5px] leading-snug text-gray-400 keep-together">
-                Based on {usage.currentStorageTb.toLocaleString()} TB at {formatCurrency(view.currentRatePerTb)}/TB, {PRICING_AS_OF_LABEL} published rates, {view.growthLabel}
+                Based on {usage.currentStorageTb.toLocaleString()} TB at {formatCurrency(view.currentRatePerTb)}/TB, {pricingAsOfLabel()} published rates, {view.growthLabel}
                 {usage.source === 'manual' ? ', entered by your account team' : ', from a usage export'}.
               </p>
             </div>
