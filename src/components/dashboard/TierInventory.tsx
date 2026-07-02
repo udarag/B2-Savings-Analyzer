@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useState } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import type { TierInventoryRow, AccountServiceBreakdown } from '@/types/analysis';
 import { isHotStorageTier } from '@/lib/engine/tier-selection';
 import { getRegionLocation } from '@/lib/regions';
@@ -24,6 +24,20 @@ function formatRatePerUnit(perTb: number, unit: StorageUnit): string {
   const perGb = perTb / 1_000;
   const value = perGb * UNIT_DIVISOR[unit];
   return `${formatCurrency(value)}/${unit}`;
+}
+
+/**
+ * Wraps a unit-dependent cell (GB/TB/PB stored, effective $/unit) so it replays the cell-unit-swap
+ * flourish whenever the storage-unit toggle re-expresses it. `anim` is a change counter owned by the
+ * table: bumping it swaps the span's key, which remounts the span and replays the CSS animation.
+ * `anim === 0` is the initial render, so nothing animates until the AE actually cycles the unit.
+ */
+function UnitValue({ anim, children }: { anim: number; children: ReactNode }) {
+  return (
+    <span key={anim} className={`inline-block ${anim > 0 ? 'cell-unit-swap' : ''}`}>
+      {children}
+    </span>
+  );
 }
 
 function UnitToggle({ label, onClick }: { label: string; onClick: () => void }) {
@@ -176,6 +190,10 @@ function GroupCheckbox({
 export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInventoryProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [storageUnit, setStorageUnit] = useState<StorageUnit>('TB');
+  // Bumped on every unit cycle so the unit-dependent cells replay their swap animation. Kept
+  // separate from storageUnit (rather than derived from it) so an unrelated re-render never
+  // retriggers the flourish — only an actual button press does.
+  const [unitAnim, setUnitAnim] = useState(0);
 
   // Totals span the whole bill, but savings nets out only what migrates: tiers left behind keep their
   // current cost (totalRemaining) and so contribute nothing to the savings figure in the footer.
@@ -226,6 +244,7 @@ export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInvent
       const idx = UNIT_ORDER.indexOf(prev);
       return UNIT_ORDER[(idx + 1) % UNIT_ORDER.length];
     });
+    setUnitAnim((n) => n + 1);
   };
 
   const toggleExpand = (storageClass: string) => {
@@ -333,9 +352,13 @@ export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInvent
                         </span>
                       </div>
                     </td>
-                    <td className="px-2 py-3 text-right text-c-text">{formatStorage(group.gbStored, storageUnit)}</td>
+                    <td className="px-2 py-3 text-right text-c-text">
+                      <UnitValue anim={unitAnim}>{formatStorage(group.gbStored, storageUnit)}</UnitValue>
+                    </td>
                     <td className="px-2 py-3 text-right text-c-text">{formatCurrency(group.monthlyStorageCost)}</td>
-                    <td className="px-2 py-3 text-right text-c-muted">{formatRatePerUnit(weightedRatePerTb(group), storageUnit)}</td>
+                    <td className="px-2 py-3 text-right text-c-muted">
+                      <UnitValue anim={unitAnim}>{formatRatePerUnit(weightedRatePerTb(group), storageUnit)}</UnitValue>
+                    </td>
                     <td className="px-2 py-3 text-right text-c-muted">
                       {formatCurrency(group.fees)}
                     </td>
@@ -391,9 +414,13 @@ export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInvent
                                 <span className={location ? 'font-medium text-c-muted' : 'text-c-subtle'}>
                                   {location || '—'}
                                 </span>
-                                <span className="text-right text-c-muted">{formatStorage(tier.gbStored, storageUnit)}</span>
+                                <span className="text-right text-c-muted">
+                                  <UnitValue anim={unitAnim}>{formatStorage(tier.gbStored, storageUnit)}</UnitValue>
+                                </span>
                                 <span className="text-right text-c-muted">{formatCurrency(tier.monthlyStorageCost)}</span>
-                                <span className="text-right text-c-subtle">{formatRatePerUnit(tier.effectivePerTb, storageUnit)}</span>
+                                <span className="text-right text-c-subtle">
+                                  <UnitValue anim={unitAnim}>{formatRatePerUnit(tier.effectivePerTb, storageUnit)}</UnitValue>
+                                </span>
                                 <span className="text-right text-c-subtle" title={`Retrieval: ${formatCurrency(tier.retrievalFees)}\nEarly Delete: ${formatCurrency(tier.earlyDeletionFees)}\nMonitoring: ${formatCurrency(tier.monitoringFees)}\nOperations: ${formatCurrency(tier.operationsFees)}`}>
                                   {formatCurrency(fees)}
                                 </span>
@@ -433,7 +460,7 @@ export function TierInventory({ tiers, onToggle, accountBreakdowns }: TierInvent
                                   <span className="font-medium text-c-text">{acct.accountName}</span>
                                   <span className="text-c-subtle">{acct.accountId}</span>
                                   <span className="text-right text-c-subtle" title="Estimated from Cost Proportion">
-                                    {estimatedGb > 0 ? `~${formatStorage(estimatedGb, storageUnit)}` : '—'}
+                                    <UnitValue anim={unitAnim}>{estimatedGb > 0 ? `~${formatStorage(estimatedGb, storageUnit)}` : '—'}</UnitValue>
                                   </span>
                                   <span className="text-right text-c-muted">{formatCurrency(acct.costUsd)}</span>
                                 </div>

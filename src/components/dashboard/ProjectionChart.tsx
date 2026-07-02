@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Area, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { TooltipContentProps } from 'recharts';
 import type { ProjectionPoint } from '@/types/model';
@@ -30,19 +30,13 @@ export function ProjectionChart({
   growthLabel,
   providerLabel = 'Current Provider',
 }: ProjectionChartProps) {
-  // Draw the lines on deliberately when the chart first mounts, then freeze the
-  // animation. Recharts otherwise replays its draw-on every time the data changes,
-  // which makes flipping the projection term feel busy; freezing after the initial
-  // reveal lets term toggles update the lines in place. Starts off under
-  // prefers-reduced-motion so nothing animates for those users.
-  const [drawOn, setDrawOn] = useState(() => !prefersReducedMotion());
-  useEffect(() => {
-    if (!drawOn) return;
-    // Longest series finishes at animationBegin (300) + animationDuration (1100);
-    // a little headroom past that, then stop animating.
-    const timer = window.setTimeout(() => setDrawOn(false), 1500);
-    return () => window.clearTimeout(timer);
-  }, [drawOn]);
+  // Draw the lines on with a staggered reveal — and replay that reveal on every
+  // recompute, not just the first mount. Recharts re-runs the draw-on whenever the
+  // data changes, so a changed price, term, or growth assumption is *felt* as the
+  // chart redrawing itself rather than snapping to the new shape. Read the motion
+  // preference once into state: under prefers-reduced-motion the reveal stays off
+  // so nothing animates for those users.
+  const [animateChart] = useState(() => !prefersReducedMotion());
 
   // Break-even = first month cumulative savings turn non-negative (repaid the one-time migration cost).
   const breakEven = points.find((p) => p.cumulativeSavings >= 0);
@@ -166,7 +160,7 @@ export function ProjectionChart({
                 strokeWidth={2.5}
                 dot={false}
                 name="Cumulative Savings"
-                isAnimationActive={drawOn}
+                isAnimationActive={animateChart}
                 animationBegin={0}
                 animationDuration={1100}
                 animationEasing="ease-out"
@@ -181,7 +175,7 @@ export function ProjectionChart({
                 dot={false}
                 activeDot={{ r: 5, strokeWidth: 0 }}
                 name={providerLabel}
-                isAnimationActive={drawOn}
+                isAnimationActive={animateChart}
                 animationBegin={150}
                 animationDuration={1100}
                 animationEasing="ease-out"
@@ -196,7 +190,7 @@ export function ProjectionChart({
                 dot={false}
                 activeDot={{ r: 5, strokeWidth: 0 }}
                 name="Backblaze B2"
-                isAnimationActive={drawOn}
+                isAnimationActive={animateChart}
                 animationBegin={300}
                 animationDuration={1100}
                 animationEasing="ease-out"

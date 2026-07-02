@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { formatCurrency } from '../shared/FormatCurrency';
+import { AnimatedMetricValue } from '../shared/AnimatedMetricValue';
 import b2Pricing from '@/lib/pricing/b2.json';
 import type { EgressConfig, B2ServiceTier } from '@/types/analysis';
 import { formatGrowthAssumption, projectStorageGbForMonth } from '@/lib/engine/projections';
@@ -546,7 +547,9 @@ export function DealSizing({
               <div className="mt-2 bg-c-red-soft rounded-xl p-2.5 space-y-2">
                 <div className="flex justify-between text-xs">
                   <span className="text-c-red-dark">B2 UDM Cost (at ${b2Pricing.udm.costPerGb}/GB)</span>
-                  <span className="font-semibold text-c-text">{formatCurrency(udmCostToBackblaze)}</span>
+                  <span className="font-semibold text-c-text">
+                    <AnimatedMetricValue value={udmCostToBackblaze} formatter={(v) => formatCurrency(v)} />
+                  </span>
                 </div>
                 <p className="text-xs text-c-subtle">
                   {(totalStorageGb / 1000).toFixed(1)} TB × ${b2Pricing.udm.costPerGb}/GB — One-Time Cost to Backblaze
@@ -575,15 +578,20 @@ export function DealSizing({
             <p className="text-xs font-medium text-c-muted mb-1">Revenue vs. List Price</p>
             <div className="flex justify-between text-sm">
               <span className="text-c-muted">{formatTermLabel(termMonths)} at List ({formatRate(listPrice)})</span>
-              <span className="text-c-text font-medium">{formatCurrency(listTermValue)}</span>
+              <span className="text-c-text font-medium">
+                <AnimatedMetricValue value={listTermValue} formatter={(v) => formatCurrency(v)} />
+              </span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-c-muted">{formatTermLabel(termMonths)} at ${b2PricePerTb}/TB</span>
-              <span className="font-medium">{formatCurrency(termValue)}</span>
+              <span className="font-medium">
+                <AnimatedMetricValue value={termValue} formatter={(v) => formatCurrency(v)} />
+              </span>
             </div>
             <div className="flex justify-between text-sm font-bold border-t border-c-border mt-1 pt-1">
               <span>{revenueDelta < 0 ? 'Revenue Impact' : 'Revenue Uplift'}</span>
-              <span>{revenueDelta < 0 ? '' : '+'}{formatCurrency(revenueDelta)}</span>
+              {/* Keep the leading "+" outside the animated span so only the figure counts. */}
+              <span>{revenueDelta < 0 ? '' : '+'}<AnimatedMetricValue value={revenueDelta} formatter={(v) => formatCurrency(v)} /></span>
             </div>
           </div>
         )}
@@ -868,11 +876,15 @@ function RevenueSummaryRow({
       </div>
       <div className="text-right">
         <p className={`text-[10px] font-semibold uppercase tracking-wide ${active ? 'text-white/60' : 'text-c-subtle'}`}>ARR</p>
-        <p className={`font-display font-semibold ${active ? 'text-white' : 'text-c-text'}`}>{formatCurrency(arr)}</p>
+        <p className={`font-display font-semibold ${active ? 'text-white' : 'text-c-text'}`}>
+          <AnimatedMetricValue value={arr} formatter={(v) => formatCurrency(v)} />
+        </p>
       </div>
       <div className="text-right">
         <p className={`text-[10px] font-semibold uppercase tracking-wide ${active ? 'text-white/60' : 'text-c-subtle'}`}>TCV</p>
-        <p className={`font-display font-semibold ${active ? 'text-white' : 'text-c-text'}`}>{formatCurrency(tcv)}</p>
+        <p className={`font-display font-semibold ${active ? 'text-white' : 'text-c-text'}`}>
+          <AnimatedMetricValue value={tcv} formatter={(v) => formatCurrency(v)} />
+        </p>
       </div>
     </div>
   );
